@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  plainPassword: text("plain_password"), // ADDED THIS LINE
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email").notNull(),
@@ -39,6 +40,7 @@ export const users = pgTable("users", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  plainPassword: true, // ADDED THIS LINE
   firstName: true,
   lastName: true,
   email: true,
@@ -54,6 +56,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 }).extend({
   // Make profilePhoto field accept both string and null
   profilePhoto: z.string().nullable().optional(),
+  plainPassword: z.string().optional(), // ADDED THIS LINE
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

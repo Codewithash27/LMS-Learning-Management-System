@@ -1,58 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  Edit, 
-  Trash, 
-  Video, 
-  FileText, 
-  Link as LinkIcon,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  Upload,
+  X,
+  Image as ImageIcon,
+  BookOpen,
+  Clock,
+  Users,
+  FileText,
+  ChevronDown,
+  ChevronRight,
+  Edit,
+  Trash2,
+  Video,
   Plus,
   UserIcon,
-  Upload
-} from 'lucide-react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+} from "lucide-react";
 
-// Form schema for course
-const courseSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  category: z.string().min(1, "Please select a category"),
-  difficulty: z.string().min(1, "Please select a difficulty level"),
-  duration: z.number().min(1, "Duration must be at least 1 week"),
-  moduleCount: z.number().optional(),
-  lessonCount: z.number().optional(),
-  thumbnail: z.string().optional().nullable(),
-  instructorId: z.number().optional().nullable(),
-  isEnrollmentRequired: z.boolean().default(true),
-});
+interface CourseEditorProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  course?: any;
+}
 
-type CourseFormValues = z.infer<typeof courseSchema>;
-
-// Module type
 type ModuleType = {
   id: number;
   title: string;
@@ -61,7 +53,6 @@ type ModuleType = {
   lessons?: LessonType[];
 };
 
-// Lesson type
 type LessonType = {
   id: number;
   title: string;
@@ -72,25 +63,6 @@ type LessonType = {
   quizData?: any;
 };
 
-type CourseEditorProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  course?: {
-    id: number;
-    title: string;
-    description: string;
-    category: string;
-    difficulty: string;
-    duration: number;
-    moduleCount?: number;
-    lessonCount?: number;
-    thumbnail?: string | null;
-    instructorId?: number | null;
-    isEnrollmentRequired?: boolean;
-  };
-};
-
-// Define the quiz question type
 type QuizQuestion = {
   id: number;
   text: string;
@@ -103,6 +75,7 @@ type QuizQuestion = {
 
 export default function CourseEditor({ open, onOpenChange, course }: CourseEditorProps) {
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [modules, setModules] = useState<ModuleType[]>([]);
   const [editingModuleId, setEditingModuleId] = useState<number | null>(null);
   const [editingLessonIds, setEditingLessonIds] = useState<{moduleId: number, lessonId: number} | null>(null);
@@ -112,9 +85,6 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
   const [editLessonContent, setEditLessonContent] = useState<string>("");
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [isSavingModule, setIsSavingModule] = useState<boolean>(false);
-  const [isSavingLesson, setIsSavingLesson] = useState<boolean>(false);
   const [questionOptions, setQuestionOptions] = useState<{id: number, text: string, isCorrect: boolean}[]>([
     { id: 1, text: "", isCorrect: false },
     { id: 2, text: "", isCorrect: false },
@@ -122,6 +92,25 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
     { id: 4, text: "", isCorrect: false }
   ]);
   
+  // Initialize form data properly
+  const [formData, setFormData] = useState({
+    title: course?.title || "",
+    description: course?.description || "",
+    category: course?.category || "",
+    difficulty: course?.difficulty || "",
+    duration: course?.duration || 12,
+    instructorId: course?.instructorId || null,
+    moduleCount: course?.moduleCount || 0,
+    lessonCount: course?.lessonCount || 0,
+    isEnrollmentRequired: course?.isEnrollmentRequired ?? true,
+  });
+  
+  const [thumbnail, setThumbnail] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string>(course?.thumbnail || "");
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSavingModule, setIsSavingModule] = useState<boolean>(false);
+  const [isSavingLesson, setIsSavingLesson] = useState<boolean>(false);
+
   // Fetch modules when course changes
   useEffect(() => {
     if (course?.id) {
@@ -129,7 +118,6 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
         try {
           const modulesResponse = await apiRequest("GET", `/api/courses/${course.id}/modules`);
           const modulesData = await modulesResponse.json();
-          console.log("Fetched modules:", modulesData);
           
           // For each module, fetch its lessons
           const modulesWithLessons = await Promise.all(
@@ -137,7 +125,6 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
               try {
                 const lessonsResponse = await apiRequest("GET", `/api/modules/${module.id}/lessons`);
                 const lessonsData = await lessonsResponse.json();
-                console.log(`Fetched lessons for module ${module.id}:`, lessonsData);
                 
                 // Process lessons and parse quiz data
                 const processedLessons = lessonsData.map((lesson: any) => {
@@ -155,14 +142,12 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                   if (lesson.contentType === 'quiz' && lesson.quizData) {
                     let quizData;
                     try {
-                      // First check if quizData is already an object or needs parsing
                       if (typeof lesson.quizData === 'string') {
                         quizData = JSON.parse(lesson.quizData);
                       } else {
                         quizData = lesson.quizData;
                       }
                       
-                      // Ensure questions array exists
                       if (!quizData.questions) {
                         quizData.questions = [];
                       }
@@ -211,111 +196,76 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
     }
   }, [course?.id, toast]);
 
-  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<CourseFormValues>({
-    resolver: zodResolver(courseSchema),
-    defaultValues: course || {
-      title: "",
-      description: "",
-      category: "",
-      difficulty: "",
-      duration: 12,
-      moduleCount: 0,
-      lessonCount: 0,
-      thumbnail: null,
-      instructorId: null,
-      isEnrollmentRequired: true,
+  // Helper function to format thumbnail URL for display
+  const formatThumbnailUrl = (url: string | null | undefined): string => {
+    if (!url) return "";
+    // If it's already a full URL (http/https) or data URL, return as is
+    if (url.startsWith("http") || url.startsWith("data:") || url.startsWith("blob:")) {
+      return url;
     }
-  });
-  
-  // Reset form values when course changes
+    // If it's a relative path, prepend /uploads/
+    if (url.startsWith("/")) {
+      return url;
+    }
+    return `/uploads/${url}`;
+  };
+
+  // Reset form when course changes or dialog opens/closes
   useEffect(() => {
-    console.log("Course data in editor:", course);
-    if (course) {
-      console.log("Resetting form with data:", course);
-      reset({
-        title: course.title,
-        description: course.description,
-        category: course.category,
-        difficulty: course.difficulty,
-        duration: course.duration,
-        moduleCount: course.moduleCount ?? 0,
-        lessonCount: course.lessonCount ?? 0,
-        thumbnail: course.thumbnail ?? null,
-        instructorId: course.instructorId ?? null,
+    if (course && open) {
+      setFormData({
+        title: course.title || "",
+        description: course.description || "",
+        category: course.category || "",
+        difficulty: course.difficulty || "",
+        duration: course.duration || 12,
+        instructorId: course.instructorId || null,
+        moduleCount: course.moduleCount || 0,
+        lessonCount: course.lessonCount || 0,
         isEnrollmentRequired: course.isEnrollmentRequired ?? true,
       });
-    } else {
-      reset({
+      setThumbnailPreview(formatThumbnailUrl(course.thumbnail) || "");
+      setThumbnail(null);
+    } else if (!open && !course) {
+      // Reset when dialog closes for new course creation
+      setFormData({
         title: "",
         description: "",
         category: "",
         difficulty: "",
         duration: 12,
+        instructorId: null,
         moduleCount: 0,
         lessonCount: 0,
-        thumbnail: null,
-        instructorId: null,
         isEnrollmentRequired: true,
       });
+      setThumbnailPreview("");
+      setThumbnail(null);
+      setModules([]);
     }
-  }, [course, reset]);
+  }, [course, open]);
 
-  const onSubmit = async (data: CourseFormValues) => {
-    setIsSubmitting(true);
-    try {
-      let courseId;
-      
-      if (course?.id) {
-        // Update existing course
-        const response = await apiRequest("PUT", `/api/courses/${course.id}`, data);
-        const updatedCourse = await response.json();
-        courseId = updatedCourse.id;
-        
-        // Update module count
-        if (modules.length > 0) {
-          const totalLessons = modules.reduce((sum, module) => 
-            sum + (module.lessons?.length || 0), 0);
-            
-          await apiRequest("PUT", `/api/courses/${courseId}`, {
-            moduleCount: modules.length,
-            lessonCount: totalLessons
-          });
-        }
-        
-        toast({
-          title: "Course updated",
-          description: "The course has been updated successfully.",
-        });
-      } else {
-        // Create new course
-        const response = await apiRequest("POST", "/api/courses", data);
-        const newCourse = await response.json();
-        courseId = newCourse.id;
-        toast({
-          title: "Course created",
-          description: "The course has been created successfully.",
-        });
-      }
-      
-      // Save all modules and lessons
-      if (courseId) {
-        await saveAllModules(courseId);
-      }
-      
-      queryClient.invalidateQueries({queryKey: ["/api/courses"]});
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error saving course:", error);
-      toast({
-        title: "Error",
-        description: "There was an error saving the course.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+  // Function to upload image to backend
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Upload failed:", errorText);
+      throw new Error("Failed to upload image");
     }
+    
+    const data = await response.json();
+    // Return the relative path (without /uploads/ prefix) for storage
+    return data.url;
   };
-  
+
   // Save all modules and their lessons to the server
   const saveAllModules = async (courseId: number) => {
     try {
@@ -424,6 +374,231 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
     }
   };
 
+  const createCourseMutation = useMutation({
+    mutationFn: async (data: any) => {
+      console.log("Creating course with data:", data);
+      const response = await apiRequest("POST", "/api/courses", data);
+      return response.json();
+    },
+    onSuccess: async (newCourse) => {
+      // Save all modules and lessons after course creation
+      if (newCourse.id && modules.length > 0) {
+        await saveAllModules(newCourse.id);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      toast({
+        title: "Course created successfully",
+        description: "Your new course has been added to the system.",
+      });
+      onOpenChange(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      console.error("Error creating course:", error);
+      toast({
+        title: "Error creating course",
+        description: "There was an error creating the course. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateCourseMutation = useMutation({
+    mutationFn: async (data: any) => {
+      console.log("Updating course with data:", data);
+      const response = await apiRequest("PUT", `/api/courses/${course.id}`, data);
+      return response.json();
+    },
+    onSuccess: async (updatedCourse) => {
+      // Save all modules and lessons after course update
+      if (updatedCourse.id && modules.length > 0) {
+        await saveAllModules(updatedCourse.id);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      toast({
+        title: "Course updated successfully",
+        description: "Your course has been updated.",
+      });
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      console.error("Error updating course:", error);
+      toast({
+        title: "Error updating course",
+        description: "There was an error updating the course. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      category: "",
+      difficulty: "",
+      duration: 12,
+      instructorId: null,
+      moduleCount: 0,
+      lessonCount: 0,
+      isEnrollmentRequired: true,
+    });
+    setThumbnail(null);
+    setThumbnailPreview("");
+    setModules([]);
+  };
+
+  const handleInputChange = (field: string, value: string | number | boolean) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file (JPEG, PNG, GIF, etc.).",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setThumbnail(file);
+      const previewUrl = URL.createObjectURL(file);
+      setThumbnailPreview(previewUrl);
+    }
+  };
+
+  const handleRemoveThumbnail = () => {
+    setThumbnail(null);
+    setThumbnailPreview("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+    if (file) {
+      const inputEvent = {
+        target: { files: [file] }
+      } as React.ChangeEvent<HTMLInputElement>;
+      handleFileSelect(inputEvent);
+    }
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    // Basic validation
+    if (!formData.title.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please enter a course title.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.category) {
+      toast({
+        title: "Missing information",
+        description: "Please select a category.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.difficulty) {
+      toast({
+        title: "Missing information",
+        description: "Please select a difficulty level.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+
+      // Use existing thumbnail if no new file is selected, otherwise upload new one
+      let thumbnailUrl = course?.thumbnail || "";
+
+      // Upload new thumbnail if selected
+      if (thumbnail) {
+        console.log("Starting image upload...");
+        try {
+          thumbnailUrl = await uploadImage(thumbnail);
+          console.log("Image uploaded successfully:", thumbnailUrl);
+          
+          // Clean up the object URL if we created a preview
+          if (thumbnailPreview && thumbnailPreview.startsWith('blob:')) {
+            URL.revokeObjectURL(thumbnailPreview);
+          }
+        } catch (error) {
+          console.error("Error uploading image:", error);
+          toast({
+            title: "Error uploading image",
+            description: "There was an error uploading the course thumbnail. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Prepare data for API
+      const submitData = {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        difficulty: formData.difficulty,
+        duration: formData.duration,
+        instructorId: formData.instructorId,
+        moduleCount: modules.length,
+        lessonCount: modules.reduce((sum, module) => sum + (module.lessons?.length || 0), 0),
+        thumbnail: thumbnailUrl,
+        isEnrollmentRequired: formData.isEnrollmentRequired,
+      };
+
+      console.log("Submitting course data with thumbnail:", submitData.thumbnail);
+
+      if (course) {
+        await updateCourseMutation.mutateAsync(submitData);
+      } else {
+        await createCourseMutation.mutateAsync(submitData);
+      }
+    } catch (error) {
+      console.error("Error in form submission:", error);
+      toast({
+        title: "Error",
+        description: "There was an error saving the course. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Module and Lesson Management Functions
   const toggleModule = (moduleId: number) => {
     setModules(modules.map(module => 
       module.id === moduleId 
@@ -469,7 +644,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
       return module;
     }));
   };
-  
+
   // Start editing a module
   const startEditingModule = (moduleId: number) => {
     const module = modules.find(m => m.id === moduleId);
@@ -479,7 +654,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
       setEditModuleDescription(module.description || '');
     }
   };
-  
+
   // Save module edits
   const saveModuleEdit = () => {
     if (editingModuleId === null) return;
@@ -508,14 +683,14 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
     
     setIsSavingModule(false);
   };
-  
+
   // Cancel module editing
   const cancelModuleEdit = () => {
     setEditingModuleId(null);
     setEditModuleTitle('');
     setEditModuleDescription('');
   };
-  
+
   // Start editing a lesson
   const startEditingLesson = (moduleId: number, lessonId: number) => {
     const module = modules.find(m => m.id === moduleId);
@@ -536,7 +711,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
       }
     }
   };
-  
+
   // Save lesson edits
   const saveLessonEdit = () => {
     if (!editingLessonIds) return;
@@ -593,7 +768,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
     
     setIsSavingLesson(false);
   };
-  
+
   // Cancel lesson editing
   const cancelLessonEdit = () => {
     setEditingLessonIds(null);
@@ -608,7 +783,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
       { id: 4, text: "", isCorrect: false }
     ]);
   };
-  
+
   // Add a new question to the quiz
   const addQuizQuestion = () => {
     if (!currentQuestion.trim()) {
@@ -666,12 +841,12 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
       description: "Question has been added to the quiz.",
     });
   };
-  
+
   // Remove a question from the quiz
   const removeQuizQuestion = (questionId: number) => {
     setQuizQuestions(quizQuestions.filter(q => q.id !== questionId));
   };
-  
+
   // Update option text for the current question being created
   const updateOptionText = (optionId: number, text: string) => {
     setQuestionOptions(
@@ -680,7 +855,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
       )
     );
   };
-  
+
   // Toggle whether an option is correct for the current question
   const toggleOptionCorrect = (optionId: number) => {
     setQuestionOptions(
@@ -689,7 +864,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
       )
     );
   };
-  
+
   // Delete a module
   const deleteModule = (moduleId: number) => {
     setModules(modules.filter(module => module.id !== moduleId));
@@ -698,7 +873,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
       description: "Module and its lessons have been deleted.",
     });
   };
-  
+
   // Delete a lesson
   const deleteLesson = (moduleId: number, lessonId: number) => {
     setModules(modules.map(module => 
@@ -726,518 +901,618 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
         return <FileText className="h-5 w-5 text-red-500 mr-2" />;
       case 'quiz':
         return <Edit className="h-5 w-5 text-purple-500 mr-2" />;
-      case 'link':
-        return <LinkIcon className="h-5 w-5 text-orange-500 mr-2" />;
       default:
         return <FileText className="h-5 w-5 text-gray-500 mr-2" />;
     }
   };
 
+  const categories = [
+    "Computer Science",
+    "Web Development", 
+    "Data Science",
+    "Mobile Development",
+    "Design",
+    "Business",
+    "Mathematics",
+    "Engineering"
+  ];
+
+  const difficulties = [
+    "Beginner",
+    "Intermediate", 
+    "Advanced"
+  ];
+
+  const instructors = [
+    { id: 1, name: "Admin User" },
+    { id: 2, name: "Gayatri Kopnar" },
+    { id: 3, name: "Namrata Jadhav" },
+    { id: 4, name: "Prajakta Jadhav" },
+    { id: 5, name: "Shreyas" },
+    { id: 6, name: "Ayush" },
+    { id: 7, name: "Aman" }
+  ];
+
+  const isSubmitting = createCourseMutation.isPending || updateCourseMutation.isPending || isUploading;
+
+  // Clean up object URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      if (thumbnailPreview && thumbnailPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(thumbnailPreview);
+      }
+    };
+  }, [thumbnailPreview]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-heading font-semibold">
-            {course?.id ? "Edit Course" : "Create New Course"}
+          <DialogTitle className="text-2xl font-heading flex items-center gap-2">
+            <BookOpen className="h-6 w-6 text-primary" />
+            {course ? "Edit Course" : "Create New Course"}
           </DialogTitle>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="md:col-span-2">
-              <Label htmlFor="title">Course Title</Label>
-              <Input 
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Course Title */}
+          <Card className="border-gray-200">
+            <CardContent className="pt-6">
+              <Label htmlFor="title" className="text-sm font-medium mb-2 block">
+                Course Title
+              </Label>
+              <Input
                 id="title"
                 placeholder="e.g. Advanced Web Development with React"
-                {...register("title")}
-                className="mt-1"
+                value={formData.title}
+                onChange={(e) => handleInputChange("title", e.target.value)}
+                className="border-gray-200 focus:border-primary"
               />
-              {errors.title && (
-                <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>
-              )}
-            </div>
-            
-            <div className="md:col-span-2">
-              <Label htmlFor="description">Course Description (Rich Text)</Label>
-              <Textarea 
+            </CardContent>
+          </Card>
+
+          {/* Course Description */}
+          <Card className="border-gray-200">
+            <CardContent className="pt-6">
+              <Label htmlFor="description" className="text-sm font-medium mb-2 block">
+                Course Description
+              </Label>
+              <Textarea
                 id="description"
                 placeholder="Provide a detailed description of the course"
+                value={formData.description}
+                onChange={(e) => handleInputChange("description", e.target.value)}
                 rows={4}
-                {...register("description")}
-                className="mt-1"
+                className="border-gray-200 focus:border-primary resize-none"
               />
-              {errors.description && (
-                <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
-              )}
-            </div>
-            
-            <div>
-              <Label htmlFor="category">Category</Label>
-              <Controller
-                name="category"
-                control={control}
-                render={({ field }) => (
-                  <Select 
-                    value={field.value || ""}
-                    onValueChange={field.onChange}
-                    defaultValue={course?.category || ""}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Computer Science">Computer Science</SelectItem>
-                      <SelectItem value="Mathematics">Mathematics</SelectItem>
-                      <SelectItem value="Engineering">Engineering</SelectItem>
-                      <SelectItem value="Business">Business</SelectItem>
-                      <SelectItem value="Arts">Arts</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.category && (
-                <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>
-              )}
-            </div>
-            
-            <div>
-              <Label htmlFor="difficulty">Difficulty Level</Label>
-              <Controller
-                name="difficulty"
-                control={control}
-                render={({ field }) => (
-                  <Select 
-                    value={field.value || ""}
-                    onValueChange={field.onChange}
-                    defaultValue={course?.difficulty || ""}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select difficulty" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Beginner">Beginner</SelectItem>
-                      <SelectItem value="Intermediate">Intermediate</SelectItem>
-                      <SelectItem value="Advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.difficulty && (
-                <p className="text-red-500 text-sm mt-1">{errors.difficulty.message}</p>
-              )}
-            </div>
-            
-            <div>
-              <Label htmlFor="duration">Duration (weeks)</Label>
-              <Input 
-                id="duration"
-                type="number"
-                min={1}
-                {...register("duration", { valueAsNumber: true })}
-                className="mt-1"
-              />
-              {errors.duration && (
-                <p className="text-red-500 text-sm mt-1">{errors.duration.message}</p>
-              )}
-            </div>
+            </CardContent>
+          </Card>
 
-            <div>
-              <Label htmlFor="instructorId">Instructor</Label>
-              <Controller
-                name="instructorId"
-                control={control}
-                render={({ field }) => (
-                  <Select 
-                    value={field.value ? String(field.value) : ""}
-                    onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select instructor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">Admin User</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="moduleCount">Number of Modules</Label>
-              <Input 
-                id="moduleCount"
-                type="number"
-                min={0}
-                {...register("moduleCount", { valueAsNumber: true })}
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="lessonCount">Total Lessons/Videos</Label>
-              <Input 
-                id="lessonCount"
-                type="number"
-                min={0}
-                {...register("lessonCount", { valueAsNumber: true })}
-                className="mt-1"
-              />
-            </div>
-            
-            <div className="md:col-span-2">
-              <Label>Course Thumbnail / Cover Image</Label>
-              <div className="mt-2 border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center">
-                <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600 mb-2">Drag & drop your course image here</p>
-                <p className="text-xs text-gray-500 mb-4">Recommended size: 800x450 pixels</p>
-                <Button type="button" variant="outline" size="sm">
-                  Choose File
-                </Button>
-                {/* Hidden input for file upload */}
-                <input 
-                  type="file" 
-                  id="thumbnail" 
-                  className="hidden" 
-                  accept="image/*"
+          {/* Category and Difficulty */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="border-gray-200">
+              <CardContent className="pt-6">
+                <Label htmlFor="category" className="text-sm font-medium mb-2 block">
+                  Category
+                </Label>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(value) => handleInputChange("category", value)}
+                >
+                  <SelectTrigger className="border-gray-200 focus:border-primary">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+
+            <Card className="border-gray-200">
+              <CardContent className="pt-6">
+                <Label htmlFor="difficulty" className="text-sm font-medium mb-2 block">
+                  Difficulty Level
+                </Label>
+                <Select 
+                  value={formData.difficulty} 
+                  onValueChange={(value) => handleInputChange("difficulty", value)}
+                >
+                  <SelectTrigger className="border-gray-200 focus:border-primary">
+                    <SelectValue placeholder="Select difficulty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {difficulties.map((difficulty) => (
+                      <SelectItem key={difficulty} value={difficulty}>
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            className={
+                              difficulty === 'Beginner' ? 'bg-green-100 text-green-800' :
+                              difficulty === 'Intermediate' ? 'bg-blue-100 text-blue-800' :
+                              'bg-purple-100 text-purple-800'
+                            }
+                          >
+                            {difficulty}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Duration and Instructor */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="border-gray-200">
+              <CardContent className="pt-6">
+                <Label htmlFor="duration" className="text-sm font-medium mb-2 block">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-500" />
+                    Duration (weeks)
+                  </div>
+                </Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  min="1"
+                  max="52"
+                  value={formData.duration}
+                  onChange={(e) => handleInputChange("duration", parseInt(e.target.value) || 0)}
+                  className="border-gray-200 focus:border-primary"
                 />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            <div className="md:col-span-2">
+            <Card className="border-gray-200">
+              <CardContent className="pt-6">
+                <Label htmlFor="instructorId" className="text-sm font-medium mb-2 block">
+                  <div className="flex items-center gap-2">
+                    <UserIcon className="h-4 w-4 text-gray-500" />
+                    Instructor
+                  </div>
+                </Label>
+                <Select 
+                  value={formData.instructorId ? String(formData.instructorId) : ""} 
+                  onValueChange={(value) => handleInputChange("instructorId", value ? parseInt(value) : null)}
+                >
+                  <SelectTrigger className="border-gray-200 focus:border-primary">
+                    <SelectValue placeholder="Select instructor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {instructors.map((instructor) => (
+                      <SelectItem key={instructor.id} value={String(instructor.id)}>
+                        {instructor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Enrollment Required Checkbox */}
+          <Card className="border-gray-200">
+            <CardContent className="pt-6">
               <div className="flex items-center space-x-2">
-                <Controller
-                  name="isEnrollmentRequired"
-                  control={control}
-                  render={({ field }) => (
-                    <Checkbox
-                      id="isEnrollmentRequired"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  )}
+                <Checkbox
+                  id="isEnrollmentRequired"
+                  checked={formData.isEnrollmentRequired}
+                  onCheckedChange={(checked) => handleInputChange("isEnrollmentRequired", checked as boolean)}
                 />
                 <Label htmlFor="isEnrollmentRequired" className="font-normal">
                   Enrollment Required (uncheck for free access)
                 </Label>
               </div>
-            </div>
-          </div>
-          
-          <div className="border-t border-neutral-light pt-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="font-medium">Course Content</h4>
-              <Button type="button" variant="ghost" className="text-primary text-sm" onClick={addModule}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Module
-              </Button>
-            </div>
-            
-            {modules.map((module) => (
-              <div key={module.id} className="mb-4 border border-neutral-light rounded-md overflow-hidden">
-                {editingModuleId === module.id ? (
-                  <div className="bg-neutral-lightest p-3">
-                    <div className="flex flex-col space-y-3">
-                      <Input
-                        value={editModuleTitle}
-                        onChange={(e) => setEditModuleTitle(e.target.value)}
-                        placeholder="Module Title"
-                        className="w-full"
-                      />
-                      <Textarea
-                        value={editModuleDescription}
-                        onChange={(e) => setEditModuleDescription(e.target.value)}
-                        placeholder="Module Description (optional)"
-                        rows={2}
-                        className="w-full"
-                      />
-                      <div className="flex justify-end space-x-2">
-                        <Button type="button" variant="outline" size="sm" onClick={cancelModuleEdit}>
-                          Cancel
-                        </Button>
-                        <Button type="button" variant="default" size="sm" onClick={saveModuleEdit} disabled={isSavingModule}>
-                          {isSavingModule ? (
-                            <>
-                              <span className="animate-spin mr-1">⧗</span>
-                              Saving...
-                            </>
-                          ) : "Save"}
-                        </Button>
+            </CardContent>
+          </Card>
+
+          {/* Course Content - Modules and Lessons */}
+          <Card className="border-gray-200">
+            <CardContent className="pt-6">
+              <div className="flex justify-between items-center mb-4">
+                <Label className="text-sm font-medium block">
+                  Course Content
+                </Label>
+                <Button type="button" variant="outline" className="gap-2" onClick={addModule}>
+                  <Plus className="h-4 w-4" />
+                  Add Module
+                </Button>
+              </div>
+              
+              {modules.map((module) => (
+                <div key={module.id} className="mb-4 border border-gray-200 rounded-md overflow-hidden">
+                  {editingModuleId === module.id ? (
+                    <div className="bg-gray-50 p-3">
+                      <div className="flex flex-col space-y-3">
+                        <Input
+                          value={editModuleTitle}
+                          onChange={(e) => setEditModuleTitle(e.target.value)}
+                          placeholder="Module Title"
+                          className="w-full"
+                        />
+                        <Textarea
+                          value={editModuleDescription}
+                          onChange={(e) => setEditModuleDescription(e.target.value)}
+                          placeholder="Module Description (optional)"
+                          rows={2}
+                          className="w-full resize-none"
+                        />
+                        <div className="flex justify-end space-x-2">
+                          <Button type="button" variant="outline" size="sm" onClick={cancelModuleEdit}>
+                            Cancel
+                          </Button>
+                          <Button type="button" variant="default" size="sm" onClick={saveModuleEdit} disabled={isSavingModule}>
+                            {isSavingModule ? (
+                              <>
+                                <span className="animate-spin mr-1">⧗</span>
+                                Saving...
+                              </>
+                            ) : "Save"}
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="bg-neutral-lightest p-3 flex justify-between items-center">
-                    <div className="flex items-center">
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        className="p-1 mr-2"
-                        onClick={() => toggleModule(module.id)}
-                      >
-                        {module.isOpen ? (
-                          <ChevronDown className="h-5 w-5 text-neutral-dark" />
-                        ) : (
-                          <ChevronRight className="h-5 w-5 text-neutral-dark" />
-                        )}
-                      </Button>
-                      <div>
-                        <h5 className="font-medium">{module.title}</h5>
-                        {module.description && (
-                          <p className="text-xs text-gray-500">{module.description}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        className="p-1 text-neutral-medium"
-                        onClick={() => startEditingModule(module.id)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        className="p-1 text-neutral-medium hover:text-red-500"
-                        onClick={() => deleteModule(module.id)}
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                
-                {module.isOpen && !editingModuleId && (
-                  <div className="p-4">
-                    <div className="space-y-3">
-                      {module.lessons?.map((lesson) => (
-                        <div key={lesson.id} className="bg-white border border-neutral-light rounded-md">
-                          {editingLessonIds && 
-                           editingLessonIds.moduleId === module.id && 
-                           editingLessonIds.lessonId === lesson.id ? (
-                            <div className="p-3">
-                              <div className="flex flex-col space-y-3">
-                                <div className="flex items-center">
-                                  {getLessonIcon(lesson.contentType)}
-                                  <Input
-                                    value={editLessonTitle}
-                                    onChange={(e) => setEditLessonTitle(e.target.value)}
-                                    placeholder="Lesson Title"
-                                    className="flex-1"
-                                  />
-                                </div>
-                                
-                                {lesson.contentType === 'quiz' ? (
-                                  <div className="border rounded-md p-4 bg-gray-50">
-                                    <h4 className="font-medium mb-3">Quiz Questions</h4>
-                                    
-                                    {/* Existing Questions List */}
-                                    {quizQuestions.length > 0 && (
-                                      <div className="mb-4 space-y-3">
-                                        <h5 className="text-sm font-medium">Existing Questions</h5>
-                                        {quizQuestions.map(question => (
-                                          <div key={question.id} className="bg-white p-3 rounded border">
-                                            <div className="flex justify-between items-start">
-                                              <div>
-                                                <p className="font-medium">{question.text}</p>
-                                                <ul className="mt-2 space-y-1 text-sm">
-                                                  {question.options.map(option => (
-                                                    <li 
-                                                      key={option.id}
-                                                      className={option.isCorrect ? 'text-green-600 font-medium' : ''}
-                                                    >
-                                                      {option.isCorrect ? '✓ ' : ''}
-                                                      {option.text}
-                                                    </li>
-                                                  ))}
-                                                </ul>
-                                              </div>
-                                              <Button 
-                                                type="button" 
-                                                variant="ghost" 
-                                                size="sm" 
-                                                className="text-red-500"
-                                                onClick={() => removeQuizQuestion(question.id)}
-                                              >
-                                                <Trash className="h-4 w-4" />
-                                              </Button>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                    
-                                    {/* Add New Question Form */}
-                                    <div className="border-t pt-4 mt-4">
-                                      <h5 className="text-sm font-medium mb-2">Add New Question</h5>
-                                      
-                                      <div className="space-y-3">
-                                        <div>
-                                          <Label htmlFor="questionText">Question Text</Label>
-                                          <Input
-                                            id="questionText"
-                                            value={currentQuestion}
-                                            onChange={(e) => setCurrentQuestion(e.target.value)}
-                                            placeholder="Enter your question"
-                                            className="mt-1"
-                                          />
-                                        </div>
-                                        
-                                        <div>
-                                          <Label className="mb-2 block">Answer Options</Label>
-                                          {questionOptions.map((option) => (
-                                            <div key={option.id} className="flex items-center space-x-2 mb-2">
-                                              <Checkbox
-                                                id={`option-${option.id}`}
-                                                checked={option.isCorrect}
-                                                onCheckedChange={() => toggleOptionCorrect(option.id)}
-                                              />
-                                              <Input
-                                                value={option.text}
-                                                onChange={(e) => updateOptionText(option.id, e.target.value)}
-                                                placeholder={`Option ${option.id}`}
-                                                className="flex-1"
-                                              />
-                                            </div>
-                                          ))}
-                                          <p className="text-xs text-gray-500 mt-1">
-                                            Check the box next to correct answer(s).
-                                          </p>
-                                        </div>
-                                        
-                                        <Button 
-                                          type="button" 
-                                          onClick={addQuizQuestion}
-                                          variant="outline" 
-                                          size="sm"
-                                          className="mt-2"
-                                        >
-                                          <Plus className="h-4 w-4 mr-1" />
-                                          Add Question
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <Textarea
-                                    value={editLessonContent}
-                                    onChange={(e) => setEditLessonContent(e.target.value)}
-                                    placeholder="Lesson content"
-                                    rows={4}
-                                    className="w-full"
-                                  />
-                                )}
-                                
-                                <div className="flex justify-end space-x-2">
-                                  <Button type="button" variant="outline" size="sm" onClick={cancelLessonEdit}>
-                                    Cancel
-                                  </Button>
-                                  <Button type="button" variant="default" size="sm" onClick={saveLessonEdit} disabled={isSavingLesson}>
-                                    {isSavingLesson ? (
-                                      <>
-                                        <span className="animate-spin mr-1">⧗</span>
-                                        Saving...
-                                      </>
-                                    ) : "Save"}
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
+                  ) : (
+                    <div className="bg-gray-50 p-3 flex justify-between items-center">
+                      <div className="flex items-center">
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          className="p-1 mr-2"
+                          onClick={() => toggleModule(module.id)}
+                        >
+                          {module.isOpen ? (
+                            <ChevronDown className="h-5 w-5 text-gray-600" />
                           ) : (
-                            <div className="flex items-center justify-between p-2">
-                              <div className="flex items-center">
-                                {getLessonIcon(lesson.contentType)}
-                                <span>{lesson.title}</span>
-                              </div>
-                              <div className="flex space-x-2">
-                                <Button 
-                                  type="button" 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="p-1 text-neutral-medium"
-                                  onClick={() => startEditingLesson(module.id, lesson.id)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  type="button" 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="p-1 text-neutral-medium hover:text-red-500"
-                                  onClick={() => deleteLesson(module.id, lesson.id)}
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
+                            <ChevronRight className="h-5 w-5 text-gray-600" />
+                          )}
+                        </Button>
+                        <div>
+                          <h5 className="font-medium">{module.title}</h5>
+                          {module.description && (
+                            <p className="text-xs text-gray-500">{module.description}</p>
                           )}
                         </div>
-                      ))}
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          className="p-1 text-gray-600"
+                          onClick={() => startEditingModule(module.id)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          className="p-1 text-gray-600 hover:text-red-500"
+                          onClick={() => deleteModule(module.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center space-x-2 mt-3">
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        className="text-primary text-sm" 
-                        onClick={() => addLesson(module.id, 'text')}
-                      >
-                        <FileText className="h-4 w-4 mr-1 text-green-500" />
-                        Add Text
-                      </Button>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        className="text-primary text-sm" 
-                        onClick={() => addLesson(module.id, 'video')}
-                      >
-                        <Video className="h-4 w-4 mr-1 text-blue-500" />
-                        Add Video
-                      </Button>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        className="text-primary text-sm" 
-                        onClick={() => addLesson(module.id, 'pdf')}
-                      >
-                        <FileText className="h-4 w-4 mr-1 text-red-500" />
-                        Add PDF
-                      </Button>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        className="text-primary text-sm" 
-                        onClick={() => addLesson(module.id, 'quiz')}
-                      >
-                        <Edit className="h-4 w-4 mr-1 text-purple-500" />
-                        Add Quiz
-                      </Button>
+                  )}
+                  
+                  {module.isOpen && !editingModuleId && (
+                    <div className="p-4">
+                      <div className="space-y-3">
+                        {module.lessons?.map((lesson) => (
+                          <div key={lesson.id} className="bg-white border border-gray-200 rounded-md">
+                            {editingLessonIds && 
+                             editingLessonIds.moduleId === module.id && 
+                             editingLessonIds.lessonId === lesson.id ? (
+                              <div className="p-3">
+                                <div className="flex flex-col space-y-3">
+                                  <div className="flex items-center">
+                                    {getLessonIcon(lesson.contentType)}
+                                    <Input
+                                      value={editLessonTitle}
+                                      onChange={(e) => setEditLessonTitle(e.target.value)}
+                                      placeholder="Lesson Title"
+                                      className="flex-1"
+                                    />
+                                  </div>
+                                  
+                                  {lesson.contentType === 'quiz' ? (
+                                    <div className="border rounded-md p-4 bg-gray-50">
+                                      <h4 className="font-medium mb-3">Quiz Questions</h4>
+                                      
+                                      {/* Existing Questions List */}
+                                      {quizQuestions.length > 0 && (
+                                        <div className="mb-4 space-y-3">
+                                          <h5 className="text-sm font-medium">Existing Questions</h5>
+                                          {quizQuestions.map(question => (
+                                            <div key={question.id} className="bg-white p-3 rounded border">
+                                              <div className="flex justify-between items-start">
+                                                <div>
+                                                  <p className="font-medium">{question.text}</p>
+                                                  <ul className="mt-2 space-y-1 text-sm">
+                                                    {question.options.map(option => (
+                                                      <li 
+                                                        key={option.id}
+                                                        className={option.isCorrect ? 'text-green-600 font-medium' : ''}
+                                                      >
+                                                        {option.isCorrect ? '✓ ' : ''}
+                                                        {option.text}
+                                                      </li>
+                                                    ))}
+                                                  </ul>
+                                                </div>
+                                                <Button 
+                                                  type="button" 
+                                                  variant="ghost" 
+                                                  size="sm" 
+                                                  className="text-red-500"
+                                                  onClick={() => removeQuizQuestion(question.id)}
+                                                >
+                                                  <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      
+                                      {/* Add New Question Form */}
+                                      <div className="border-t pt-4 mt-4">
+                                        <h5 className="text-sm font-medium mb-2">Add New Question</h5>
+                                        
+                                        <div className="space-y-3">
+                                          <div>
+                                            <Label htmlFor="questionText">Question Text</Label>
+                                            <Input
+                                              id="questionText"
+                                              value={currentQuestion}
+                                              onChange={(e) => setCurrentQuestion(e.target.value)}
+                                              placeholder="Enter your question"
+                                              className="mt-1"
+                                            />
+                                          </div>
+                                          
+                                          <div>
+                                            <Label className="mb-2 block">Answer Options</Label>
+                                            {questionOptions.map((option) => (
+                                              <div key={option.id} className="flex items-center space-x-2 mb-2">
+                                                <Checkbox
+                                                  id={`option-${option.id}`}
+                                                  checked={option.isCorrect}
+                                                  onCheckedChange={() => toggleOptionCorrect(option.id)}
+                                                />
+                                                <Input
+                                                  value={option.text}
+                                                  onChange={(e) => updateOptionText(option.id, e.target.value)}
+                                                  placeholder={`Option ${option.id}`}
+                                                  className="flex-1"
+                                                />
+                                              </div>
+                                            ))}
+                                            <p className="text-xs text-gray-500 mt-1">
+                                              Check the box next to correct answer(s).
+                                            </p>
+                                          </div>
+                                          
+                                          <Button 
+                                            type="button" 
+                                            onClick={addQuizQuestion}
+                                            variant="outline" 
+                                            size="sm"
+                                            className="mt-2"
+                                          >
+                                            <Plus className="h-4 w-4 mr-1" />
+                                            Add Question
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <Textarea
+                                      value={editLessonContent}
+                                      onChange={(e) => setEditLessonContent(e.target.value)}
+                                      placeholder="Lesson content"
+                                      rows={4}
+                                      className="w-full resize-none"
+                                    />
+                                  )}
+                                  
+                                  <div className="flex justify-end space-x-2">
+                                    <Button type="button" variant="outline" size="sm" onClick={cancelLessonEdit}>
+                                      Cancel
+                                    </Button>
+                                    <Button type="button" variant="default" size="sm" onClick={saveLessonEdit} disabled={isSavingLesson}>
+                                      {isSavingLesson ? (
+                                        <>
+                                          <span className="animate-spin mr-1">⧗</span>
+                                          Saving...
+                                        </>
+                                      ) : "Save"}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between p-2">
+                                <div className="flex items-center">
+                                  {getLessonIcon(lesson.contentType)}
+                                  <span>{lesson.title}</span>
+                                </div>
+                                <div className="flex space-x-2">
+                                  <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="p-1 text-gray-600"
+                                    onClick={() => startEditingLesson(module.id, lesson.id)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="p-1 text-gray-600 hover:text-red-500"
+                                    onClick={() => deleteLesson(module.id, lesson.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="flex items-center space-x-2 mt-3">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          className="text-sm" 
+                          onClick={() => addLesson(module.id, 'text')}
+                        >
+                          <FileText className="h-4 w-4 mr-1 text-green-500" />
+                          Add Text
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          className="text-sm" 
+                          onClick={() => addLesson(module.id, 'video')}
+                        >
+                          <Video className="h-4 w-4 mr-1 text-blue-500" />
+                          Add Video
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          className="text-sm" 
+                          onClick={() => addLesson(module.id, 'pdf')}
+                        >
+                          <FileText className="h-4 w-4 mr-1 text-red-500" />
+                          Add PDF
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          className="text-sm" 
+                          onClick={() => addLesson(module.id, 'quiz')}
+                        >
+                          <Edit className="h-4 w-4 mr-1 text-purple-500" />
+                          Add Quiz
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-          
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+                  )}
+                </div>
+              ))}
+              
+              {modules.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <BookOpen className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <p>No modules added yet. Click "Add Module" to get started.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Course Thumbnail */}
+          <Card className="border-gray-200">
+            <CardContent className="pt-6">
+              <Label className="text-sm font-medium mb-4 block">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4 text-gray-500" />
+                  Course Thumbnail / Cover Image
+                </div>
+              </Label>
+              
+              {thumbnailPreview ? (
+                <div className="relative">
+                  <img
+                    src={formatThumbnailUrl(thumbnailPreview)}
+                    alt="Course thumbnail preview"
+                    className="w-full h-48 object-cover rounded-lg border-2 border-dashed border-gray-200"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="absolute top-2 right-2 h-8 w-8 p-0"
+                    onClick={handleRemoveThumbnail}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-lg font-medium text-gray-700 mb-2">
+                    Drag & drop your course image here
+                  </p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Recommended size: 800x450 pixels • Max 5MB
+                  </p>
+                  <Button type="button" variant="outline" className="gap-2">
+                    <Upload className="h-4 w-4" />
+                    Choose File
+                  </Button>
+                </div>
+              )}
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              
+              <p className="text-xs text-gray-500 mt-2">
+                Supported formats: JPEG, PNG, GIF, WebP • Max file size: 5MB
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="bg-primary hover:bg-primary/90"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
-                <>
-                  <span className="animate-spin mr-2">⧗</span>
-                  {course?.id ? "Updating..." : "Saving..."}
-                </>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  {thumbnail ? "Uploading Image..." : "Saving..."}
+                </div>
+              ) : course ? (
+                "Update Course"
               ) : (
-                course?.id ? "Update Course" : "Save Course"
+                "Create Course"
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

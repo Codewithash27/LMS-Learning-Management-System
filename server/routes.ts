@@ -1,9 +1,12 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { chatWithAI, logAIChat, analyzeImage, handleImageUpload, uploadImage, generateImage } from "./ai";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { 
   insertCourseSchema, 
   insertModuleSchema,
@@ -19,6 +22,10 @@ import {
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve static files from uploads directory
+  const uploadsPath = path.join(process.cwd(), 'uploads');
+  app.use('/uploads', express.static(uploadsPath));
+  
   // Set up authentication routes and middleware
   setupAuth(app);
 
@@ -133,6 +140,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update user profile" });
     }
   });
+  // DELETE user route
+app.delete("/api/users/:id", isAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    
+    // Check if user exists and belongs to the same tenant
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Check if user belongs to the admin's tenant
+    // The isAdmin middleware ensures req.user exists, so we can safely access it
+    if (user.tenantId !== req.user!.tenantId) {
+      return res.status(403).json({ message: "Access denied to this user" });
+    }
+    
+    // Prevent admin from deleting themselves
+    if (userId === req.user!.id) {
+      return res.status(400).json({ message: "You cannot delete your own account" });
+    }
+    
+    // Delete the user and all related data
+    await storage.deleteUser(userId);
+    
+    res.status(200).json({ 
+      message: `User ${user.firstName} ${user.lastName} has been deleted successfully` 
+    });
+  } catch (error) {
+    console.error("Failed to delete user:", error);
+    res.status(500).json({ message: "Failed to delete user" });
+  }
+});
 
   // Course routes
   app.get("/api/courses", isAuthenticated, async (req, res) => {
@@ -1628,6 +1668,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Image generation endpoint
   app.post("/api/ai/generate-image", isAuthenticated, generateImage);
+
+  // Course thumbnail upload endpoint
+  const courseThumbnailDir = path.join(process.cwd(), 'uploads', 'courses');
+  
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(courseThumbnailDir)) {
+    fs.mkdirSync(courseThumbnailDir, { recursive: true });
+  }
+  
+  // Configure multer for course thumbnail uploads
+  const courseThumbnailStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      cb(null, courseThumbnailDir);
+    },
+    filename: (_req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      cb(null, `course-thumbnail-${uniqueSuffix}${ext}`);
+    }
+  });
+  
+  // File filter for course thumbnails
+  const courseThumbnailFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    // Accept only jpg, jpeg, png, gif, webp files
+    if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/jpg' || 
+        file.mimetype === 'image/png' || file.mimetype === 'image/gif' || 
+        file.mimetype === 'image/webp') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPEG, PNG, GIF, WebP) are allowed'));
+    }
+  };
+  
+  const uploadCourseThumbnail = multer({ 
+    storage: courseThumbnailStorage,
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB max file size
+    },
+    fileFilter: courseThumbnailFilter
+  });
+  
+  // Course thumbnail upload endpoint
+  app.post("/api/upload", isAuthenticated, uploadCourseThumbnail.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // Return the relative path from uploads directory
+      const thumbnailPath = `courses/${req.file.filename}`;
+      
+      res.json({ url: thumbnailPath });
+    } catch (error) {
+      console.error("Course thumbnail upload error:", error);
+      res.status(500).json({ message: "Failed to upload course thumbnail" });
+    }
+  });
 
   // Admin grading endpoints
   app.get("/api/admin/exam-attempts", isAdmin, async (req, res) => {

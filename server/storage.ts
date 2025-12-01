@@ -34,6 +34,7 @@ export interface IStorage {
   updateUser(id: number, userData: Partial<User>): Promise<User | undefined>;
   getUsersByTenant(tenantId: number): Promise<User[]>;
   getUserCount(): Promise<number>;
+  deleteUser(id: number): Promise<boolean>;
   
   // Tenant operations
   getTenant(id: number): Promise<Tenant | undefined>;
@@ -179,6 +180,33 @@ export class DatabaseStorage implements IStorage {
     const result = await db.select({ count: sql<number>`count(*)` }).from(users);
     return Number(result[0]?.count || 0);
   }
+
+  async deleteUser(id: number): Promise<boolean> {
+  try {
+    // First, delete all related data to maintain referential integrity
+    // Delete batch enrollments
+    await db.delete(batchEnrollments).where(eq(batchEnrollments.userId, id));
+    
+    // Delete lesson progress
+    await db.delete(lessonProgress).where(eq(lessonProgress.userId, id));
+    
+    // Delete exam attempts
+    await db.delete(examAttempts).where(eq(examAttempts.userId, id));
+    
+    // Delete course enrollments
+    await db.delete(enrollments).where(eq(enrollments.userId, id));
+    
+    // Delete activity logs
+    await db.delete(activityLogs).where(eq(activityLogs.userId, id));
+    
+    // Finally delete the user
+    const result = await db.delete(users).where(eq(users.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    throw error;
+  }
+}
   
   // Tenant operations
   async getTenant(id: number): Promise<Tenant | undefined> {

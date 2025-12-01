@@ -164,9 +164,13 @@ export function setupAuth(app: Express) {
         profilePhotoPath = `profiles/${req.file.filename}`;
       }
 
+      // Store the actual plain password before hashing
+      const plainPassword = password;
+      
       const user = await storage.createUser({
         username,
-        password: await hashPassword(password),
+        password: await hashPassword(password), // Store hashed password for login
+        plainPassword: plainPassword, // Store actual plain text password for admin view
         firstName,
         lastName,
         email,
@@ -182,7 +186,7 @@ export function setupAuth(app: Express) {
       });
 
       // Don't send password to client
-      const { password: _, ...userWithoutPassword } = user;
+      const { password: _, plainPassword: __, ...userWithoutPassword } = user;
 
       req.login(user, (err) => {
         if (err) return next(err);
@@ -195,7 +199,7 @@ export function setupAuth(app: Express) {
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
     // Don't send password to client
-    const { password, ...userWithoutPassword } = req.user as SelectUser;
+    const { password, plainPassword, ...userWithoutPassword } = req.user as SelectUser;
     res.status(200).json(userWithoutPassword);
   });
 
@@ -209,7 +213,7 @@ export function setupAuth(app: Express) {
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     // Don't send password to client
-    const { password, ...userWithoutPassword } = req.user as SelectUser;
+    const { password, plainPassword, ...userWithoutPassword } = req.user as SelectUser;
     res.json(userWithoutPassword);
   });
   
@@ -224,6 +228,35 @@ export function setupAuth(app: Express) {
       res.sendFile(filePath);
     } else {
       res.status(404).send('File not found');
+    }
+  });
+
+  // Add endpoint to update plain passwords for existing users
+  app.post("/api/admin/update-plain-passwords", async (req, res) => {
+    try {
+      // This is a temporary endpoint to fix existing users
+      // You should remove this after running it once
+      const users = await storage.getUsersByTenant(1); // Adjust tenant ID as needed
+      
+      let updatedCount = 0;
+      for (const user of users) {
+        // If user has a hashed password but no plain password, we need to set a default
+        // In a real scenario, you'd need to know the original passwords
+        if (user.password && user.password.includes('.') && !user.plainPassword) {
+          await storage.updateUser(user.id, {
+            plainPassword: "contact_admin_for_password" // Placeholder
+          });
+          updatedCount++;
+        }
+      }
+      
+      res.json({ 
+        message: `Updated ${updatedCount} users with placeholder plain passwords`,
+        updatedCount
+      });
+    } catch (error) {
+      console.error("Failed to update plain passwords:", error);
+      res.status(500).json({ message: "Failed to update plain passwords" });
     }
   });
 }

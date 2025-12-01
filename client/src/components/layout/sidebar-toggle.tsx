@@ -1,7 +1,8 @@
-import { Menu, ChevronLeft } from 'lucide-react';
+import { Menu, ChevronLeft, Sparkles } from 'lucide-react';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { motion } from 'framer-motion';
 
 export default function SidebarToggle() {
   const { sidebarOpen, toggleSidebar } = useSidebar();
@@ -12,12 +13,45 @@ export default function SidebarToggle() {
   if (!user || isMobile) return null;
 
   return (
-    <button
+    <motion.button
       onClick={toggleSidebar}
-      className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm text-neutral-medium hover:text-primary transition-colors"
+      className="w-12 h-12 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 text-gray-600 hover:text-blue-600 transition-all duration-300 group relative overflow-hidden"
       aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+      whileHover={{ scale: 1.05, boxShadow: "0 10px 30px -10px rgba(59, 130, 246, 0.3)" }}
+      whileTap={{ scale: 0.95 }}
     >
-      {sidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-    </button>
+      {/* Background gradient on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-purple-600/0 group-hover:from-blue-500/10 group-hover:to-purple-600/10 transition-all duration-300" />
+      
+      {sidebarOpen ? (
+        <motion.div
+          initial={{ rotate: 0 }}
+          animate={{ rotate: 0 }}
+          whileHover={{ rotate: -5 }}
+          transition={{ type: "spring", stiffness: 300 }}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ rotate: 0 }}
+          animate={{ rotate: 0 }}
+          whileHover={{ rotate: 5 }}
+          transition={{ type: "spring", stiffness: 300 }}
+        >
+          <Menu className="h-5 w-5" />
+        </motion.div>
+      )}
+      
+      {/* Sparkle effect */}
+      <motion.div
+        className="absolute inset-0 opacity-0 group-hover:opacity-100"
+        initial={{ scale: 0 }}
+        whileHover={{ scale: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Sparkles className="h-3 w-3 text-blue-400 absolute top-1 right-1" />
+      </motion.div>
+    </motion.button>
   );
 }

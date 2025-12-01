@@ -11,13 +11,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { sidebarOpen } = useSidebar();
 
   return (
-    <div className="flex min-h-screen bg-neutral-lightest">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/20">
+      {/* Premium Sidebar */}
       <Sidebar />
       
-      <div className={`main-content flex-grow p-6 md:p-8 ${sidebarOpen ? 'md:ml-64' : 'ml-0'} transition-all duration-300`}>
-        {children}
+      {/* Main Content with Glassmorphism Effect */}
+      <div className={`flex-1 transition-all duration-500 ease-in-out ${
+        sidebarOpen ? 'lg:ml-80' : 'lg:ml-20'
+      }`}>
+        <div className="min-h-screen p-6 lg:p-8 backdrop-blur-sm">
+          {/* Glassmorphism content area */}
+          <div className="rounded-3xl bg-white/70 backdrop-blur-md border border-white/20 shadow-2xl min-h-[calc(100vh-4rem)]">
+            {children}
+          </div>
+        </div>
       </div>
       
+      {/* Mobile Navigation */}
       <MobileNav />
     </div>
   );
