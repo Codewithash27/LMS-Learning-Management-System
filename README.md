@@ -102,3 +102,35 @@ Before you begin, ensure you have the following installed:
       The application will be available at `http://localhost:5000`
 
 ## 📁 Project Structure
+LMS_Trial/
+├── client/                 # Frontend React application
+│   ├── src/
+│   │   ├── components/    # React components
+│   │   │   ├── admin/     # Admin-specific components
+│   │   │   ├── auth/      # Authentication components
+│   │   │   ├── courses/   # Course-related components
+│   │   │   ├── dashboard/ # Dashboard components
+│   │   │   ├── exams/     # Exam components
+│   │   │   ├── layout/    # Layout components
+│   │   │   └── ui/        # Reusable UI components
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── lib/           # Utility functions
+│   │   ├── pages/         # Page components
+│   │   │   ├── admin/     # Admin pages
+│   │   │   └── student/   # Student pages
+│   │   └── App.tsx        # Main app component
+│   └── index.html
+├── server/                 # Backend Express application
+│   ├── index.ts           # Server entry point
+│   ├── routes.ts          # API routes
+│   ├── auth.ts            # Authentication setup
+│   ├── db.ts              # Database connection
+│   ├── storage.ts         # Database operations
+│   ├── ai.ts              # AI integration
+│   └── storage.ts         # File storage utilities
+├── shared/                 # Shared code between frontend and backend
+│   └── schema.ts          # Database schema and types
+├── uploads/                # Uploaded files (courses, profiles)
+├── drizzle.config.ts       # Drizzle ORM configuration
+├── vite.config.ts          # Vite configuration
+└── package.json            # Project dependencies
