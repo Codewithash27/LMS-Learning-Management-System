@@ -134,3 +134,5 @@ LMS_Trial/
 ├── drizzle.config.ts       # Drizzle ORM configuration
 ├── vite.config.ts          # Vite configuration
 └── package.json            # Project dependencies
+<img width="652" height="662" alt="image" src="https://github.com/user-attachments/assets/092c6cc2-6502-408d-bfce-549ccfa0a7de" />
+
