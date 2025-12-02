@@ -42,23 +42,24 @@ A comprehensive, full-stack Learning Management System built with modern web tec
 ### Courses Management
 ![Courses](./Img/Courses.png)
 
-### Students Management
-![Students](./Img/Students.png)
-
-### Batches Management
-![Batches](./Img/Batches.png)
-
 ### Exams Management
 ![Exams](./Img/Exams.png)
 
 ### Exam Grading
 ![Exam Grading](./Img/Exam%20Grading.png)
 
+### Students Management
+![Students](./Img/Students.png)
+
+### Batches Management
+![Batches](./Img/Batches.png)
+
+
 ### Reports & Analytics
-### Report 1
+### Visuals 1
 ![Visuals](./Img/Visual1.png)
 
-### Report 2
+### Visuals 2
 ![Visuals](./Img/Visual2.png)
 
 
