@@ -57,6 +57,12 @@ A comprehensive, full-stack Learning Management System built with modern web tec
 ### Reports & Analytics
 ![Reports & Analytics](./Img/Reports%20&%20Analytics.png)
 
+### Report 1
+![Report 1](./Img/report1.png)
+
+### Report 2
+![Report 2](./Img/report2.png)
+
 
 ## 🛠️ Tech Stack
 
