@@ -55,12 +55,11 @@ A comprehensive, full-stack Learning Management System built with modern web tec
 ![Exam Grading](./Img/Exam%20Grading.png)
 
 ### Reports & Analytics
-![Reports & Analytics]
 ### Report 1
-![Report 1](./Img/report1.png)
+![Visuals](./Img/Visual1.png)
 
 ### Report 2
-![Report 2](./Img/report2.png)
+![Visuals](./Img/Visual2.png)
 
 
 ## 🛠️ Tech Stack
