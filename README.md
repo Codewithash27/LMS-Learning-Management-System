@@ -31,6 +31,33 @@ A comprehensive, full-stack Learning Management System built with modern web tec
 - **Real-time Progress Tracking**: Track lesson completion and course progress
 - **Responsive Design**: Modern UI built with shadcn/ui and Tailwind CSS
 
+## 📸 Screenshots
+
+### Login Page
+![Login](./Img/Login.png)
+
+### Admin Dashboard
+![Dashboard](./Img/Dashboard.png)
+
+### Courses Management
+![Courses](./Img/Courses.png)
+
+### Students Management
+![Students](./Img/Students.png)
+
+### Batches Management
+![Batches](./Img/Batches.png)
+
+### Exams Management
+![Exams](./Img/Exams.png)
+
+### Exam Grading
+![Exam Grading](./Img/Exam%20Grading.png)
+
+### Reports & Analytics
+![Reports & Analytics](./Img/Reports%20&%20Analytics.png)
+
+
 ## 🛠️ Tech Stack
 
 ### Frontend
