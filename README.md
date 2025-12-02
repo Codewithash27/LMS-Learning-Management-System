@@ -55,8 +55,7 @@ A comprehensive, full-stack Learning Management System built with modern web tec
 ![Exam Grading](./Img/Exam%20Grading.png)
 
 ### Reports & Analytics
-![Reports & Analytics](./Img/Reports%20&%20Analytics.png)
-
+![Reports & Analytics]
 ### Report 1
 ![Report 1](./Img/report1.png)
 
