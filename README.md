@@ -73,8 +73,8 @@ Before you begin, ensure you have the following installed:
 1. **Clone the repository**sh
    git clone <your-repository-url>
    cd LMS_Trial
-   2. **Install dependencies**h
-   npm install
+   2. **Install dependencies**
+   npm install 
    3. **Set up environment variables**
    
    Create a `.env` file in the root directory:
