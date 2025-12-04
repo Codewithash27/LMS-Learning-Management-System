@@ -2,7 +2,7 @@
 
 A comprehensive, full-stack Learning Management System built with modern web technologies. This platform enables educational institutions to manage courses, students, batches, exams, and track learning progress with an integrated AI assistant.
 
-## 🚀 Features
+## 🚀 Features 
 
 ### Admin Features
 - **Dashboard**: Comprehensive analytics and overview of system activity
