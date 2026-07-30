@@ -374,6 +374,19 @@ export default function Sidebar() {
             </>
           )}
         </motion.button>
+
+        <AnimatePresence>
+          {!isCollapsed && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="mt-3 text-center text-[10px] text-gray-400"
+            >
+              by <span className="font-medium text-gray-500">Aman Hukkerikar</span>
+            </motion.p>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );

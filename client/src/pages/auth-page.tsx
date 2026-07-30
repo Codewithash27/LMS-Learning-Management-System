@@ -801,9 +801,15 @@ export default function AuthPage() {
               <p className="text-sm text-white/80 leading-relaxed">Isolated environments for each organization or institution.</p>
             </motion.div>
           </div>
-          <p className="mt-10 text-sm text-white/70 relative z-10">
-            Deployed by Aman
-          </p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            className="mt-10 text-sm text-white/75"
+          >
+            Designed &amp; Deployed by{" "}
+            <span className="font-semibold text-white">Aman Hukkerikar</span>
+          </motion.p>
         </motion.div>
       </div>
     </div>

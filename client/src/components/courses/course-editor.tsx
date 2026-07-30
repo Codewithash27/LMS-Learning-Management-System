@@ -930,7 +930,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
     { id: 4, name: "Prajakta Jadhav" },
     { id: 5, name: "Shreyas" },
     { id: 6, name: "Ayush" },
-    { id: 7, name: "Aman" }
+    { id: 7, name: "Aman Hukkerikar" }
   ];
 
   const isSubmitting = createCourseMutation.isPending || updateCourseMutation.isPending || isUploading;

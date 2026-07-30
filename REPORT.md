@@ -1,7 +1,7 @@
 # LMS Setup & Installation Guide
 
 **Project:** Learning Management System (Edu Transform)  
-**Deployed by:** Aman  
+**Designed & Deployed by:** Aman Hukkerikar  
 **Stack:** React + Vite (frontend) · Express + TypeScript (backend) · PostgreSQL
 
 This guide helps your college team clone, install, and run the project locally.
@@ -192,6 +192,6 @@ LMS-Learning-Management-System/
 
 ## 12. Contact / Credit
 
-**Deployed by Aman**
+**Designed & Deployed by Aman Hukkerikar**
 
 For setup help, contact the project owner of this repository.

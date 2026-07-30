@@ -24,8 +24,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="rounded-3xl bg-white/70 backdrop-blur-md border border-white/20 shadow-2xl min-h-[calc(100vh-4rem)] flex-1">
             {children}
           </div>
-          <p className="mt-4 text-center text-xs text-gray-500">
-            Deployed by Aman
+          <p className="mt-3 text-center text-[11px] text-gray-400">
+            Designed &amp; Deployed by{" "}
+            <span className="font-medium text-gray-600">Aman Hukkerikar</span>
           </p>
         </div>
       </div>

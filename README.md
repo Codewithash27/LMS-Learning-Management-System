@@ -103,7 +103,7 @@ Before you begin, ensure you have the following installed:
 ## 🔧 Installation
 
 > Full step-by-step college setup guide: see **[REPORT.md](./REPORT.md)**  
-> **Deployed by Aman**
+> **Designed & Deployed by Aman Hukkerikar**
 
 Quick start:
 
