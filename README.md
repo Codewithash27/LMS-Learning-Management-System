@@ -102,36 +102,37 @@ Before you begin, ensure you have the following installed:
 
 ## 🔧 Installation
 
-1. **Clone the repository**sh
-   git clone <your-repository-url>
-   cd LMS_Trial
-   2. **Install dependencies**
-   npm install 
-   3. **Set up environment variables**
-   
-   Create a `.env` file in the root directory:
-   # Database
-   DATABASE_URL=postgresql://username:password@localhost:5432/lms_db
+> Full step-by-step college setup guide: see **[REPORT.md](./REPORT.md)**  
+> **Deployed by Aman**
 
-   # Session Secret (generate a random string)
-   SESSION_SECRET=your-session-secret-here
+Quick start:
 
-   # Together AI API Keys (comma-separated for rotation)
-   TOGETHER_API_KEYS=your-api-key-1,your-api-key-2
-
-   # Server
-   NODE_ENV=development
-   PORT=5000
-   4. **Set up the database**
-   
-   Create a PostgreSQL database:
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Codewithash27/LMS-Learning-Management-System.git
+   cd LMS-Learning-Management-System
+   ```
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` with your PostgreSQL credentials and session secret.
+4. **Set up the database**
+   ```sql
    CREATE DATABASE lms_db;
-      Push the schema to the database:
-  
+   ```
+   ```bash
    npm run db:push
-   5. **Start the development server**sh
+   ```
+5. **Start the development server** (frontend + backend together)
+   ```bash
    npm run dev
-      The application will be available at `http://localhost:5000`
+   ```
+   Open `http://localhost:5000`
 
 ## 📁 Project Structure
 

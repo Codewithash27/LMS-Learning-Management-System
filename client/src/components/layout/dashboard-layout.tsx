@@ -19,11 +19,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className={`flex-1 transition-all duration-500 ease-in-out ${
         sidebarOpen ? 'lg:ml-80' : 'lg:ml-20'
       }`}>
-        <div className="min-h-screen p-6 lg:p-8 backdrop-blur-sm">
+        <div className="min-h-screen p-6 lg:p-8 backdrop-blur-sm flex flex-col">
           {/* Glassmorphism content area */}
-          <div className="rounded-3xl bg-white/70 backdrop-blur-md border border-white/20 shadow-2xl min-h-[calc(100vh-4rem)]">
+          <div className="rounded-3xl bg-white/70 backdrop-blur-md border border-white/20 shadow-2xl min-h-[calc(100vh-4rem)] flex-1">
             {children}
           </div>
+          <p className="mt-4 text-center text-xs text-gray-500">
+            Deployed by Aman
+          </p>
         </div>
       </div>
       
