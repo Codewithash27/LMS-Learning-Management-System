@@ -379,31 +379,41 @@ export class DatabaseStorage implements IStorage {
       );
   }
   
-  async createLessonProgress(progressData: InsertLessonProgress): Promise<LessonProgress> {
+  async createLessonProgress(insertProgress: InsertLessonProgress): Promise<LessonProgress> {
+    // First check if progress already exists
+    const existingProgress = await this.getLessonProgress(
+      insertProgress.userId,
+      insertProgress.lessonId
+    );
+    
+    if (existingProgress) {
+      return existingProgress;
+    }
+    
     const [progress] = await db.insert(lessonProgress)
-      .values(progressData)
+      .values([{ ...insertProgress, completed: true }])
       .returning();
     
-    // After creating a lesson progress entry, update the course progress
-    await this.updateCourseProgress(progressData.userId, progressData.courseId);
+    // Update course progress percentage
+    await this.updateCourseProgress(insertProgress.userId, insertProgress.courseId);
     
     return progress;
   }
   
   async updateCourseProgress(userId: number, courseId: number): Promise<number> {
     // Get all modules in the course
-    const modulesList = await this.getModulesByCourse(courseId);
+    const modules = await this.getModulesByCourse(courseId);
     
     // If there are no modules, there can't be any progress
-    if (modulesList.length === 0) {
+    if (modules.length === 0) {
       return 0;
     }
     
     // Get all lessons in all modules
-    const allLessons: Lesson[] = [];
-    for (const module of modulesList) {
-      const moduleLessons = await this.getLessonsByModule(module.id);
-      allLessons.push(...moduleLessons);
+    let allLessons: Lesson[] = [];
+    for (const module of modules) {
+      const lessons = await this.getLessonsByModule(module.id);
+      allLessons = [...allLessons, ...lessons];
     }
     
     // If there are no lessons, there can't be any progress
@@ -421,8 +431,8 @@ export class DatabaseStorage implements IStorage {
     const progressPercentage = Math.round((completedCount / totalRequiredLessons) * 100);
     
     // Find the enrollment for this user and course
-    const enrollmentList = await this.getEnrollmentsByUser(userId);
-    const enrollment = enrollmentList.find(e => e.courseId === courseId);
+    const enrollments = await this.getEnrollmentsByUser(userId);
+    const enrollment = enrollments.find(e => e.courseId === courseId);
     
     if (enrollment) {
       // Update the enrollment progress
@@ -639,102 +649,6 @@ export class DatabaseStorage implements IStorage {
         description: result.examDescription
       }
     }));
-  }
-  
-  // Lesson Progress operations
-  async getLessonProgress(userId: number, lessonId: number): Promise<LessonProgress | undefined> {
-    const [progress] = await db.select()
-      .from(lessonProgress)
-      .where(
-        and(
-          eq(lessonProgress.userId, userId),
-          eq(lessonProgress.lessonId, lessonId)
-        )
-      );
-    return progress;
-  }
-  
-  async getLessonProgressByUser(userId: number): Promise<LessonProgress[]> {
-    return await db.select()
-      .from(lessonProgress)
-      .where(eq(lessonProgress.userId, userId));
-  }
-  
-  async getLessonProgressByCourse(userId: number, courseId: number): Promise<LessonProgress[]> {
-    return await db.select()
-      .from(lessonProgress)
-      .where(
-        and(
-          eq(lessonProgress.userId, userId),
-          eq(lessonProgress.courseId, courseId)
-        )
-      );
-  }
-  
-  async createLessonProgress(insertProgress: InsertLessonProgress): Promise<LessonProgress> {
-    // First check if progress already exists
-    const existingProgress = await this.getLessonProgress(
-      insertProgress.userId,
-      insertProgress.lessonId
-    );
-    
-    if (existingProgress) {
-      return existingProgress;
-    }
-    
-    const [progress] = await db.insert(lessonProgress)
-      .values([{ ...insertProgress, completed: true }])
-      .returning();
-    
-    // Update course progress percentage
-    await this.updateCourseProgress(insertProgress.userId, insertProgress.courseId);
-    
-    return progress;
-  }
-  
-  async updateCourseProgress(userId: number, courseId: number): Promise<number> {
-    // Get all modules in the course
-    const modules = await this.getModulesByCourse(courseId);
-    
-    // If there are no modules, there can't be any progress
-    if (modules.length === 0) {
-      return 0;
-    }
-    
-    // Get all lessons in all modules
-    let allLessons: Lesson[] = [];
-    for (const module of modules) {
-      const lessons = await this.getLessonsByModule(module.id);
-      allLessons = [...allLessons, ...lessons];
-    }
-    
-    // If there are no lessons, there can't be any progress
-    if (allLessons.length === 0) {
-      return 0;
-    }
-    
-    // Get all completed lessons for this user and course
-    const completedLessons = await this.getLessonProgressByCourse(userId, courseId);
-    
-    // Calculate progress as a percentage
-    const totalRequiredLessons = allLessons.filter(lesson => lesson.isRequired).length || allLessons.length;
-    const completedCount = completedLessons.length;
-    
-    const progressPercentage = Math.round((completedCount / totalRequiredLessons) * 100);
-    
-    // Find the enrollment for this user and course
-    const enrollments = await this.getEnrollmentsByUser(userId);
-    const enrollment = enrollments.find(e => e.courseId === courseId);
-    
-    if (enrollment) {
-      // Update the enrollment progress
-      await this.updateEnrollment(enrollment.id, { 
-        progress: progressPercentage,
-        completedAt: progressPercentage === 100 ? new Date() : null 
-      });
-    }
-    
-    return progressPercentage;
   }
   
   // Activity log operations
@@ -1007,6 +921,10 @@ export class MemStorage implements IStorage {
   async getUserCount(): Promise<number> {
     throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
   }
+
+  async deleteUser(id: number): Promise<boolean> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
   
   // Tenant operations
   async getTenant(id: number): Promise<Tenant | undefined> {
@@ -1169,6 +1087,18 @@ export class MemStorage implements IStorage {
   }
   
   async updateExamAttempt(id: number, attemptData: Partial<ExamAttempt>): Promise<ExamAttempt | undefined> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+
+  async getAllExamAttemptsForAdmin(tenantId: number): Promise<any[]> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+
+  async gradeExamAttempt(attemptId: number, feedback: string, tenantId: number): Promise<ExamAttempt> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+
+  async getStudentExamResults(userId: number): Promise<any[]> {
     throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
   }
   
