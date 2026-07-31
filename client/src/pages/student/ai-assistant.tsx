@@ -22,14 +22,14 @@ export default function StudentAIAssistant() {
   
   return (
     <DashboardLayout>
-      <div>
-        <Header 
-          title="AI Learning Assistant" 
-          subtitle="Get help with your courses and learning materials"
-        />
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
+      <Header 
+        title="AI Learning Assistant" 
+        subtitle="Get help with your courses and learning materials"
+      />
+      
+      <div className="space-y-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <TabsList>
               <TabsTrigger value="chat" className="flex items-center gap-2">
                 <Bot size={16} />
@@ -42,18 +42,20 @@ export default function StudentAIAssistant() {
             </TabsList>
           </div>
           
-          <TabsContent value="chat" className="relative flex-1 h-[calc(100vh-200px)]">
+          <TabsContent value="chat" className="relative flex-1 h-[calc(100vh-200px)] mt-6">
             <div className="grid grid-cols-1 gap-6 max-w-6xl mx-auto w-full h-full">
               <AIChatInterface />
             </div>
           </TabsContent>
           
-          <TabsContent value="tips">
+          <TabsContent value="tips" className="mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
+              <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-primary" />
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                      <BookOpen className="h-4 w-4 text-white" />
+                    </div>
                     Study Assistance
                   </CardTitle>
                   <CardDescription>
@@ -87,10 +89,12 @@ export default function StudentAIAssistant() {
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <GraduationCap className="h-5 w-5 text-primary" />
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                      <GraduationCap className="h-4 w-4 text-white" />
+                    </div>
                     Tips for Better Results
                   </CardTitle>
                   <CardDescription>

@@ -30,7 +30,6 @@ import StudentUpcomingExams from "@/pages/student/upcoming-exams";
 import StudentResults from "@/pages/student/results";
 import StudentProfile from "@/pages/student/profile";
 import StudentAIAssistant from "@/pages/student/ai-assistant";
-import StudentExamResults from "@/pages/student/exam-results";
 
 function Router() {
   return (

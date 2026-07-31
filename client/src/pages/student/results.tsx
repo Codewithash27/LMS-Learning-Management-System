@@ -187,66 +187,66 @@ export default function StudentResults() {
 
   return (
     <DashboardLayout>
-      <div>
-        <Header title="Results & Progress" subtitle="Track your exam results and overall progress" />
-        
-        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <Header title="Results & Progress" subtitle="Track your exam results and overall progress" />
+      
+      <div className="space-y-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <Input
               placeholder="Search results..."
-              className="pl-9"
+              className="pl-9 bg-white/70 border-white/20"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           
           <div className="flex gap-2 w-full sm:w-auto">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2 bg-white/70 border-white/20">
               <Filter size={16} />
               Filter
             </Button>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
                 <p className="text-sm text-muted-foreground">Average Score</p>
                 <h3 className="text-2xl font-semibold">{averageScore}%</h3>
               </div>
-              <div className="bg-primary/10 p-3 rounded-full">
-                <Award className="h-6 w-6 text-primary" />
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
+                <Award className="h-6 w-6 text-white" />
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
                 <p className="text-sm text-muted-foreground">Exams Taken</p>
                 <h3 className="text-2xl font-semibold">{sortedAttempts.filter(a => a.completedAt).length}</h3>
               </div>
-              <div className="bg-accent/10 p-3 rounded-full">
-                <Clock className="h-6 w-6 text-accent" />
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
+                <Clock className="h-6 w-6 text-white" />
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
                 <p className="text-sm text-muted-foreground">Courses Enrolled</p>
                 <h3 className="text-2xl font-semibold">{(enrollments as any[]).length}</h3>
               </div>
-              <div className="bg-secondary/10 p-3 rounded-full">
-                <Calendar className="h-6 w-6 text-secondary" />
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
+                <Calendar className="h-6 w-6 text-white" />
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
                 <p className="text-sm text-muted-foreground">Highest Score</p>
@@ -254,8 +254,8 @@ export default function StudentResults() {
                   {Math.max(...sortedAttempts.map(a => a.score || 0), 0)}%
                 </h3>
               </div>
-              <div className="bg-warning/10 p-3 rounded-full">
-                <BarChart2 className="h-6 w-6 text-warning" />
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg">
+                <BarChart2 className="h-6 w-6 text-white" />
               </div>
             </CardContent>
           </Card>
@@ -305,7 +305,7 @@ export default function StudentResults() {
                   const isCompleted = !!attempt.completedAt;
                   
                   return (
-                    <Card key={attempt.id} className="hover:shadow-md transition-shadow">
+                    <Card key={attempt.id} className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
                       <CardHeader className="pb-3">
                         <div className="flex justify-between">
                           <div>
@@ -371,7 +371,7 @@ export default function StudentResults() {
             ) : (
               <div className="space-y-6">
                 {courseProgressData.map((course: { name: string, progress: number }, index: number) => (
-                  <Card key={index} className="hover:shadow-md transition-shadow">
+                  <Card key={index} className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
                     <CardHeader className="pb-3">
                       <div className="flex justify-between">
                         <CardTitle className="font-heading text-lg">{course.name}</CardTitle>
@@ -398,7 +398,7 @@ export default function StudentResults() {
           
           <TabsContent value="analytics" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
+              <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <BarChart2 className="h-5 w-5 mr-2" />
@@ -432,7 +432,7 @@ export default function StudentResults() {
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <BarChart2 className="h-5 w-5 mr-2" />
@@ -476,7 +476,7 @@ export default function StudentResults() {
               </Card>
             </div>
             
-            <Card>
+            <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <BarChart2 className="h-5 w-5 mr-2" />

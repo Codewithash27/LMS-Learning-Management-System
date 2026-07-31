@@ -1,36 +1,65 @@
-import { createContext, ReactNode, useContext, useState, useEffect } from "react";
+import { createContext, ReactNode, useContext, useState, useEffect, useCallback } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type SidebarContextType = {
   sidebarOpen: boolean;
   toggleSidebar: () => void;
+  setSidebarOpen: (open: boolean) => void;
+  closeSidebar: () => void;
 };
 
 const SidebarContext = createContext<SidebarContextType | null>(null);
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  // Default to open on larger screens
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpenState] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
 
-  // Toggle sidebar state
-  const toggleSidebar = () => {
-    setSidebarOpen((prev) => !prev);
-    // Save preference to localStorage
-    localStorage.setItem("sidebar-open", String(!sidebarOpen));
-  };
-
-  // Load preference from localStorage on mount
   useEffect(() => {
     const savedPreference = localStorage.getItem("sidebar-open");
-    if (savedPreference !== null) {
-      setSidebarOpen(savedPreference === "true");
+    if (isMobile) {
+      setSidebarOpenState(false);
+    } else if (savedPreference !== null) {
+      setSidebarOpenState(savedPreference === "true");
+    } else {
+      setSidebarOpenState(true);
     }
+    setHydrated(true);
+  }, [isMobile]);
+
+  const setSidebarOpen = useCallback((open: boolean) => {
+    setSidebarOpenState(open);
+    if (!isMobile) {
+      localStorage.setItem("sidebar-open", String(open));
+    }
+  }, [isMobile]);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpenState((prev) => {
+      const next = !prev;
+      if (!isMobile) {
+        localStorage.setItem("sidebar-open", String(next));
+      }
+      return next;
+    });
+  }, [isMobile]);
+
+  const closeSidebar = useCallback(() => {
+    setSidebarOpenState(false);
   }, []);
+
+  // Avoid flash before we know mobile vs desktop
+  if (!hydrated && typeof window !== "undefined") {
+    // still render children; default state is fine
+  }
 
   return (
     <SidebarContext.Provider
       value={{
         sidebarOpen,
         toggleSidebar,
+        setSidebarOpen,
+        closeSidebar,
       }}
     >
       {children}

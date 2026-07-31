@@ -10,10 +10,8 @@ import {
   Search, 
   Filter, 
   Clock, 
-  CalendarClock, 
   Book, 
   CheckCircle2,
-  AlertTriangle,
   XCircle
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -125,22 +123,22 @@ export default function StudentUpcomingExams() {
 
   return (
     <DashboardLayout>
-      <div>
-        <Header title="Upcoming Exams" subtitle="View and take your scheduled exams" />
-        
-        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <Header title="Upcoming Exams" subtitle="View and take your scheduled exams" />
+      
+      <div className="space-y-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <Input
               placeholder="Search exams..."
-              className="pl-9"
+              className="pl-9 bg-white/70 border-white/20"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           
           <div className="flex gap-2 w-full sm:w-auto">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2 bg-white/70 border-white/20">
               <Filter size={16} />
               Filter
             </Button>
@@ -150,7 +148,7 @@ export default function StudentUpcomingExams() {
         {isLoadingExams ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="animate-pulse">
+              <Card key={i} className="animate-pulse backdrop-blur-sm bg-white/70 border border-white/20">
                 <CardHeader className="pb-3">
                   <div className="h-6 bg-gray-200 rounded mb-2 w-2/3"></div>
                   <div className="h-4 bg-gray-200 rounded w-1/3"></div>
@@ -180,7 +178,7 @@ export default function StudentUpcomingExams() {
               const isAvailable = canTakeExam(exam);
               
               return (
-                <Card key={exam.id} className="hover:shadow-md transition-shadow">
+                <Card key={exam.id} className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
                   <CardHeader className="pb-3">
                     <div className="flex justify-between">
                       <div>

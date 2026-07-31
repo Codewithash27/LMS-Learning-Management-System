@@ -234,7 +234,7 @@ export default function StudentCourseDetails() {
           </TabsList>
           
           <TabsContent value="overview" className="space-y-6">
-            <Card>
+            <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
               <CardHeader>
                 <CardTitle>About this Course</CardTitle>
               </CardHeader>
@@ -251,7 +251,7 @@ export default function StudentCourseDetails() {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
               <CardHeader>
                 <CardTitle>Course Structure</CardTitle>
                 <CardDescription>
@@ -289,7 +289,7 @@ export default function StudentCourseDetails() {
           <TabsContent value="content" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-1 space-y-4">
-                <Card>
+                <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                   <CardHeader>
                     <CardTitle>Course Modules</CardTitle>
                   </CardHeader>
@@ -329,7 +329,7 @@ export default function StudentCourseDetails() {
               <div className="md:col-span-2 space-y-4">
                 {activeModuleId ? (
                   <>
-                    <Card>
+                    <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                       <CardHeader>
                         <CardTitle>
                           {activeModuleId && 
@@ -379,7 +379,7 @@ export default function StudentCourseDetails() {
                     </Card>
                     
                     {activeLesson && (
-                      <Card>
+                      <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                         <CardHeader>
                           <CardTitle>{activeLesson.title}</CardTitle>
                           <div className="flex items-center text-sm text-gray-500">
@@ -459,7 +459,7 @@ export default function StudentCourseDetails() {
                     )}
                   </>
                 ) : (
-                  <Card>
+                  <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                     <CardContent className="flex flex-col items-center justify-center p-12 text-center">
                       <BookOpen className="h-12 w-12 text-gray-400 mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-1">

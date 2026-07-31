@@ -112,22 +112,22 @@ export default function StudentMyCourses() {
 
   return (
     <DashboardLayout>
-      <div>
-        <Header title="My Courses" subtitle="View your enrolled courses and browse available ones" />
-        
-        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <Header title="My Courses" subtitle="View your enrolled courses and browse available ones" />
+      
+      <div className="space-y-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <Input
               placeholder="Search courses..."
-              className="pl-9"
+              className="pl-9 bg-white/70 border-white/20"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           
           <div className="flex gap-2 w-full sm:w-auto">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2 bg-white/70 border-white/20">
               <Filter size={16} />
               Filter
             </Button>
@@ -179,9 +179,9 @@ export default function StudentMyCourses() {
                   const progress = enrollment?.progress || 0;
                   
                   return (
-                    <Card key={course.id} className="overflow-hidden">
-                      <div className="h-32 bg-primary/10 relative flex items-center justify-center">
-                        <BookOpen className="h-12 w-12 text-primary/60" />
+                    <Card key={course.id} className="overflow-hidden backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
+                      <div className="h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 relative flex items-center justify-center">
+                        <BookOpen className="h-12 w-12 text-blue-500/60" />
                         <div className="absolute top-3 right-3">
                           <Badge className="bg-green-100 text-green-800">
                             Enrolled
@@ -273,9 +273,9 @@ export default function StudentMyCourses() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredAvailableCourses.map((course: any) => (
-                  <Card key={course.id} className="overflow-hidden">
-                    <div className="h-32 bg-neutral-100 relative flex items-center justify-center">
-                      <BookOpen className="h-12 w-12 text-neutral-400" />
+                  <Card key={course.id} className="overflow-hidden backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div className="h-32 bg-gray-100 relative flex items-center justify-center">
+                      <BookOpen className="h-12 w-12 text-gray-400" />
                     </div>
                     
                     <CardHeader className="pt-6 pb-3">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,18 +9,35 @@ import { queryClient } from "@/lib/queryClient";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Sidebar from "@/components/layout/sidebar";
-import MobileNav from "@/components/layout/mobile-nav";
-import { User, Mail, BookOpen, GraduationCap, Loader2 } from "lucide-react";
+import DashboardLayout from "@/components/layout/dashboard-layout";
+import Header from "@/components/layout/header";
+import { 
+  User, 
+  Mail, 
+  BookOpen, 
+  GraduationCap, 
+  Loader2,
+  Edit2,
+  AtSign,
+  Shield,
+  CheckCircle2,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { motion } from "framer-motion";
 
-// Profile update schema
 const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
-  // Password is optional for updates
-  password: z.string().min(6, "Password must be at least 6 characters").optional().or(z.literal("")),
+  password: z
+    .string()
+    .min(6, "Password must be at least 6 characters")
+    .optional()
+    .or(z.literal("")),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -30,12 +47,10 @@ export default function StudentProfile() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   
-  // Get enrollment data
   const { data: enrollments = [] } = useQuery<any[]>({
     queryKey: ["/api/enrollments/user"],
   });
   
-  // Get exam attempt data
   const { data: examAttempts = [] } = useQuery<any[]>({
     queryKey: ["/api/exam-attempts/user"],
   });
@@ -49,145 +64,241 @@ export default function StudentProfile() {
       password: "",
     },
   });
+
+  useEffect(() => {
+    if (user && !isEditing) {
+      form.reset({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        password: "",
+      });
+    }
+  }, [user, isEditing, form]);
   
   const onSubmit = (data: ProfileFormValues) => {
-    // Only include password if it's not empty
-    const updateData = {...data};
-    if (!updateData.password) {
+    const updateData = { ...data };
+    if (!updateData.password || updateData.password.trim() === "") {
       delete updateData.password;
     }
     
     updateProfileMutation.mutate(updateData, {
       onSuccess: (updatedUser) => {
         setIsEditing(false);
-        // Reset form with updated values directly from the response
         form.reset({
           firstName: updatedUser.firstName || "",
           lastName: updatedUser.lastName || "",
           email: updatedUser.email || "",
           password: "",
         });
-        
-        // Force a re-query of the user data to update all UI components
         queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      }
+        toast({
+          title: "Profile updated successfully",
+          description: "Your profile information has been saved.",
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Failed to update profile",
+          description: error?.message || "An error occurred while updating your profile.",
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    form.reset({
+      firstName: user?.firstName || "",
+      lastName: user?.lastName || "",
+      email: user?.email || "",
+      password: "",
     });
   };
   
-  if (!user) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[40vh] flex items-center justify-center text-muted-foreground">
+          Loading...
+        </div>
+      </DashboardLayout>
+    );
+  }
   
   return (
-    <div className="min-h-screen bg-neutral-lightest flex flex-col md:flex-row">
-      <Sidebar />
-      
-      <div className="flex-1 flex flex-col pt-16 md:pl-64 pb-16">
-        <div className="px-6 py-8 overflow-y-auto">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-2xl font-bold">My Profile</h1>
-              <p className="text-neutral-dark">Manage your account and view your progress</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Student Information</CardTitle>
-                  <CardDescription>Your account details</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center text-center">
-                  <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                    <span className="text-2xl font-bold text-primary">
-                      {user.firstName?.[0]}{user.lastName?.[0]}
-                    </span>
+    <DashboardLayout>
+      <Header 
+        title="My Profile" 
+        subtitle="Manage your account and view your progress" 
+      />
+
+      <div className="space-y-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+                <div className="relative">
+                  <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
+                    <AvatarImage src={(user as any).profileImage} alt={`${user.firstName} ${user.lastName}`} />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-2xl font-bold">
+                      {user.firstName?.[0]?.toUpperCase()}{user.lastName?.[0]?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1 h-7 w-7 bg-green-500 rounded-full border-4 border-background flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-white" />
                   </div>
-                  <h3 className="text-lg font-semibold">{user.firstName} {user.lastName}</h3>
-                  <p className="text-sm text-neutral-medium capitalize">{user.role}</p>
+                </div>
+                
+                <div className="flex-1 space-y-2">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                      <h2 className="text-2xl font-bold tracking-tight">
+                        {user.firstName} {user.lastName}
+                      </h2>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="secondary" className="capitalize">
+                          {user.role}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground flex items-center gap-1">
+                          <AtSign className="h-3 w-3" />
+                          {user.username}
+                        </span>
+                      </div>
+                    </div>
+                    {!isEditing && (
+                      <Button onClick={() => setIsEditing(true)} className="gap-2">
+                        <Edit2 className="h-4 w-4" />
+                        Edit Profile
+                      </Button>
+                    )}
+                  </div>
                   
-                  <div className="w-full mt-6 space-y-4">
-                    <div className="flex items-center text-sm">
-                      <User className="h-4 w-4 mr-2 text-neutral-medium" />
-                      <span>Username: <span className="font-semibold">{user.username}</span></span>
-                    </div>
-                    
-                    <div className="flex items-center text-sm">
-                      <Mail className="h-4 w-4 mr-2 text-neutral-medium" />
-                      <span>{user.email}</span>
-                    </div>
-                    
-                    <div className="flex items-center text-sm">
-                      <BookOpen className="h-4 w-4 mr-2 text-neutral-medium" />
-                      <span>Enrolled Courses: <span className="font-semibold">{(enrollments as any[]).length}</span></span>
-                    </div>
-                    
-                    <div className="flex items-center text-sm">
-                      <GraduationCap className="h-4 w-4 mr-2 text-neutral-medium" />
-                      <span>Exams Taken: <span className="font-semibold">{(examAttempts as any[]).length}</span></span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Learning Statistics</CardTitle>
-                  <CardDescription>Your progress summary</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Course Completion</span>
-                        <span className="font-semibold">0%</span>
+                  <Separator />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+                        <Mail className="h-4 w-4 text-blue-600" />
                       </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '0%' }}></div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Email</p>
+                        <p className="font-medium">{user.email}</p>
                       </div>
                     </div>
                     
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Exam Performance</span>
-                        <span className="font-semibold">0%</span>
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+                        <BookOpen className="h-4 w-4 text-blue-600" />
                       </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '0%' }}></div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Enrolled Courses</p>
+                        <p className="font-medium">{(enrollments as any[]).length}</p>
                       </div>
                     </div>
                     
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Assignments Completed</span>
-                        <span className="font-semibold">0/0</span>
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+                        <GraduationCap className="h-4 w-4 text-blue-600" />
                       </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '0%' }}></div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Exams Taken</p>
+                        <p className="font-medium">{(examAttempts as any[]).length}</p>
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
+            <CardContent className="p-6 flex justify-between items-center">
+              <div>
+                <p className="text-sm text-muted-foreground">Courses</p>
+                <h3 className="text-2xl font-semibold">{(enrollments as any[]).length}</h3>
+              </div>
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
+                <BookOpen className="h-6 w-6 text-white" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
+            <CardContent className="p-6 flex justify-between items-center">
+              <div>
+                <p className="text-sm text-muted-foreground">Exams</p>
+                <h3 className="text-2xl font-semibold">{(examAttempts as any[]).length}</h3>
+              </div>
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
+                <GraduationCap className="h-6 w-6 text-white" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
+            <CardContent className="p-6 flex justify-between items-center">
+              <div>
+                <p className="text-sm text-muted-foreground">Status</p>
+                <h3 className="text-2xl font-semibold text-green-600">Active</h3>
+              </div>
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
+                <Shield className="h-6 w-6 text-white" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
+          <Tabs defaultValue="personal" className="space-y-6">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="personal" className="gap-2">
+                <User className="h-4 w-4" />
+                Personal Information
+              </TabsTrigger>
+              <TabsTrigger value="security" className="gap-2">
+                <Shield className="h-4 w-4" />
+                Security & Password
+              </TabsTrigger>
+            </TabsList>
             
-            <div className="md:col-span-2">
-              <Card>
+            <TabsContent value="personal" className="space-y-6">
+              <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                 <CardHeader>
-                  <CardTitle>Edit Profile</CardTitle>
-                  <CardDescription>Update your personal information</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Personal Information
+                  </CardTitle>
+                  <CardDescription>
+                    Update your personal details and contact information
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">First Name</Label>
                         <Input 
                           id="firstName" 
                           {...form.register("firstName")}
-                          disabled={!isEditing} 
+                          disabled={!isEditing}
+                          className="h-11"
                         />
                         {form.formState.errors.firstName && (
-                          <p className="text-red-500 text-sm">{form.formState.errors.firstName.message}</p>
+                          <p className="text-sm text-destructive">
+                            {form.formState.errors.firstName.message}
+                          </p>
                         )}
                       </div>
                       
@@ -196,10 +307,13 @@ export default function StudentProfile() {
                         <Input 
                           id="lastName" 
                           {...form.register("lastName")}
-                          disabled={!isEditing} 
+                          disabled={!isEditing}
+                          className="h-11"
                         />
                         {form.formState.errors.lastName && (
-                          <p className="text-red-500 text-sm">{form.formState.errors.lastName.message}</p>
+                          <p className="text-sm text-destructive">
+                            {form.formState.errors.lastName.message}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -210,82 +324,97 @@ export default function StudentProfile() {
                         id="email" 
                         type="email" 
                         {...form.register("email")}
-                        disabled={!isEditing} 
+                        disabled={!isEditing}
+                        className="h-11"
                       />
                       {form.formState.errors.email && (
-                        <p className="text-red-500 text-sm">{form.formState.errors.email.message}</p>
+                        <p className="text-sm text-destructive">
+                          {form.formState.errors.email.message}
+                        </p>
                       )}
                     </div>
                     
+                    {isEditing && (
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button type="button" variant="outline" onClick={handleCancel}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={updateProfileMutation.isPending}>
+                          {updateProfileMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            "Save Changes"
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="security" className="space-y-6">
+              <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Change Password
+                  </CardTitle>
+                  <CardDescription>
+                    Leave blank to keep your current password
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="space-y-2">
-                      <Label htmlFor="password">Change Password</Label>
+                      <Label htmlFor="password">New Password</Label>
                       <Input 
                         id="password" 
                         type="password" 
                         placeholder={isEditing ? "Leave blank to keep current password" : "••••••••"}
                         {...form.register("password")}
-                        disabled={!isEditing} 
+                        disabled={!isEditing}
+                        className="h-11"
                       />
                       {form.formState.errors.password && (
-                        <p className="text-red-500 text-sm">{form.formState.errors.password.message}</p>
+                        <p className="text-sm text-destructive">
+                          {form.formState.errors.password.message}
+                        </p>
                       )}
                     </div>
                     
-                    <div className="pt-4 flex justify-end">
-                      {isEditing ? (
-                        <>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setIsEditing(false)}
-                            className="mr-2"
-                          >
-                            Cancel
-                          </Button>
-                          <Button 
-                            type="submit" 
-                            disabled={updateProfileMutation.isPending}
-                          >
-                            {updateProfileMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Saving...
-                              </>
-                            ) : (
-                              "Save Changes"
-                            )}
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          type="button"
-                          onClick={() => setIsEditing(true)}
-                        >
-                          Edit Profile
+                    {isEditing ? (
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={handleCancel}>
+                          Cancel
                         </Button>
-                      )}
-                    </div>
+                        <Button type="submit" disabled={updateProfileMutation.isPending}>
+                          {updateProfileMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            "Update Password"
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button type="button" onClick={() => setIsEditing(true)} className="gap-2">
+                        <Edit2 className="h-4 w-4" />
+                        Edit Password
+                      </Button>
+                    )}
                   </form>
                 </CardContent>
               </Card>
-              
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>Your latest actions in the system</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-sm text-neutral-medium">
-                    <p>No recent activity to display</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
+            </TabsContent>
+          </Tabs>
+        </motion.div>
       </div>
-      
-      <MobileNav />
-    </div>
+    </DashboardLayout>
   );
 }

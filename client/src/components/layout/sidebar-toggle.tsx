@@ -9,24 +9,20 @@ export default function SidebarToggle() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
-  // Don't render toggle if user is not logged in or if on mobile
-  if (!user || isMobile) return null;
+  if (!user) return null;
 
   return (
     <motion.button
       onClick={toggleSidebar}
-      className="w-12 h-12 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 text-gray-600 hover:text-blue-600 transition-all duration-300 group relative overflow-hidden"
+      className="w-12 h-12 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 text-gray-600 hover:text-blue-600 transition-all duration-300 group relative overflow-hidden shrink-0"
       aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
       whileHover={{ scale: 1.05, boxShadow: "0 10px 30px -10px rgba(59, 130, 246, 0.3)" }}
       whileTap={{ scale: 0.95 }}
     >
-      {/* Background gradient on hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-purple-600/0 group-hover:from-blue-500/10 group-hover:to-purple-600/10 transition-all duration-300" />
       
-      {sidebarOpen ? (
+      {sidebarOpen && !isMobile ? (
         <motion.div
-          initial={{ rotate: 0 }}
-          animate={{ rotate: 0 }}
           whileHover={{ rotate: -5 }}
           transition={{ type: "spring", stiffness: 300 }}
         >
@@ -34,8 +30,6 @@ export default function SidebarToggle() {
         </motion.div>
       ) : (
         <motion.div
-          initial={{ rotate: 0 }}
-          animate={{ rotate: 0 }}
           whileHover={{ rotate: 5 }}
           transition={{ type: "spring", stiffness: 300 }}
         >
@@ -43,7 +37,6 @@ export default function SidebarToggle() {
         </motion.div>
       )}
       
-      {/* Sparkle effect */}
       <motion.div
         className="absolute inset-0 opacity-0 group-hover:opacity-100"
         initial={{ scale: 0 }}

@@ -1,8 +1,7 @@
-import { Bell, Settings, Search, Menu } from 'lucide-react';
+import { Bell, Settings, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import SidebarToggle from './sidebar-toggle';
 import { motion } from 'framer-motion';
-import { useSidebar } from '@/hooks/use-sidebar';
 
 type HeaderProps = {
   title: string;
@@ -11,7 +10,6 @@ type HeaderProps = {
 
 export default function Header({ title, subtitle }: HeaderProps) {
   const { user } = useAuth();
-  const { sidebarOpen } = useSidebar();
 
   return (
     <motion.header 

@@ -12,7 +12,6 @@ import {
   BookOpen, 
   GraduationCap, 
   Clock, 
-  CheckCircle,
   ArrowUpRight 
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -134,39 +133,37 @@ export default function StudentDashboard() {
 
   return (
     <DashboardLayout>
-      <div>
-        <Header 
-          title="Student Dashboard" 
-          subtitle={`Welcome back, ${user?.firstName}. Here's your learning progress.`}
-        />
-        
-        <div className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard 
-              title="Enrolled Courses" 
-              value={enrolledCourses.length} 
-              icon={<BookOpen />}
-              iconColor="primary"
-            />
-            
-            <StatCard 
-              title="Completed Courses" 
-              value={0} 
-              icon={<GraduationCap />}
-              iconColor="accent"
-            />
-            
-            <StatCard 
-              title="Upcoming Exams" 
-              value={(exams as any[]).length} 
-              icon={<Clock />}
-              iconColor="secondary"
-            />
-          </div>
+      <Header 
+        title="Student Dashboard" 
+        subtitle={`Welcome back, ${user?.firstName}. Here's your learning progress.`}
+      />
+      
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard 
+            title="Enrolled Courses" 
+            value={enrolledCourses.length} 
+            icon={<BookOpen />}
+            iconColor="primary"
+          />
+          
+          <StatCard 
+            title="Completed Courses" 
+            value={0} 
+            icon={<GraduationCap />}
+            iconColor="accent"
+          />
+          
+          <StatCard 
+            title="Upcoming Exams" 
+            value={(exams as any[]).length} 
+            icon={<Clock />}
+            iconColor="secondary"
+          />
         </div>
         
-        <div className="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 backdrop-blur-sm bg-white/70 border border-white/20 shadow-xl">
             <CardHeader>
               <CardTitle>My Courses</CardTitle>
               <CardDescription>Your enrolled and in-progress courses</CardDescription>
@@ -195,20 +192,19 @@ export default function StudentDashboard() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {enrolledCourses.map((course: any, index: number) => {
-                    // Get enrollment data
+                  {enrolledCourses.map((course: any) => {
                     const enrollment = (enrollments as any[]).find((e) => e.courseId === course.id);
                     const progress = enrollment?.progress || 0;
                     
                     return (
                       <div key={course.id} className="space-y-2">
-                        <div className="flex justify-between items-start">
+                        <div className="flex justify-between items-start gap-4">
                           <div>
                             <h3 className="font-medium">{course.title}</h3>
-                            <p className="text-sm text-gray-500">{course.description.substring(0, 100)}...</p>
+                            <p className="text-sm text-gray-500">{course.description?.substring(0, 100)}...</p>
                           </div>
                           <Link href={`/student/my-courses/${course.id}`}>
-                            <Button size="sm" variant="outline" className="gap-1">
+                            <Button size="sm" variant="outline" className="gap-1 shrink-0">
                               <ArrowUpRight className="h-4 w-4" />
                               Continue
                             </Button>
