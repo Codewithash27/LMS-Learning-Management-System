@@ -13,14 +13,13 @@ import {
   PieChart,
   LogOut,
   User as UserIcon,
-  ChevronRight,
   Bot,
   UsersRound,
   GraduationCap,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 type SidebarLinkProps = {
   href: string;
@@ -34,53 +33,33 @@ type SidebarLinkProps = {
 const SidebarLink = ({ href, icon, children, isActive, isCollapsed, onNavigate }: SidebarLinkProps) => {
   return (
     <Link href={href} onClick={onNavigate}>
-      <motion.div
+      <div
         className={cn(
-          "flex items-center px-6 py-4 text-gray-600 hover:text-gray-900 transition-all duration-300 group relative overflow-hidden rounded-2xl mx-4 mb-1 cursor-pointer",
-          isActive 
-            ? "bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-blue-700 shadow-lg shadow-blue-500/20 border border-blue-200/50" 
-            : "hover:bg-white/50 hover:shadow-lg hover:border hover:border-white/30",
-          isCollapsed ? "justify-center px-3" : ""
+          "relative flex items-center gap-3 mx-3 mb-0.5 rounded-xl px-3 py-2.5 text-sm font-medium cursor-pointer transition-colors",
+          isActive
+            ? "bg-blue-50 text-blue-700"
+            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+          isCollapsed && "justify-center px-2"
         )}
-        whileHover={{ scale: 1.02, x: 5 }}
-        whileTap={{ scale: 0.98 }}
       >
         {isActive && (
-          <motion.div 
-            className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-purple-600 rounded-r-full"
-            layoutId="activeIndicator"
-          />
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-gradient-to-b from-blue-500 to-purple-600" />
         )}
-        
-        <motion.div 
-          className={cn(
-            "flex items-center transition-colors duration-300",
-            isActive ? "text-blue-600" : "text-gray-500 group-hover:text-gray-700"
-          )}
-          whileHover={{ scale: 1.1 }}
-        >
+        <span className={cn("shrink-0", isActive ? "text-blue-600" : "text-gray-500")}>
           {icon}
-        </motion.div>
-        
-        <AnimatePresence>
-          {!isCollapsed && (
-            <motion.span 
-              className="ml-3 font-medium text-sm whitespace-nowrap"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {children}
-            </motion.span>
-          )}
-        </AnimatePresence>
-
-        {!isCollapsed && (
-          <ChevronRight className="ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1 transition-all duration-300" />
-        )}
-      </motion.div>
+        </span>
+        {!isCollapsed && <span className="truncate">{children}</span>}
+      </div>
     </Link>
+  );
+};
+
+const SectionLabel = ({ children, isCollapsed }: { children: string; isCollapsed: boolean }) => {
+  if (isCollapsed) return <div className="h-3" />;
+  return (
+    <p className="px-6 pt-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+      {children}
+    </p>
   );
 };
 
@@ -93,323 +72,126 @@ export default function Sidebar() {
   if (!user) return null;
 
   const isAdmin = user.role === "admin" || user.role === "superadmin";
-  // On mobile, drawer is either fully open or hidden — never collapsed icon rail
   const isCollapsed = !isMobile && !sidebarOpen;
   const showDrawer = isMobile ? sidebarOpen : true;
-
-  const handleLogout = () => {
-    logoutMutation.mutate();
-  };
+  const isLoggingOut = logoutMutation.isPending;
 
   const handleNavigate = () => {
     if (isMobile) closeSidebar();
   };
-  
-  const isLoggingOut = logoutMutation.isPending;
 
   const pathStarts = (prefix: string) =>
     location === prefix || location.startsWith(prefix + "/");
 
+  const shellClass = cn(
+    "sidebar flex flex-col bg-white/95 backdrop-blur-xl border-r border-gray-200/80 shadow-sm",
+    isCollapsed ? "w-20" : "w-80"
+  );
+
   const navContent = (
     <>
-      {/* Header */}
-      <div className="p-6 border-b border-white/20">
-        <motion.div className="flex items-center justify-between" layout>
-          <div className="flex items-center space-x-3">
-            <motion.div 
-              className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/25"
-              whileHover={{ rotate: 5, scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <BookOpen className="h-6 w-6 text-white" />
-            </motion.div>
-            
-            <AnimatePresence>
-              {!isCollapsed && (
-                <motion.div
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <h1 className="text-xl font-bold bg-gradient-to-br from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                    Edu Transform
-                  </h1>
-                  <p className="text-xs text-gray-500 font-medium">
-                    Aadi Technology
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+      {/* Brand */}
+      <div className={cn("shrink-0 border-b border-gray-100", isCollapsed ? "p-3" : "px-5 py-4")}>
+        <div className="flex items-center gap-3">
+          <div className="shrink-0 p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-md shadow-blue-500/20">
+            <BookOpen className="h-5 w-5 text-white" />
           </div>
-
+          {!isCollapsed && (
+            <div className="min-w-0 flex-1">
+              <h1 className="text-base font-bold text-gray-900 truncate">Edu Transform</h1>
+              <p className="text-xs text-gray-500 truncate">Aadi Technology</p>
+            </div>
+          )}
           {isMobile && (
             <button
               onClick={closeSidebar}
-              className="p-2 rounded-xl hover:bg-gray-100 text-gray-500"
+              className="ml-auto p-2 rounded-lg hover:bg-gray-100 text-gray-500"
               aria-label="Close sidebar"
             >
               <X className="h-5 w-5" />
             </button>
           )}
-        </motion.div>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <div className="py-6 overflow-y-auto h-[calc(100vh-200px)]">
+      {/* Nav — scrolls; footer never overlaps */}
+      <nav className="flex-1 overflow-y-auto py-2 min-h-0">
         {isAdmin ? (
           <>
-            <motion.p 
-              className="px-6 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 }}
-            >
-              {!isCollapsed && "Management"}
-            </motion.p>
-            
-            <SidebarLink
-              href="/admin/dashboard"
-              icon={<LayoutDashboard className="h-5 w-5" />}
-              isActive={location === "/admin/dashboard" || location === "/"}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              Dashboard
-            </SidebarLink>
-            <SidebarLink
-              href="/admin/courses"
-              icon={<BookOpen className="h-5 w-5" />}
-              isActive={pathStarts("/admin/courses")}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              Courses
-            </SidebarLink>
-            <SidebarLink
-              href="/admin/exams"
-              icon={<ClipboardList className="h-5 w-5" />}
-              isActive={location === "/admin/exams"}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              Exams
-            </SidebarLink>
-            <SidebarLink
-              href="/admin/grading"
-              icon={<GraduationCap className="h-5 w-5" />}
-              isActive={location === "/admin/grading"}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              Grading
-            </SidebarLink>
-            <SidebarLink
-              href="/admin/students"
-              icon={<Users className="h-5 w-5" />}
-              isActive={pathStarts("/admin/students")}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              Students
-            </SidebarLink>
-            <SidebarLink
-              href="/admin/batches"
-              icon={<UsersRound className="h-5 w-5" />}
-              isActive={pathStarts("/admin/batches")}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              Batches
-            </SidebarLink>
-            <SidebarLink
-              href="/admin/reports"
-              icon={<BarChart2 className="h-5 w-5" />}
-              isActive={location === "/admin/reports"}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              Reports
-            </SidebarLink>
+            <SectionLabel isCollapsed={isCollapsed}>Management</SectionLabel>
+            <SidebarLink href="/admin/dashboard" icon={<LayoutDashboard className="h-5 w-5" />} isActive={location === "/admin/dashboard" || location === "/"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Dashboard</SidebarLink>
+            <SidebarLink href="/admin/courses" icon={<BookOpen className="h-5 w-5" />} isActive={pathStarts("/admin/courses")} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Courses</SidebarLink>
+            <SidebarLink href="/admin/exams" icon={<ClipboardList className="h-5 w-5" />} isActive={location === "/admin/exams"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Exams</SidebarLink>
+            <SidebarLink href="/admin/grading" icon={<GraduationCap className="h-5 w-5" />} isActive={location === "/admin/grading"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Grading</SidebarLink>
+            <SidebarLink href="/admin/students" icon={<Users className="h-5 w-5" />} isActive={pathStarts("/admin/students")} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Students</SidebarLink>
+            <SidebarLink href="/admin/batches" icon={<UsersRound className="h-5 w-5" />} isActive={pathStarts("/admin/batches")} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Batches</SidebarLink>
+            <SidebarLink href="/admin/reports" icon={<BarChart2 className="h-5 w-5" />} isActive={location === "/admin/reports"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Reports</SidebarLink>
 
-            <motion.p 
-              className="px-6 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider mt-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              {!isCollapsed && "Account"}
-            </motion.p>
-            <SidebarLink
-              href="/admin/profile"
-              icon={<UserIcon className="h-5 w-5" />}
-              isActive={location === "/admin/profile"}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              Profile
-            </SidebarLink>
+            <SectionLabel isCollapsed={isCollapsed}>Account</SectionLabel>
+            <SidebarLink href="/admin/profile" icon={<UserIcon className="h-5 w-5" />} isActive={location === "/admin/profile"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Profile</SidebarLink>
           </>
         ) : (
           <>
-            <motion.p 
-              className="px-6 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 }}
-            >
-              {!isCollapsed && "Learning"}
-            </motion.p>
-            
-            <SidebarLink
-              href="/student/dashboard"
-              icon={<LayoutDashboard className="h-5 w-5" />}
-              isActive={location === "/student/dashboard" || location === "/"}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              Dashboard
-            </SidebarLink>
-            <SidebarLink
-              href="/student/my-courses"
-              icon={<BookOpenCheck className="h-5 w-5" />}
-              isActive={pathStarts("/student/my-courses")}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              My Courses
-            </SidebarLink>
-            <SidebarLink
-              href="/student/upcoming-exams"
-              icon={<CalendarClock className="h-5 w-5" />}
-              isActive={location === "/student/upcoming-exams"}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              Upcoming Exams
-            </SidebarLink>
-            <SidebarLink
-              href="/student/results"
-              icon={<PieChart className="h-5 w-5" />}
-              isActive={location === "/student/results"}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              Results & Progress
-            </SidebarLink>
-            <SidebarLink
-              href="/student/ai-assistant"
-              icon={<Bot className="h-5 w-5" />}
-              isActive={location === "/student/ai-assistant"}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              AI Assistant
-            </SidebarLink>
+            <SectionLabel isCollapsed={isCollapsed}>Learning</SectionLabel>
+            <SidebarLink href="/student/dashboard" icon={<LayoutDashboard className="h-5 w-5" />} isActive={location === "/student/dashboard" || location === "/"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Dashboard</SidebarLink>
+            <SidebarLink href="/student/my-courses" icon={<BookOpenCheck className="h-5 w-5" />} isActive={pathStarts("/student/my-courses")} isCollapsed={isCollapsed} onNavigate={handleNavigate}>My Courses</SidebarLink>
+            <SidebarLink href="/student/upcoming-exams" icon={<CalendarClock className="h-5 w-5" />} isActive={location === "/student/upcoming-exams"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Upcoming Exams</SidebarLink>
+            <SidebarLink href="/student/results" icon={<PieChart className="h-5 w-5" />} isActive={location === "/student/results"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Results & Progress</SidebarLink>
+            <SidebarLink href="/student/ai-assistant" icon={<Bot className="h-5 w-5" />} isActive={location === "/student/ai-assistant"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>AI Assistant</SidebarLink>
 
-            <motion.p 
-              className="px-6 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider mt-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              {!isCollapsed && "Account"}
-            </motion.p>
-            <SidebarLink
-              href="/student/profile"
-              icon={<UserIcon className="h-5 w-5" />}
-              isActive={location === "/student/profile"}
-              isCollapsed={isCollapsed}
-              onNavigate={handleNavigate}
-            >
-              My Profile
-            </SidebarLink>
+            <SectionLabel isCollapsed={isCollapsed}>Account</SectionLabel>
+            <SidebarLink href="/student/profile" icon={<UserIcon className="h-5 w-5" />} isActive={location === "/student/profile"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>My Profile</SidebarLink>
           </>
         )}
-      </div>
+      </nav>
 
-      {/* Footer with User Info */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-white/20 bg-white/50 backdrop-blur-sm">
-        <div className="flex items-center space-x-3 mb-4">
-          <motion.div 
-            className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg"
-            whileHover={{ scale: 1.05 }}
-          >
+      {/* Footer — always visible, never covers links */}
+      <div className={cn("shrink-0 border-t border-gray-100", isCollapsed ? "p-2" : "p-4")}>
+        <div className={cn("flex items-center gap-3 mb-3", isCollapsed && "justify-center mb-2")}>
+          <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
             {user.firstName?.charAt(0)}
             {user.lastName?.charAt(0)}
-          </motion.div>
-          
-          <AnimatePresence>
-            {!isCollapsed && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.2 }}
-                className="flex-1 min-w-0"
-              >
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  {user.firstName} {user.lastName}
-                </p>
-                <p className="text-xs text-gray-500 capitalize font-medium">
-                  {user.role}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          </div>
+          {!isCollapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {user.firstName} {user.lastName}
+              </p>
+              <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+            </div>
+          )}
         </div>
 
-        <motion.button
-          onClick={handleLogout}
+        <button
+          onClick={() => logoutMutation.mutate()}
           disabled={isLoggingOut}
           className={cn(
-            "w-full flex items-center justify-center p-3 rounded-2xl text-sm font-medium transition-all duration-300 group",
-            isCollapsed ? "px-3" : "px-4",
-            isLoggingOut 
-              ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-600 hover:from-red-50 hover:to-red-100 hover:text-red-600 hover:shadow-lg border border-white/50'
+            "w-full flex items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors",
+            isCollapsed ? "p-2.5" : "px-3 py-2.5",
+            isLoggingOut
+              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+              : "bg-gray-50 text-gray-600 hover:bg-red-50 hover:text-red-600 border border-gray-100"
           )}
-          whileHover={!isLoggingOut ? { scale: 1.02, x: 2 } : {}}
-          whileTap={!isLoggingOut ? { scale: 0.98 } : {}}
         >
           {isLoggingOut ? (
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent border-blue-500" />
           ) : (
             <>
-              <LogOut className={cn("h-4 w-4 transition-transform duration-300 group-hover:rotate-12", isCollapsed ? "" : "mr-2")} />
-              <AnimatePresence>
-                {!isCollapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    Sign Out
-                  </motion.span>
-                )}
-              </AnimatePresence>
+              <LogOut className="h-4 w-4" />
+              {!isCollapsed && <span>Sign Out</span>}
             </>
           )}
-        </motion.button>
+        </button>
 
-        <AnimatePresence>
-          {!isCollapsed && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="mt-3 text-center text-[10px] text-gray-400"
-            >
-              by <span className="font-medium text-gray-500">Aman Hukkerikar</span>
-            </motion.p>
-          )}
-        </AnimatePresence>
+        {!isCollapsed && (
+          <p className="mt-2 text-center text-[10px] text-gray-400">
+            by <span className="font-medium text-gray-500">Aman Hukkerikar</span>
+          </p>
+        )}
       </div>
     </>
   );
 
-  // Mobile: overlay drawer
   if (isMobile) {
     return (
       <AnimatePresence>
@@ -417,7 +199,7 @@ export default function Sidebar() {
           <>
             <motion.div
               key="sidebar-backdrop"
-              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-black/40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -425,11 +207,11 @@ export default function Sidebar() {
             />
             <motion.div
               key="sidebar-drawer"
-              className="sidebar fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] bg-gradient-to-b from-white/95 to-gray-50/95 backdrop-blur-xl border-r border-white/20 shadow-2xl"
+              className={cn(shellClass, "fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] h-screen")}
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              transition={{ type: "spring", stiffness: 320, damping: 32 }}
             >
               {navContent}
             </motion.div>
@@ -439,18 +221,9 @@ export default function Sidebar() {
     );
   }
 
-  // Desktop: fixed collapse sidebar
   return (
-    <motion.div 
-      className={cn(
-        "sidebar fixed h-full z-50 bg-gradient-to-b from-white/90 to-gray-50/90 backdrop-blur-xl border-r border-white/20 shadow-2xl",
-        isCollapsed ? "w-20" : "w-80"
-      )}
-      initial={{ x: -100, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.5, type: "spring" }}
-    >
+    <div className={cn(shellClass, "fixed top-0 left-0 z-50 h-screen")}>
       {navContent}
-    </motion.div>
+    </div>
   );
 }
