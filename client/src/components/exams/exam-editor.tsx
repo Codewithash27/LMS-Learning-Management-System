@@ -95,7 +95,7 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
         title: fetchedExam.title,
         description: fetchedExam.description,
         courseId: String(fetchedExam.courseId),
-        acceptingResponses: fetchedExam.acceptingResponses === true // only true if explicitly set to true
+        acceptingResponses: fetchedExam.acceptingResponses !== false
       });
     } else if (!exam?.id) {
       setExamData(null);
@@ -303,7 +303,7 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
                     }}
                   />
                   <Label htmlFor="acceptingResponses" className="cursor-pointer">
-                    Accepting responses (when disabled, students cannot submit answers)
+                    Publish exam (students assigned to this course can take it)
                   </Label>
                 </div>
               </div>

@@ -9,8 +9,6 @@ import { useClientPagination } from "@/hooks/use-client-pagination";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Calendar,
-  Clock,
   Plus,
   Edit,
   Trash2,
@@ -18,6 +16,8 @@ import {
   FileText,
   BookOpen,
   AlertTriangle,
+  Send,
+  Ban,
 } from "lucide-react";
 import {
   TableCell,
@@ -43,12 +43,15 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 
+function isPublished(exam: any) {
+  return exam?.acceptingResponses !== false;
+}
+
 export default function AdminExams() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedExam, setSelectedExam] = useState<any>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const { toast } = useToast();
 
@@ -82,6 +85,37 @@ export default function AdminExams() {
     }
   });
 
+  const publishMutation = useMutation({
+    mutationFn: async ({
+      examId,
+      acceptingResponses,
+    }: {
+      examId: number;
+      acceptingResponses: boolean;
+    }) => {
+      const res = await apiRequest("PUT", `/api/exams/${examId}`, {
+        acceptingResponses,
+      });
+      return res.json();
+    },
+    onSuccess: (_data, vars) => {
+      toast({
+        title: vars.acceptingResponses ? "Exam published" : "Exam unpublished",
+        description: vars.acceptingResponses
+          ? "Assigned students can now see and take this exam."
+          : "Students can no longer submit this exam.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update exam",
+        description: error.message || "Could not change publish status",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteExam = () => {
     if (!selectedExam) return;
     deleteExamMutation.mutate(selectedExam.id);
@@ -102,16 +136,24 @@ export default function AdminExams() {
     setIsEditorOpen(true);
   };
 
+  const getCourseName = (courseId: number) => {
+    const course = (courses as any[]).find((c: any) => c.id === courseId);
+    return course ? course.title : "Unknown Course";
+  };
+
   const filteredExams = (exams as any[]).filter((exam: any) => {
     const matchesSearch =
       exam.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.course?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getCourseName(exam.courseId).toLowerCase().includes(searchTerm.toLowerCase()) ||
       exam.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || exam.status === statusFilter;
-    const matchesType = typeFilter === "all" || exam.type === typeFilter;
+    const published = isPublished(exam);
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "published" && published) ||
+      (statusFilter === "closed" && !published);
 
-    return matchesSearch && matchesStatus && matchesType;
+    return matchesSearch && matchesStatus;
   });
 
   const {
@@ -124,44 +166,16 @@ export default function AdminExams() {
   } = useClientPagination(filteredExams, 10);
 
   const getStatusBadge = (exam: any) => {
-    const now = new Date();
-    const startTime = exam.startTime ? new Date(exam.startTime) : null;
-    const endTime = exam.endTime ? new Date(exam.endTime) : null;
-
-    if (!startTime) {
-      return { label: "Draft", className: "border-gray-200 bg-gray-100 text-gray-800" };
+    if (isPublished(exam)) {
+      return {
+        label: "Published",
+        className: "border-green-200 bg-green-100 text-green-800",
+      };
     }
-
-    if (endTime && now > endTime) {
-      return { label: "Completed", className: "border-green-200 bg-green-100 text-green-800" };
-    }
-
-    if (startTime && now > startTime) {
-      return { label: "Active", className: "border-green-200 bg-green-100 text-green-800" };
-    }
-
-    return { label: "Upcoming", className: "border-amber-200 bg-amber-100 text-amber-800" };
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  const getCourseName = (courseId: number) => {
-    const course = (courses as any[]).find((c: any) => c.id === courseId);
-    return course ? course.title : "Unknown Course";
+    return {
+      label: "Closed",
+      className: "border-gray-200 bg-gray-100 text-gray-800",
+    };
   };
 
   return (
@@ -174,32 +188,16 @@ export default function AdminExams() {
             onSearchChange={setSearchTerm}
             searchPlaceholder="Search exams..."
             filters={
-              <>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="h-10 w-[130px] rounded-xl border-warm-border bg-white shadow-sm">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="upcoming">Upcoming</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="h-10 w-[130px] rounded-xl border-warm-border bg-white shadow-sm">
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="quiz">Quiz</SelectItem>
-                    <SelectItem value="midterm">Mid-Term</SelectItem>
-                    <SelectItem value="final">Final</SelectItem>
-                    <SelectItem value="assignment">Assignment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-10 w-[140px] rounded-xl border-warm-border bg-white shadow-sm">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
             }
             action={
               <Button
@@ -225,8 +223,7 @@ export default function AdminExams() {
           columns={[
             { key: "exam", label: "Exam" },
             { key: "course", label: "Course" },
-            { key: "schedule", label: "Schedule" },
-            { key: "duration", label: "Duration" },
+            { key: "visibility", label: "Student visibility" },
             { key: "status", label: "Status" },
             { key: "actions", label: "Actions", align: "right" },
           ]}
@@ -256,6 +253,7 @@ export default function AdminExams() {
         >
           {pageItems.map((exam: any) => {
             const status = getStatusBadge(exam);
+            const published = isPublished(exam);
             return (
               <TableRow key={exam.id} className="hover:bg-[#FFF5E6]/70">
                 <TableCell className="py-3.5 pl-5">
@@ -279,22 +277,10 @@ export default function AdminExams() {
                     <span className="truncate">{getCourseName(exam.courseId)}</span>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-1.5 text-[15px] text-[#2D3748]/90">
-                      <Calendar className="h-3.5 w-3.5 text-[#A0AEC0]" />
-                      <span>{exam.startTime ? formatDate(exam.startTime) : "Not scheduled"}</span>
-                    </div>
-                    {exam.startTime && (
-                      <div className="flex items-center gap-1.5 text-xs text-[#718096]">
-                        <Clock className="h-3 w-3" />
-                        <span>{formatTime(exam.startTime)}</span>
-                      </div>
-                    )}
-                  </div>
-                </TableCell>
                 <TableCell className="text-[15px] text-[#2D3748]/90">
-                  {exam.duration ? `${exam.duration} mins` : "—"}
+                  {published
+                    ? "Visible to assigned students"
+                    : "Hidden from students"}
                 </TableCell>
                 <TableCell>
                   <Badge
@@ -308,6 +294,37 @@ export default function AdminExams() {
                 </TableCell>
                 <TableCell className="pr-5 text-right">
                   <div className="flex items-center justify-end gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className={cn(
+                        "h-9 gap-1.5 px-2.5",
+                        published
+                          ? "text-amber-700 hover:bg-amber-50"
+                          : "text-green-700 hover:bg-green-50"
+                      )}
+                      aria-label={published ? "Unpublish" : "Publish"}
+                      disabled={publishMutation.isPending}
+                      onClick={() =>
+                        publishMutation.mutate({
+                          examId: exam.id,
+                          acceptingResponses: !published,
+                        })
+                      }
+                    >
+                      {published ? (
+                        <>
+                          <Ban className="h-4 w-4" />
+                          <span className="hidden sm:inline">Unpublish</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          <span className="hidden sm:inline">Publish</span>
+                        </>
+                      )}
+                    </Button>
                     <Link href={`/admin/exams/${exam.id}`}>
                       <Button
                         type="button"
@@ -375,9 +392,8 @@ export default function AdminExams() {
               <div className="text-sm text-amber-800">
                 <p className="font-medium">This will permanently delete:</p>
                 <ul className="mt-1 list-inside list-disc space-y-1">
-                  <li>Exam questions and settings</li>
-                  <li>All student attempts and submissions</li>
-                  <li>Results and analytics data</li>
+                  <li>The exam and all questions</li>
+                  <li>Student attempts and grades for this exam</li>
                 </ul>
               </div>
             </div>
@@ -396,7 +412,7 @@ export default function AdminExams() {
               variant="destructive"
               onClick={handleDeleteExam}
               disabled={deleteExamMutation.isPending}
-              className="flex-1 rounded-xl"
+              className="flex-1 gap-2 rounded-xl"
             >
               {deleteExamMutation.isPending ? "Deleting..." : "Delete Exam"}
             </Button>

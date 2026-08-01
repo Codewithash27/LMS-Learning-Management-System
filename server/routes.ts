@@ -820,10 +820,14 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return;
       }
 
-      // Students only see exams for courses assigned to them
+      // Students only see published exams for courses assigned to them
       const enrollments = await storage.getEnrollmentsByUser(req.user!.id);
       const enrolledCourseIds = new Set(enrollments.map((e) => e.courseId));
-      const assignedExams = exams.filter((exam) => enrolledCourseIds.has(exam.courseId));
+      const assignedExams = exams.filter(
+        (exam) =>
+          enrolledCourseIds.has(exam.courseId) &&
+          exam.acceptingResponses !== false
+      );
       res.json(assignedExams);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch exams" });
