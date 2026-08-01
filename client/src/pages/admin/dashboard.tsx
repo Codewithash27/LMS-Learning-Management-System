@@ -195,10 +195,9 @@ export default function AdminDashboard() {
   return (
     <DashboardLayout>
       <Header 
-        title="Dashboard" 
-        subtitle={`Welcome back, ${user?.firstName || 'Admin'}. Here's what's happening with your platform.`}
+        title="Dashboard"
       />
-      
+
       {/* Compact stats — dashboard only */}
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[

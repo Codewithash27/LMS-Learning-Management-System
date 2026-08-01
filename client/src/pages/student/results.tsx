@@ -187,7 +187,7 @@ export default function StudentResults() {
 
   return (
     <DashboardLayout>
-      <Header title="Results & Progress" subtitle="Track your exam results and overall progress" />
+      <Header title="Results & Progress" />
       
       <div className="space-y-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

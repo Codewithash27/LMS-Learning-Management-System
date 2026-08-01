@@ -36,7 +36,7 @@ export default function PageHeader({
   return (
     <div
       className={cn(
-        "flex w-full flex-col items-stretch justify-between gap-3 py-2 lg:flex-row lg:items-center",
+        "flex w-full flex-col items-stretch justify-between gap-2 py-1 lg:flex-row lg:items-center",
         className
       )}
     >

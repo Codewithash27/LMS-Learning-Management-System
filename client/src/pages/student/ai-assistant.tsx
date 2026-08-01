@@ -23,10 +23,9 @@ export default function StudentAIAssistant() {
   return (
     <DashboardLayout>
       <Header 
-        title="AI Learning Assistant" 
-        subtitle="Get help with your courses and learning materials"
+        title="AI Learning Assistant"
       />
-      
+
       <div className="space-y-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

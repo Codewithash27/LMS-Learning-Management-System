@@ -214,7 +214,7 @@ export default function StudentCourseDetails() {
             </div>
           ) : null}
           
-          <Header title={(course as any).title} subtitle={(course as any).description} />
+          <Header title={(course as any).title} />
           
           <div className="mt-4 flex justify-between items-center">
             <div className="flex space-x-2">

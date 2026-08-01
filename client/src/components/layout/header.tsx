@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 type HeaderProps = {
   title: string;
-  /** Optional; omit on list pages to match Campus Axis compact header */
+  /** @deprecated unused — kept optional for call-site compatibility */
   subtitle?: string;
   actions?: ReactNode;
   links?: NavLink[];
@@ -15,16 +15,13 @@ type HeaderProps = {
 /**
  * Page chrome: Home + breadcrumbs | actions (filters / search / add).
  */
-export default function Header({ title, subtitle, actions, links, className }: HeaderProps) {
+export default function Header({ title, actions, links, className }: HeaderProps) {
   const [location] = useLocation();
   const crumbLinks: NavLink[] = links ?? [{ title, path: location }];
 
   return (
-    <div className={cn("mb-4", className)}>
+    <div className={cn("mb-3", className)}>
       <PageHeader links={crumbLinks} actions={actions} />
-      {subtitle ? (
-        <p className="mt-1 text-[15px] text-muted-foreground sm:pl-[52px]">{subtitle}</p>
-      ) : null}
     </div>
   );
 }

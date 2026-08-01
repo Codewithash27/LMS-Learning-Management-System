@@ -309,7 +309,6 @@ export default function StudentDashboard() {
     <DashboardLayout>
       <Header
         title="Student Dashboard"
-        subtitle={`Welcome back, ${user?.firstName}. Here's your learning progress.`}
       />
 
       <div className="space-y-8">

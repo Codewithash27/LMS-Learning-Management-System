@@ -156,8 +156,7 @@ export default function AdminCourseProgress() {
           </Link>
           
           <Header 
-            title={`${course.title} - Student Progress`} 
-            subtitle="Monitor student progress and performance in this course"
+            title={`${course.title} - Student Progress`}
           />
         </div>
         

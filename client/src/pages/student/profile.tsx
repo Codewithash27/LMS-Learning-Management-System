@@ -130,8 +130,7 @@ export default function StudentProfile() {
   return (
     <DashboardLayout>
       <Header 
-        title="My Profile" 
-        subtitle="Manage your account and view your progress" 
+        title="My Profile"
       />
 
       <div className="space-y-8">

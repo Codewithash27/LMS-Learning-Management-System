@@ -224,10 +224,9 @@ export default function AdminReports() {
   return (
     <DashboardLayout>
       <Header 
-        title="Reports & Analytics" 
-        subtitle={`Welcome back, ${user?.firstName || 'Admin'}. Here's your comprehensive analytics overview.`}
+        title="Reports & Analytics"
       />
-      
+
       {/* Controls Bar */}
       <motion.div 
         className="mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4"
