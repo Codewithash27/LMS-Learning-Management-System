@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import ListToolbar from "@/components/layout/list-toolbar";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Mail,
   Eye,
@@ -71,13 +72,15 @@ const emptyStudentForm = {
 export default function AdminStudents() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
+  const [initialEnrolledIds, setInitialEnrolledIds] = useState<number[]>([]);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [studentForm, setStudentForm] = useState(emptyStudentForm);
   const [showPassword, setShowPassword] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const assignSelectionReady = useRef(false);
   const { toast } = useToast();
   
   // Fetch students (users with role "student")
@@ -85,9 +88,19 @@ export default function AdminStudents() {
     queryKey: ["/api/users"],
   });
   
-  // Fetch courses for dropdown
-  const { data: courses = [] } = useQuery({
+  // Fetch courses for assign checkbox list
+  const { data: courses = [] as any[] } = useQuery<any[]>({
     queryKey: ["/api/courses"],
+  });
+
+  const { data: studentEnrollments = [], isLoading: isLoadingEnrollments } = useQuery<any[]>({
+    queryKey: ["/api/enrollments/user", selectedStudent?.id],
+    queryFn: async () => {
+      if (!selectedStudent?.id) return [];
+      const res = await apiRequest("GET", `/api/enrollments/user/${selectedStudent.id}`);
+      return res.json();
+    },
+    enabled: isAssignDialogOpen && !!selectedStudent?.id,
   });
 
   const createStudentMutation = useMutation({
@@ -116,34 +129,59 @@ export default function AdminStudents() {
     },
   });
   
-  // Course assignment mutation
+  // Course assignment mutation (add + remove)
   const assignCourseMutation = useMutation({
-    mutationFn: async ({ userId, courseId }: { userId: number, courseId: number }) => {
-      await apiRequest("POST", "/api/enrollments/assign", { 
-        userId, 
-        courseId 
-      });
+    mutationFn: async ({
+      userId,
+      toAdd,
+      toRemove,
+    }: {
+      userId: number;
+      toAdd: number[];
+      toRemove: number[];
+    }) => {
+      for (const courseId of toAdd) {
+        await apiRequest("POST", "/api/enrollments/assign", { userId, courseId });
+      }
+      for (const courseId of toRemove) {
+        await apiRequest("DELETE", "/api/enrollments/assign", { userId, courseId });
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       toast({
-        title: "Course assigned successfully",
-        description: `Course has been assigned to ${selectedStudent?.firstName} ${selectedStudent?.lastName}`,
+        title: "Enrollments updated",
+        description: `${selectedStudent?.firstName} ${selectedStudent?.lastName}: ${vars.toAdd.length} added, ${vars.toRemove.length} removed`,
       });
       setIsAssignDialogOpen(false);
-      setSelectedCourseId("");
+      setSelectedCourseIds([]);
+      setInitialEnrolledIds([]);
+      assignSelectionReady.current = false;
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enrollments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enrollments/counts"] });
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to assign course",
-        description: error.message || "There was an error assigning the course",
+        title: "Failed to update enrollments",
+        description: error.message || "There was an error updating enrollments",
         variant: "destructive",
       });
     }
   });
+
+  useEffect(() => {
+    if (!isAssignDialogOpen) {
+      assignSelectionReady.current = false;
+      return;
+    }
+    if (isLoadingEnrollments || assignSelectionReady.current) return;
+    const enrolledIds = studentEnrollments.map((e: any) => Number(e.courseId));
+    setInitialEnrolledIds(enrolledIds);
+    setSelectedCourseIds(enrolledIds);
+    assignSelectionReady.current = true;
+  }, [isAssignDialogOpen, isLoadingEnrollments, studentEnrollments]);
 
   // Delete student mutation
   const deleteStudentMutation = useMutation({
@@ -168,20 +206,30 @@ export default function AdminStudents() {
     }
   });
   
-  // Handle assigning course to student
+  const toggleCourse = (courseId: number, checked: boolean) => {
+    setSelectedCourseIds((prev) =>
+      checked ? [...prev, courseId] : prev.filter((id) => id !== courseId)
+    );
+  };
+
+  // Handle assigning courses to student
   const handleAssignCourse = () => {
-    if (!selectedStudent || !selectedCourseId) {
+    if (!selectedStudent?.id) return;
+    const selected = selectedCourseIds.map(Number);
+    const initial = initialEnrolledIds.map(Number);
+    const toAdd = selected.filter((id) => !initial.includes(id));
+    const toRemove = initial.filter((id) => !selected.includes(id));
+    if (toAdd.length === 0 && toRemove.length === 0) {
       toast({
-        title: "Error",
-        description: "Please select a course to assign",
-        variant: "destructive",
+        title: "No changes",
+        description: "Enrollment selection is unchanged.",
       });
       return;
     }
-    
     assignCourseMutation.mutate({
       userId: selectedStudent.id,
-      courseId: parseInt(selectedCourseId)
+      toAdd,
+      toRemove,
     });
   };
 
@@ -195,6 +243,9 @@ export default function AdminStudents() {
   // Open assign course dialog
   const openAssignDialog = (student: any) => {
     setSelectedStudent(student);
+    setSelectedCourseIds([]);
+    setInitialEnrolledIds([]);
+    assignSelectionReady.current = false;
     setIsAssignDialogOpen(true);
   };
 
@@ -656,69 +707,102 @@ export default function AdminStudents() {
         </DialogContent>
       </Dialog>
 
-      {/* Enhanced Dialogs */}
       <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
-        <DialogContent className="backdrop-blur-sm bg-white/95 border border-white/20 shadow-2xl rounded-3xl max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <div className="p-3 bg-accent-brand rounded-2xl w-12 h-12 flex items-center justify-center mx-auto mb-4">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-brand">
               <BookOpen className="h-6 w-6 text-white" />
             </div>
-            <DialogTitle className="text-xl font-bold text-center text-gray-900">
+            <DialogTitle className="text-center text-xl font-bold">
               Assign Course
             </DialogTitle>
-            <div className="text-sm text-gray-600 text-center mt-2">
-              {selectedStudent && 
-                `Choose a course to assign to ${selectedStudent.firstName} ${selectedStudent.lastName}`
-              }
-            </div>
+            <DialogDescription className="text-center">
+              {selectedStudent
+                ? `Select courses for ${selectedStudent.firstName} ${selectedStudent.lastName}. Checked = enrolled.`
+                : "Select courses to enroll"}
+            </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="course" className="text-sm font-medium text-gray-700">
-                Select Course
-              </label>
-              <Select
-                value={selectedCourseId}
-                onValueChange={setSelectedCourseId}
-              >
-                <SelectTrigger className="bg-white/50 backdrop-blur-sm border border-white/20 rounded-2xl">
-                  <SelectValue placeholder="Choose a course..." />
-                </SelectTrigger>
-                <SelectContent className="backdrop-blur-sm bg-white/95 border border-white/20 rounded-2xl">
-                  {(courses as any[]).map((course) => (
-                    <SelectItem key={course.id} value={course.id.toString()} className="rounded-lg">
-                      {course.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+          <div className="space-y-3 py-1">
+            <div className="flex items-center justify-between text-sm text-[#718096]">
+              <span>
+                {selectedCourseIds.length} of {courses.length} selected
+              </span>
+              <span>{initialEnrolledIds.length} currently enrolled</span>
+            </div>
+
+            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-[#F4E4D7] bg-white">
+              {isLoadingEnrollments ? (
+                <div className="flex items-center justify-center py-10">
+                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                </div>
+              ) : courses.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm text-[#718096]">
+                  No courses available
+                </p>
+              ) : (
+                <ul className="divide-y divide-[#F4E4D7]/80">
+                  {courses.map((course) => {
+                    const checked = selectedCourseIds.includes(course.id);
+                    const wasEnrolled = initialEnrolledIds.includes(course.id);
+                    return (
+                      <li key={course.id}>
+                        <label
+                          className={cn(
+                            "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-[#FFF5E6]/70",
+                            checked && "bg-[#4ECDC4]/5"
+                          )}
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(value) =>
+                              toggleCourse(course.id, value === true)
+                            }
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[15px] font-medium text-[#2D3748]">
+                              {course.title}
+                            </p>
+                            {course.level ? (
+                              <p className="truncate text-xs text-[#718096] capitalize">
+                                {course.level}
+                              </p>
+                            ) : null}
+                          </div>
+                          {wasEnrolled ? (
+                            <Badge className="shrink-0 rounded-full border border-green-200 bg-green-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-800">
+                              Enrolled
+                            </Badge>
+                          ) : null}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </div>
-          
-          <DialogFooter className="flex flex-col sm:flex-row gap-3 mt-6">
+
+          <DialogFooter className="flex flex-col gap-3 sm:flex-row">
             <Button
               variant="outline"
               onClick={() => setIsAssignDialogOpen(false)}
               disabled={assignCourseMutation.isPending}
-              className="flex-1 rounded-2xl border border-white/20 bg-white/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300"
+              className="flex-1 rounded-xl"
             >
               Cancel
             </Button>
             <Button
               onClick={handleAssignCourse}
-              disabled={!selectedCourseId || assignCourseMutation.isPending}
-              className="flex-1 gap-2 bg-accent-brand text-white border-0 rounded-2xl hover:shadow-xl transition-all duration-300"
+              disabled={assignCourseMutation.isPending || isLoadingEnrollments}
+              className="flex-1 gap-2 rounded-xl"
             >
               {assignCourseMutation.isPending ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent border-white" />
-                  Assigning...
-                </>
+                "Saving..."
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  Assign Course
+                  Save Enrollments
                 </>
               )}
             </Button>

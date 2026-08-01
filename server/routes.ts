@@ -570,7 +570,28 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   app.get("/api/enrollments/user", isAuthenticated, async (req, res) => {
     try {
       const enrollments = await storage.getEnrollmentsByUser(req.user!.id);
-      res.json(enrollments);
+
+      // Include course titles so student UI never falls back to "Course #id"
+      const enhanced = [];
+      for (const enrollment of enrollments) {
+        const course = await storage.getCourse(enrollment.courseId);
+        enhanced.push({
+          ...enrollment,
+          course: course
+            ? {
+                id: course.id,
+                title: course.title,
+                description: course.description,
+                thumbnail: course.thumbnail,
+                difficulty: course.difficulty,
+                duration: course.duration,
+                category: course.category,
+              }
+            : null,
+        });
+      }
+
+      res.json(enhanced);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch enrollments" });
     }
@@ -702,49 +723,56 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Endpoint for admin to assign courses to students
   app.post("/api/enrollments/assign", isAdmin, async (req, res) => {
     try {
-      const { userId, courseId } = req.body;
-      
-      if (!userId || !courseId) {
+      const userId = parseInt(String(req.body?.userId), 10);
+      const courseId = parseInt(String(req.body?.courseId), 10);
+
+      if (!Number.isFinite(userId) || !Number.isFinite(courseId)) {
         return res.status(400).json({ message: "Both userId and courseId are required" });
       }
-      
+
       // Check if course exists and belongs to admin's tenant
       const course = await storage.getCourse(courseId);
       if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Course not found or access denied" });
       }
-      
+
       // Check if user exists and belongs to admin's tenant
       const user = await storage.getUser(userId);
       if (!user || user.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "User not found or access denied" });
       }
-      
-      // Check if already enrolled
-      const existingEnrollments = await storage.getEnrollmentsByUser(userId);
-      const alreadyEnrolled = existingEnrollments.some(e => e.courseId === courseId);
-      
-      if (alreadyEnrolled) {
-        return res.status(400).json({ message: "User is already enrolled in this course" });
+
+      if (user.role !== "student") {
+        return res.status(400).json({ message: "Courses can only be assigned to students" });
       }
-      
-      // Create enrollment
+
+      // Idempotent: already enrolled is success (supports batch assign)
+      const existingEnrollments = await storage.getEnrollmentsByUser(userId);
+      const existing = existingEnrollments.find((e) => e.courseId === courseId);
+      if (existing) {
+        return res.status(200).json(existing);
+      }
+
       const enrollment = await storage.createEnrollment({
         userId,
-        courseId
+        courseId,
       });
-      
-      // Create activity log
-      await storage.createActivityLog({
-        userId,
-        activityType: "course_assign",
-        resourceId: courseId,
-        resourceType: "course",
-        tenantId: req.user!.tenantId
-      });
-      
+
+      try {
+        await storage.createActivityLog({
+          userId,
+          activityType: "course_assign",
+          resourceId: courseId,
+          resourceType: "course",
+          tenantId: req.user!.tenantId,
+        });
+      } catch (logError) {
+        console.error("Activity log failed after course assign:", logError);
+      }
+
       res.status(201).json(enrollment);
     } catch (error) {
+      console.error("Failed to assign course to user:", error);
       res.status(500).json({ message: "Failed to assign course to user" });
     }
   });
@@ -752,9 +780,11 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Admin unenroll student from course
   app.delete("/api/enrollments/assign", isAdmin, async (req, res) => {
     try {
-      const { userId, courseId } = req.body;
+      const body = req.body || {};
+      const userId = parseInt(String(body.userId ?? req.query.userId), 10);
+      const courseId = parseInt(String(body.courseId ?? req.query.courseId), 10);
 
-      if (!userId || !courseId) {
+      if (!Number.isFinite(userId) || !Number.isFinite(courseId)) {
         return res.status(400).json({ message: "Both userId and courseId are required" });
       }
 
@@ -775,6 +805,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
 
       res.json({ message: "Enrollment removed" });
     } catch (error) {
+      console.error("Failed to remove enrollment:", error);
       res.status(500).json({ message: "Failed to remove enrollment" });
     }
   });

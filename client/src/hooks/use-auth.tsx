@@ -52,6 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Drop previous user's cached data (admin catalog must not leak to student)
+      queryClient.clear();
       queryClient.setQueryData(["/api/user"], user);
       
       // Redirect based on user role
@@ -121,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     onSuccess: (user: SelectUser) => {
+      queryClient.clear();
       queryClient.setQueryData(["/api/user"], user);
       
       // Redirect based on user role
@@ -149,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      queryClient.clear();
       queryClient.setQueryData(["/api/user"], null);
       setLocation("/auth");
       toast({

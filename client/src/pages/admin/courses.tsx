@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Header from "@/components/layout/header";
 import ListToolbar from "@/components/layout/list-toolbar";
 import DashboardLayout from "@/components/layout/dashboard-layout";
@@ -50,6 +50,7 @@ import { cn } from "@/lib/utils";
 import DataTable from "@/components/primitives/DataTable";
 import { useClientPagination } from "@/hooks/use-client-pagination";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { getCourseThumbnailSrc } from "@/lib/course-thumbnail";
 
 export default function AdminCourses() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -62,6 +63,7 @@ export default function AdminCourses() {
   const [initialEnrolledIds, setInitialEnrolledIds] = useState<number[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [levelFilter, setLevelFilter] = useState<string>("all");
+  const assignSelectionReady = useRef(false);
   const { toast } = useToast();
 
   const { data: courses = [] as any[], isLoading: isLoadingCourses } = useQuery<any[]>({
@@ -151,8 +153,11 @@ export default function AdminCourses() {
       setIsAssignDialogOpen(false);
       setSelectedStudentIds([]);
       setInitialEnrolledIds([]);
+      assignSelectionReady.current = false;
       queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enrollments/course"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enrollments/counts"] });
     },
     onError: (error: any) => {
@@ -165,10 +170,16 @@ export default function AdminCourses() {
   });
 
   useEffect(() => {
-    if (!isAssignDialogOpen || isLoadingEnrollments) return;
-    const enrolledIds = courseEnrollments.map((e: any) => e.userId);
+    if (!isAssignDialogOpen) {
+      assignSelectionReady.current = false;
+      return;
+    }
+    // Only seed checkboxes once when enrollments first load — do not wipe user clicks
+    if (isLoadingEnrollments || assignSelectionReady.current) return;
+    const enrolledIds = courseEnrollments.map((e: any) => Number(e.userId));
     setInitialEnrolledIds(enrolledIds);
     setSelectedStudentIds(enrolledIds);
+    assignSelectionReady.current = true;
   }, [isAssignDialogOpen, isLoadingEnrollments, courseEnrollments]);
 
   const handleCreateCourse = () => {
@@ -209,6 +220,7 @@ export default function AdminCourses() {
     setSelectedCourse(course);
     setSelectedStudentIds([]);
     setInitialEnrolledIds([]);
+    assignSelectionReady.current = false;
     setIsAssignDialogOpen(true);
   };
 
@@ -220,8 +232,10 @@ export default function AdminCourses() {
 
   const handleAssignStudent = () => {
     if (!selectedCourse?.id) return;
-    const toAdd = selectedStudentIds.filter((id) => !initialEnrolledIds.includes(id));
-    const toRemove = initialEnrolledIds.filter((id) => !selectedStudentIds.includes(id));
+    const selected = selectedStudentIds.map(Number);
+    const initial = initialEnrolledIds.map(Number);
+    const toAdd = selected.filter((id) => !initial.includes(id));
+    const toRemove = initial.filter((id) => !selected.includes(id));
     if (toAdd.length === 0 && toRemove.length === 0) {
       toast({
         title: "No changes",
@@ -281,17 +295,7 @@ export default function AdminCourses() {
     }
   };
 
-  const thumbSrc = (course: any) => {
-    if (!course.thumbnail) return null;
-    const t = course.thumbnail;
-    if (
-      typeof t === "string" &&
-      (t.startsWith("http") || t.startsWith("data:") || t.startsWith("/"))
-    ) {
-      return t;
-    }
-    return `/uploads/${t}`;
-  };
+  const thumbSrc = (course: any) => getCourseThumbnailSrc(course.thumbnail);
 
   const CourseActionsMenu = ({ course }: { course: any }) => (
     <DropdownMenu>

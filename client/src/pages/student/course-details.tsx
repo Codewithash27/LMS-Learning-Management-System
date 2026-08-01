@@ -22,6 +22,7 @@ import {
   Play,
   Video
 } from "lucide-react";
+import { getCourseThumbnailSrc } from "@/lib/course-thumbnail";
 
 export default function StudentCourseDetails() {
   const [location] = useLocation();
@@ -189,6 +190,8 @@ export default function StudentCourseDetails() {
       </DashboardLayout>
     );
   }
+
+  const thumb = getCourseThumbnailSrc((course as any).thumbnail);
   
   return (
     <DashboardLayout>
@@ -200,6 +203,16 @@ export default function StudentCourseDetails() {
               Back to My Courses
             </Button>
           </Link>
+
+          {thumb ? (
+            <div className="mb-4 overflow-hidden rounded-2xl border border-warm-border bg-muted">
+              <img
+                src={thumb}
+                alt=""
+                className="h-48 w-full object-cover sm:h-56"
+              />
+            </div>
+          ) : null}
           
           <Header title={(course as any).title} subtitle={(course as any).description} />
           

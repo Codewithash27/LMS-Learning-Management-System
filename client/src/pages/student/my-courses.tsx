@@ -27,10 +27,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { getCourseThumbnailSrc } from "@/lib/course-thumbnail";
 
 export default function StudentMyCourses() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [view, setView] = useState<"grid" | "list">("grid");
+  const [view, setView] = useState<"grid" | "list">("list");
 
   const { data: allCourses = [], isLoading: isLoadingCourses } = useQuery({
     queryKey: ["/api/courses"],
@@ -40,9 +41,12 @@ export default function StudentMyCourses() {
     queryKey: ["/api/enrollments/user"],
   });
 
-  const enrolledCourseIds = (enrollments as any[]).map((enrollment) => enrollment.courseId);
+  // Enrollments are source of truth — never show catalog courses without assignment
+  const enrolledCourseIds = new Set(
+    (enrollments as any[]).map((enrollment) => Number(enrollment.courseId))
+  );
   const enrolledCourses = (allCourses as any[]).filter((course) =>
-    enrolledCourseIds.includes(course.id)
+    enrolledCourseIds.has(Number(course.id))
   );
 
   const filteredEnrolledCourses = enrolledCourses.filter(
@@ -68,7 +72,7 @@ export default function StudentMyCourses() {
   };
 
   const getEnrollmentData = (courseId: number) => {
-    return (enrollments as any[]).find((e) => e.courseId === courseId);
+    return (enrollments as any[]).find((e) => Number(e.courseId) === Number(courseId));
   };
 
   const viewToggle = (
@@ -155,14 +159,25 @@ export default function StudentMyCourses() {
           {filteredEnrolledCourses.map((course: any) => {
             const enrollment = getEnrollmentData(course.id);
             const progress = enrollment?.progress || 0;
+            const thumb = getCourseThumbnailSrc(course.thumbnail);
 
             return (
               <Card
                 key={course.id}
                 className="flex flex-col overflow-hidden transition-shadow hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)]"
               >
-                <div className="flex h-32 items-center justify-center bg-gradient-to-br from-brand-turquoise/15 to-brand-blue/10">
-                  <BookOpen className="h-10 w-10 text-brand-turquoise/70" />
+                <div className="relative h-32 bg-gradient-to-br from-brand-turquoise/15 to-brand-blue/10">
+                  {thumb ? (
+                    <img
+                      src={thumb}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <BookOpen className="h-10 w-10 text-brand-turquoise/70" />
+                    </div>
+                  )}
                 </div>
                 <CardHeader className="pb-2">
                   <div className="mb-1 flex items-start justify-between gap-2">
@@ -235,12 +250,21 @@ export default function StudentMyCourses() {
           {pageItems.map((course: any) => {
             const enrollment = getEnrollmentData(course.id);
             const progress = enrollment?.progress || 0;
+            const thumb = getCourseThumbnailSrc(course.thumbnail);
             return (
               <TableRow key={course.id} className="hover:bg-[#FFF5E6]/70">
                 <TableCell className="py-3.5 pl-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ECDC4]/15">
-                      <BookOpen className="h-5 w-5 text-[#4ECDC4]" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#4ECDC4]/15">
+                      {thumb ? (
+                        <img
+                          src={thumb}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <BookOpen className="h-5 w-5 text-[#4ECDC4]" />
+                      )}
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-[15px] font-semibold text-[#2D3748]">
