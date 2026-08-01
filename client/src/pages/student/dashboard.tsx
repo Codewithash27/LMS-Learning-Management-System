@@ -122,13 +122,10 @@ export default function StudentDashboard() {
     }
   }, [user]);
 
-  // Get enrolled and available courses
+  // Get enrolled courses only (API returns assigned courses for students)
   const enrolledCourseIds = (enrollments as any[]).map((enrollment) => enrollment.courseId);
   const enrolledCourses = (allCourses as any[]).filter((course) => 
     enrolledCourseIds.includes(course.id)
-  );
-  const availableCourses = (allCourses as any[]).filter((course) => 
-    !enrolledCourseIds.includes(course.id)
   );
 
   return (
@@ -182,12 +179,12 @@ export default function StudentDashboard() {
               ) : enrolledCourses.length === 0 ? (
                 <div className="text-center py-6">
                   <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-1">No courses enrolled</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">No courses assigned</h3>
                   <p className="text-gray-500 mb-4">
-                    Browse available courses and start your learning journey
+                    Your administrator will assign courses to your account.
                   </p>
                   <Link href="/student/my-courses">
-                    <Button>Browse Courses</Button>
+                    <Button variant="outline">View My Courses</Button>
                   </Link>
                 </div>
               ) : (

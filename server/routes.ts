@@ -1,7 +1,7 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth } from "./auth";
+import { setupAuth, hashPassword } from "./auth";
 import { chatWithAI, logAIChat, analyzeImage, handleImageUpload, uploadImage, generateImage } from "./ai";
 import { z } from "zod";
 import multer from "multer";
@@ -39,7 +39,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Middleware to check if user is an admin
   const isAdmin = (req: any, res: any, next: any) => {
-    if (req.isAuthenticated() && req.user.role === "admin") {
+    if (req.isAuthenticated() && req.user!.role === "admin") {
       return next();
     }
     res.status(403).json({ message: "Forbidden: Admin access required" });
@@ -47,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Middleware to check if user is a super admin
   const isSuperAdmin = (req: any, res: any, next: any) => {
-    if (req.isAuthenticated() && req.user.role === "superadmin") {
+    if (req.isAuthenticated() && req.user!.role === "superadmin") {
       return next();
     }
     res.status(403).json({ message: "Forbidden: Super Admin access required" });
@@ -56,7 +56,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Tenant routes
   app.get("/api/tenants", isAuthenticated, async (req, res) => {
     try {
-      const tenants = await storage.getTenant(req.user.tenantId);
+      const tenants = await storage.getTenant(req.user!.tenantId);
       res.json(tenants);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch tenant" });
@@ -66,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
   app.get("/api/users", isAdmin, async (req, res) => {
     try {
-      const users = await storage.getUsersByTenant(req.user.tenantId);
+      const users = await storage.getUsersByTenant(req.user!.tenantId);
       // Remove passwords before sending
       const safeUsers = users.map(({ password, ...rest }) => rest);
       res.json(safeUsers);
@@ -86,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user belongs to the admin's tenant
-      if (user.tenantId !== req.user.tenantId) {
+      if (user.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this user" });
       }
       
@@ -104,7 +104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       
       // Users can only update their own profile unless they are admins
-      if (userId !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      if (userId !== req.user!.id && req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
         return res.status(403).json({ message: "You can only update your own profile" });
       }
       
@@ -140,6 +140,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update user profile" });
     }
   });
+  // Admin create student (does not switch login session)
+  app.post("/api/users", isAdmin, async (req, res) => {
+    try {
+      const {
+        username,
+        password,
+        firstName,
+        lastName,
+        email,
+        mobileNumber,
+        gender,
+        dateOfBirth,
+        educationLevel,
+        schoolCollege,
+        yearOfStudy,
+      } = req.body;
+
+      if (
+        !username ||
+        !password ||
+        !firstName ||
+        !lastName ||
+        !email ||
+        !mobileNumber ||
+        !dateOfBirth ||
+        !educationLevel ||
+        !schoolCollege ||
+        !yearOfStudy
+      ) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      const user = await storage.createUser({
+        username,
+        password: await hashPassword(password),
+        plainPassword: password,
+        firstName,
+        lastName,
+        email,
+        mobileNumber,
+        gender: gender || null,
+        dateOfBirth:
+          typeof dateOfBirth === "string"
+            ? dateOfBirth
+            : new Date(dateOfBirth).toISOString().slice(0, 10),
+        educationLevel,
+        schoolCollege,
+        yearOfStudy,
+        role: "student",
+        tenantId: req.user!.tenantId,
+      });
+
+      const { password: _, plainPassword: __, ...safeUser } = user;
+      res.status(201).json(safeUser);
+    } catch (error) {
+      console.error("Failed to create student:", error);
+      res.status(500).json({ message: "Failed to create student" });
+    }
+  });
+
   // DELETE user route
 app.delete("/api/users/:id", isAdmin, async (req, res) => {
   try {
@@ -152,7 +217,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
     }
     
     // Check if user belongs to the admin's tenant
-    // The isAdmin middleware ensures req.user exists, so we can safely access it
+    // The isAdmin middleware ensures req.user! exists, so we can safely access it
     if (user.tenantId !== req.user!.tenantId) {
       return res.status(403).json({ message: "Access denied to this user" });
     }
@@ -190,16 +255,12 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return;
       }
       
-      // For students, filter courses based on enrollment requirements
+      // Students only see courses assigned/enrolled by admin
       const enrollments = await storage.getEnrollmentsByUser(req.user!.id);
-      const enrolledCourseIds = enrollments.map(enrollment => enrollment.courseId);
+      const enrolledCourseIds = new Set(enrollments.map((enrollment) => enrollment.courseId));
+      const assignedCourses = courses.filter((course) => enrolledCourseIds.has(course.id));
       
-      const availableCourses = courses.filter(course => 
-        !course.isEnrollmentRequired ||
-        enrolledCourseIds.includes(course.id)
-      );
-      
-      res.json(availableCourses);
+      res.json(assignedCourses);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch courses" });
     }
@@ -214,27 +275,24 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if course belongs to user's tenant
-      if (course.tenantId !== req.user.tenantId) {
+      if (course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
       // If user is admin or superadmin, allow access
-      if (req.user.role === "admin" || req.user.role === "superadmin") {
+      if (req.user!.role === "admin" || req.user!.role === "superadmin") {
         res.json(course);
         return;
       }
       
-      // For students, check if they have access to this course
-      if (course.isEnrollmentRequired) {
-        // Check if the student is enrolled in this course
-        const enrollments = await storage.getEnrollmentsByUser(req.user.id);
-        const isEnrolled = enrollments.some(enrollment => enrollment.courseId === courseId);
-        
-        if (!isEnrolled) {
-          return res.status(403).json({ 
-            message: "Enrollment required for this course. Please enroll or contact an administrator." 
-          });
-        }
+      // Students must be enrolled/assigned to access the course
+      const enrollments = await storage.getEnrollmentsByUser(req.user!.id);
+      const isEnrolled = enrollments.some((enrollment) => enrollment.courseId === courseId);
+      
+      if (!isEnrolled) {
+        return res.status(403).json({ 
+          message: "This course is not assigned to you. Please contact an administrator." 
+        });
       }
       
       res.json(course);
@@ -247,8 +305,8 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
     try {
       const validatedData = insertCourseSchema.parse({
         ...req.body,
-        tenantId: req.user.tenantId,
-        createdBy: req.user.id
+        tenantId: req.user!.tenantId,
+        createdBy: req.user!.id
       });
       
       const course = await storage.createCourse(validatedData);
@@ -271,7 +329,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if course belongs to user's tenant
-      if (course.tenantId !== req.user.tenantId) {
+      if (course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
@@ -292,7 +350,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if course belongs to user's tenant
-      if (course.tenantId !== req.user.tenantId) {
+      if (course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
@@ -314,28 +372,25 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if course belongs to user's tenant
-      if (course.tenantId !== req.user.tenantId) {
+      if (course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
       // If user is admin or superadmin, allow access
-      if (req.user.role === "admin" || req.user.role === "superadmin") {
+      if (req.user!.role === "admin" || req.user!.role === "superadmin") {
         const modules = await storage.getModulesByCourse(courseId);
         res.json(modules);
         return;
       }
       
-      // For students, check if they have access to this course
-      if (course.isEnrollmentRequired) {
-        // Check if the student is enrolled in this course
-        const enrollments = await storage.getEnrollmentsByUser(req.user.id);
-        const isEnrolled = enrollments.some(enrollment => enrollment.courseId === courseId);
-        
-        if (!isEnrolled) {
-          return res.status(403).json({ 
-            message: "Enrollment required for this course. Please enroll or contact an administrator." 
-          });
-        }
+      // Students must be enrolled/assigned to access modules
+      const enrollments = await storage.getEnrollmentsByUser(req.user!.id);
+      const isEnrolled = enrollments.some(enrollment => enrollment.courseId === courseId);
+      
+      if (!isEnrolled) {
+        return res.status(403).json({ 
+          message: "This course is not assigned to you. Please contact an administrator." 
+        });
       }
       
       const modules = await storage.getModulesByCourse(courseId);
@@ -351,7 +406,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if course belongs to user's tenant
       const course = await storage.getCourse(validatedData.courseId);
-      if (!course || course.tenantId !== req.user.tenantId) {
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
@@ -376,7 +431,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if module's course belongs to user's tenant
       const course = await storage.getCourse(module.courseId);
-      if (!course || course.tenantId !== req.user.tenantId) {
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this module" });
       }
       
@@ -398,7 +453,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if module's course belongs to user's tenant
       const course = await storage.getCourse(module.courseId);
-      if (!course || course.tenantId !== req.user.tenantId) {
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this module" });
       }
       
@@ -421,7 +476,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if module's course belongs to user's tenant
       const course = await storage.getCourse(module.courseId);
-      if (!course || course.tenantId !== req.user.tenantId) {
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this module" });
       }
       
@@ -443,7 +498,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       const course = await storage.getCourse(module.courseId);
-      if (!course || course.tenantId !== req.user.tenantId) {
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this module" });
       }
       
@@ -473,7 +528,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       const course = await storage.getCourse(module.courseId);
-      if (!course || course.tenantId !== req.user.tenantId) {
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this lesson" });
       }
       
@@ -500,7 +555,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       const course = await storage.getCourse(module.courseId);
-      if (!course || course.tenantId !== req.user.tenantId) {
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this lesson" });
       }
       
@@ -514,7 +569,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Enrollment routes
   app.get("/api/enrollments/user", isAuthenticated, async (req, res) => {
     try {
-      const enrollments = await storage.getEnrollmentsByUser(req.user.id);
+      const enrollments = await storage.getEnrollmentsByUser(req.user!.id);
       res.json(enrollments);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch enrollments" });
@@ -528,7 +583,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if user belongs to the same tenant
       const user = await storage.getUser(userId);
-      if (!user || user.tenantId !== req.user.tenantId) {
+      if (!user || user.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this user's enrollments" });
       }
       
@@ -561,7 +616,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if course belongs to user's tenant
-      if (course.tenantId !== req.user.tenantId) {
+      if (course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
@@ -574,19 +629,29 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
 
   app.post("/api/enrollments", isAuthenticated, async (req, res) => {
     try {
+      // Only admins can enroll students; students get courses via admin assignment
+      if (req.user!.role !== "admin" && req.user!.role !== "superadmin") {
+        return res.status(403).json({
+          message: "Courses must be assigned by an administrator.",
+        });
+      }
+
+      const { userId, courseId } = req.body;
+      const targetUserId = userId || req.user!.id;
+
       const validatedData = insertEnrollmentSchema.parse({
-        ...req.body,
-        userId: req.user.id
+        courseId,
+        userId: targetUserId,
       });
       
       // Check if course belongs to user's tenant
       const course = await storage.getCourse(validatedData.courseId);
-      if (!course || course.tenantId !== req.user.tenantId) {
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
       // Check if already enrolled
-      const existingEnrollments = await storage.getEnrollmentsByUser(req.user.id);
+      const existingEnrollments = await storage.getEnrollmentsByUser(validatedData.userId);
       const alreadyEnrolled = existingEnrollments.some(e => e.courseId === validatedData.courseId);
       
       if (alreadyEnrolled) {
@@ -597,11 +662,11 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Create activity log
       await storage.createActivityLog({
-        userId: req.user.id,
+        userId: validatedData.userId,
         activityType: "course_enroll",
         resourceId: validatedData.courseId,
         resourceType: "course",
-        tenantId: req.user.tenantId
+        tenantId: req.user!.tenantId
       });
       
       res.status(201).json(enrollment);
@@ -623,7 +688,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if enrollment belongs to user or user is admin
-      if (enrollment.userId !== req.user.id && req.user.role !== "admin") {
+      if (enrollment.userId !== req.user!.id && req.user!.role !== "admin") {
         return res.status(403).json({ message: "Access denied to this enrollment" });
       }
       
@@ -645,13 +710,13 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if course exists and belongs to admin's tenant
       const course = await storage.getCourse(courseId);
-      if (!course || course.tenantId !== req.user.tenantId) {
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Course not found or access denied" });
       }
       
       // Check if user exists and belongs to admin's tenant
       const user = await storage.getUser(userId);
-      if (!user || user.tenantId !== req.user.tenantId) {
+      if (!user || user.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "User not found or access denied" });
       }
       
@@ -675,7 +740,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         activityType: "course_assign",
         resourceId: courseId,
         resourceType: "course",
-        tenantId: req.user.tenantId
+        tenantId: req.user!.tenantId
       });
       
       res.status(201).json(enrollment);
@@ -717,8 +782,18 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Exam routes
   app.get("/api/exams", isAuthenticated, async (req, res) => {
     try {
-      const exams = await storage.getExamsByTenant(req.user.tenantId);
-      res.json(exams);
+      const exams = await storage.getExamsByTenant(req.user!.tenantId);
+
+      if (req.user!.role === "admin" || req.user!.role === "superadmin") {
+        res.json(exams);
+        return;
+      }
+
+      // Students only see exams for courses assigned to them
+      const enrollments = await storage.getEnrollmentsByUser(req.user!.id);
+      const enrolledCourseIds = new Set(enrollments.map((e) => e.courseId));
+      const assignedExams = exams.filter((exam) => enrolledCourseIds.has(exam.courseId));
+      res.json(assignedExams);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch exams" });
     }
@@ -734,8 +809,18 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if exam belongs to user's tenant
-      if (exam.tenantId !== req.user.tenantId) {
+      if (exam.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this exam" });
+      }
+
+      if (req.user!.role !== "admin" && req.user!.role !== "superadmin") {
+        const enrollments = await storage.getEnrollmentsByUser(req.user!.id);
+        const isEnrolled = enrollments.some((e) => e.courseId === exam.courseId);
+        if (!isEnrolled) {
+          return res.status(403).json({
+            message: "This exam is not available for your assigned courses.",
+          });
+        }
       }
       
       res.json(exam);
@@ -748,13 +833,13 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
     try {
       const validatedData = insertExamSchema.parse({
         ...req.body,
-        tenantId: req.user.tenantId,
-        createdBy: req.user.id
+        tenantId: req.user!.tenantId,
+        createdBy: req.user!.id
       });
       
       // Check if course belongs to user's tenant
       const course = await storage.getCourse(validatedData.courseId);
-      if (!course || course.tenantId !== req.user.tenantId) {
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
@@ -778,7 +863,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if exam belongs to user's tenant
-      if (exam.tenantId !== req.user.tenantId) {
+      if (exam.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this exam" });
       }
       
@@ -817,7 +902,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if exam belongs to user's tenant
-      if (exam.tenantId !== req.user.tenantId) {
+      if (exam.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this exam" });
       }
       
@@ -839,18 +924,11 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if exam belongs to user's tenant
-      if (exam.tenantId !== req.user.tenantId) {
+      if (exam.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this exam" });
       }
       
       const questions = await storage.getQuestionsByExam(examId);
-      
-      // If user is a student, don't return correct answers
-      if (req.user.role === "student") {
-        const questionsWithoutAnswers = questions.map(({ correctOption, ...rest }) => rest);
-        return res.json(questionsWithoutAnswers);
-      }
-      
       res.json(questions);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch questions" });
@@ -868,7 +946,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if exam belongs to user's tenant
-      if (exam.tenantId !== req.user.tenantId) {
+      if (exam.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this exam" });
       }
       
@@ -897,7 +975,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if exam belongs to user's tenant
-      if (exam.tenantId !== req.user.tenantId) {
+      if (exam.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this exam" });
       }
       
@@ -933,7 +1011,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if exam belongs to user's tenant
       const exam = await storage.getExam(validatedData.examId);
-      if (!exam || exam.tenantId !== req.user.tenantId) {
+      if (!exam || exam.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this exam" });
       }
       
@@ -958,7 +1036,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if question's exam belongs to user's tenant
       const exam = await storage.getExam(question.examId);
-      if (!exam || exam.tenantId !== req.user.tenantId) {
+      if (!exam || exam.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this question" });
       }
       
@@ -980,7 +1058,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if question's exam belongs to user's tenant
       const exam = await storage.getExam(question.examId);
-      if (!exam || exam.tenantId !== req.user.tenantId) {
+      if (!exam || exam.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this question" });
       }
       
@@ -994,7 +1072,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Exam attempt routes
   app.get("/api/exam-attempts/user", isAuthenticated, async (req, res) => {
     try {
-      const attempts = await storage.getExamAttemptsByUser(req.user.id);
+      const attempts = await storage.getExamAttemptsByUser(req.user!.id);
       res.json(attempts);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch exam attempts" });
@@ -1008,7 +1086,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if user belongs to the same tenant
       const user = await storage.getUser(userId);
-      if (!user || user.tenantId !== req.user.tenantId) {
+      if (!user || user.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this user's exam attempts" });
       }
       
@@ -1041,7 +1119,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if exam belongs to user's tenant
-      if (exam.tenantId !== req.user.tenantId) {
+      if (exam.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this exam" });
       }
       
@@ -1056,12 +1134,12 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
     try {
       const validatedData = insertExamAttemptSchema.parse({
         ...req.body,
-        userId: req.user.id
+        userId: req.user!.id
       });
       
       // Check if exam belongs to user's tenant
       const exam = await storage.getExam(validatedData.examId);
-      if (!exam || exam.tenantId !== req.user.tenantId) {
+      if (!exam || exam.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this exam" });
       }
       
@@ -1070,23 +1148,15 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return res.status(403).json({ message: "This exam is not accepting responses at this time" });
       }
       
-      // Check if user has already reached max attempts
-      const existingAttempts = await storage.getExamAttemptsByUser(req.user.id);
-      const attemptsForThisExam = existingAttempts.filter(a => a.examId === validatedData.examId);
-      
-      if (attemptsForThisExam.length >= exam.maxAttempts) {
-        return res.status(400).json({ message: "Maximum attempts reached for this exam" });
-      }
-      
       const attempt = await storage.createExamAttempt(validatedData);
       
       // Create activity log
       await storage.createActivityLog({
-        userId: req.user.id,
+        userId: req.user!.id,
         activityType: "exam_start",
         resourceId: validatedData.examId,
         resourceType: "exam",
-        tenantId: req.user.tenantId
+        tenantId: req.user!.tenantId
       });
       
       res.status(201).json(attempt);
@@ -1108,13 +1178,16 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if attempt belongs to user or user is admin
-      if (attempt.userId !== req.user.id && req.user.role !== "admin") {
+      if (attempt.userId !== req.user!.id && req.user!.role !== "admin") {
         return res.status(403).json({ message: "Access denied to this exam attempt" });
       }
       
       // For assignment-style exams, we don't automatically score - instructor will review
       if (req.body.completedAt && req.body.answers) {
         const exam = await storage.getExam(attempt.examId);
+        if (!exam) {
+          return res.status(404).json({ message: "Exam not found" });
+        }
         const questions = await storage.getQuestionsByExam(attempt.examId);
         
         // Check if exam is still accepting responses
@@ -1142,11 +1215,11 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         
         // Create activity log
         await storage.createActivityLog({
-          userId: req.user.id,
+          userId: req.user!.id,
           activityType: "exam_complete",
           resourceId: attempt.examId,
           resourceType: "exam",
-          tenantId: req.user.tenantId
+          tenantId: req.user!.tenantId
         });
       }
       
@@ -1161,7 +1234,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Activity log routes
   app.get("/api/activity-logs/user", isAuthenticated, async (req, res) => {
     try {
-      const logs = await storage.getActivityLogsByUser(req.user.id);
+      const logs = await storage.getActivityLogsByUser(req.user!.id);
       res.json(logs);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch activity logs" });
@@ -1170,7 +1243,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
 
   app.get("/api/activity-logs/tenant", isAdmin, async (req, res) => {
     try {
-      const logs = await storage.getActivityLogsByTenant(req.user.tenantId);
+      const logs = await storage.getActivityLogsByTenant(req.user!.tenantId);
       res.json(logs);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch activity logs" });
@@ -1181,8 +1254,8 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
     try {
       const validatedData = insertActivityLogSchema.parse({
         ...req.body,
-        userId: req.user.id,
-        tenantId: req.user.tenantId
+        userId: req.user!.id,
+        tenantId: req.user!.tenantId
       });
       
       const log = await storage.createActivityLog(validatedData);
@@ -1208,8 +1281,8 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Get all batches for tenant
   app.get("/api/batches", isAdmin, async (req, res) => {
     try {
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      const batches = await storage.getBatchesByTenant(req.user.tenantId);
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      const batches = await storage.getBatchesByTenant(req.user!.tenantId);
       res.json(batches);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch batches" });
@@ -1226,8 +1299,8 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return res.status(404).json({ message: "Course not found" });
       }
       
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (course.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
@@ -1248,8 +1321,8 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return res.status(404).json({ message: "Batch not found" });
       }
       
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (batch.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (batch.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this batch" });
       }
       
@@ -1262,24 +1335,24 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Create new batch
   app.post("/api/batches", isAdmin, async (req, res) => {
     try {
-      // @ts-ignore: req.user is defined because of isAdmin middleware
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
       const validatedData = insertBatchSchema.parse({
         ...req.body,
-        tenantId: req.user.tenantId,
-        createdBy: req.user.id
+        tenantId: req.user!.tenantId,
+        createdBy: req.user!.id
       });
       
       // Check if course belongs to user's tenant
       const course = await storage.getCourse(validatedData.courseId);
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (!course || course.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
       // Check if trainer belongs to user's tenant
       const trainer = await storage.getUser(validatedData.trainerId);
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (!trainer || trainer.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (!trainer || trainer.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this trainer" });
       }
       
@@ -1304,8 +1377,8 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return res.status(404).json({ message: "Batch not found" });
       }
       
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (batch.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (batch.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this batch" });
       }
       
@@ -1326,8 +1399,8 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return res.status(404).json({ message: "Batch not found" });
       }
       
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (batch.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (batch.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this batch" });
       }
       
@@ -1348,8 +1421,8 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return res.status(404).json({ message: "Batch not found" });
       }
       
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (batch.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (batch.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this batch" });
       }
       
@@ -1367,8 +1440,8 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if user belongs to the admin's tenant
       const user = await storage.getUser(userId);
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (!user || user.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (!user || user.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this user" });
       }
       
@@ -1394,23 +1467,23 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Create batch enrollment (single student)
   app.post("/api/batch-enrollments", isAdmin, async (req, res) => {
     try {
-      // @ts-ignore: req.user is defined because of isAdmin middleware
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
       const validatedData = insertBatchEnrollmentSchema.parse({
         ...req.body,
-        enrolledBy: req.user.id
+        enrolledBy: req.user!.id
       });
       
       // Check if batch belongs to user's tenant
       const batch = await storage.getBatch(validatedData.batchId);
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (!batch || batch.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (!batch || batch.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this batch" });
       }
       
       // Check if user belongs to tenant
       const user = await storage.getUser(validatedData.userId);
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (!user || user.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (!user || user.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this user" });
       }
       
@@ -1435,17 +1508,17 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if batch belongs to user's tenant
       const batch = await storage.getBatch(batchId);
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (!batch || batch.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (!batch || batch.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this batch" });
       }
       
       // Create enrollment objects for all users
-      // @ts-ignore: req.user is defined because of isAdmin middleware
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
       const enrollments = userIds.map(userId => ({
         batchId,
         userId,
-        enrolledBy: req.user.id,
+        enrolledBy: req.user!.id,
         status: "active"
       }));
       
@@ -1468,8 +1541,8 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check if the batch belongs to user's tenant
       const batch = await storage.getBatch(enrollment.batchId);
-      // @ts-ignore: req.user is defined because of isAdmin middleware
-      if (!batch || batch.tenantId !== req.user.tenantId) {
+      // @ts-ignore: req.user! is defined because of isAdmin middleware
+      if (!batch || batch.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this enrollment" });
       }
       
@@ -1485,7 +1558,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   app.get("/api/lesson-progress/:lessonId", isAuthenticated, async (req, res) => {
     try {
       const lessonId = parseInt(req.params.lessonId);
-      const userId = req.user.id;
+      const userId = req.user!.id;
       
       // Check if lesson exists and belongs to user's tenant
       const lesson = await storage.getLesson(lessonId);
@@ -1501,7 +1574,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Check course tenant
       const course = await storage.getCourse(module.courseId);
-      if (!course || course.tenantId !== req.user.tenantId) {
+      if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this lesson" });
       }
       
@@ -1524,7 +1597,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   app.post("/api/lesson-progress", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertLessonProgressSchema.parse({
-        userId: req.user.id,
+        userId: req.user!.id,
         lessonId: req.body.lessonId,
         moduleId: req.body.moduleId,
         courseId: req.body.courseId,
@@ -1554,7 +1627,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if the user is enrolled in the course
-      const enrollments = await storage.getEnrollmentsByUser(req.user.id);
+      const enrollments = await storage.getEnrollmentsByUser(req.user!.id);
       const isEnrolled = enrollments.some(e => e.courseId === validatedData.courseId);
       
       if (!isEnrolled) {
@@ -1562,7 +1635,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       }
       
       // Check if progress already exists
-      const existingProgress = await storage.getLessonProgress(req.user.id, validatedData.lessonId);
+      const existingProgress = await storage.getLessonProgress(req.user!.id, validatedData.lessonId);
       
       if (existingProgress) {
         return res.json(existingProgress); // Progress already recorded
@@ -1573,11 +1646,11 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       
       // Log activity
       await storage.createActivityLog({
-        userId: req.user.id,
+        userId: req.user!.id,
         activityType: "lesson_complete",
         resourceId: validatedData.lessonId,
         resourceType: "lesson",
-        tenantId: req.user.tenantId
+        tenantId: req.user!.tenantId
       });
       
       res.status(201).json(progress);
@@ -1594,7 +1667,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   app.get("/api/course-progress/:courseId", isAuthenticated, async (req, res) => {
     try {
       const courseId = parseInt(req.params.courseId);
-      const userId = req.user.id;
+      const userId = req.user!.id;
       
       // Check if course exists and belongs to user's tenant
       const course = await storage.getCourse(courseId);
@@ -1602,7 +1675,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return res.status(404).json({ message: "Course not found" });
       }
       
-      if (course.tenantId !== req.user.tenantId) {
+      if (course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
@@ -1661,7 +1734,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return res.status(404).json({ message: "Course not found" });
       }
       
-      if (course.tenantId !== req.user.tenantId) {
+      if (course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
       }
       
@@ -1762,7 +1835,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Admin grading endpoints
   app.get("/api/admin/exam-attempts", isAdmin, async (req, res) => {
     try {
-      const attempts = await storage.getAllExamAttemptsForAdmin(req.user.tenantId);
+      const attempts = await storage.getAllExamAttemptsForAdmin(req.user!.tenantId);
       res.json(attempts);
     } catch (error) {
       console.error("Failed to fetch exam attempts for admin:", error);
@@ -1775,7 +1848,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       const attemptId = parseInt(req.params.id);
       const { feedback } = req.body;
 
-      const attempt = await storage.gradeExamAttempt(attemptId, feedback, req.user.tenantId);
+      const attempt = await storage.gradeExamAttempt(attemptId, feedback, req.user!.tenantId);
       res.json(attempt);
     } catch (error) {
       console.error("Failed to grade exam attempt:", error);
@@ -1786,7 +1859,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Student results endpoint
   app.get("/api/student/exam-results", isAuthenticated, async (req, res) => {
     try {
-      const results = await storage.getStudentExamResults(req.user.id);
+      const results = await storage.getStudentExamResults(req.user!.id);
       res.json(results);
     } catch (error) {
       console.error("Failed to fetch student exam results:", error);

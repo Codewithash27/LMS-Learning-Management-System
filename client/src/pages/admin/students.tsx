@@ -5,9 +5,12 @@ import ListToolbar from "@/components/layout/list-toolbar";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   Mail,
   Eye,
+  EyeOff,
   GraduationCap,
   BookOpen,
   Plus,
@@ -16,8 +19,7 @@ import {
   Upload,
   UserPlus,
   CheckCircle2,
-  Shield,
-  XCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { 
   DropdownMenu,
@@ -52,23 +54,66 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 
+const emptyStudentForm = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  mobileNumber: "",
+  gender: "",
+  dateOfBirth: "",
+  educationLevel: "",
+  schoolCollege: "",
+  yearOfStudy: "",
+  username: "",
+  password: "",
+};
+
 export default function AdminStudents() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [studentForm, setStudentForm] = useState(emptyStudentForm);
+  const [showPassword, setShowPassword] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
   
   // Fetch students (users with role "student")
-  const { data: allUsers = [], isLoading, refetch } = useQuery({
+  const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["/api/users"],
   });
   
   // Fetch courses for dropdown
   const { data: courses = [] } = useQuery({
     queryKey: ["/api/courses"],
+  });
+
+  const createStudentMutation = useMutation({
+    mutationFn: async (payload: typeof emptyStudentForm) => {
+      const res = await apiRequest("POST", "/api/users", {
+        ...payload,
+        gender: payload.gender || undefined,
+      });
+      return res.json();
+    },
+    onSuccess: (user: any) => {
+      toast({
+        title: "Student added",
+        description: `${user.firstName} ${user.lastName} has been created`,
+      });
+      setIsAddDialogOpen(false);
+      setStudentForm(emptyStudentForm);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to add student",
+        description: error.message || "There was an error creating the student",
+        variant: "destructive",
+      });
+    },
   });
   
   // Course assignment mutation
@@ -81,11 +126,15 @@ export default function AdminStudents() {
     },
     onSuccess: () => {
       toast({
-        title: "🎉 Course assigned successfully",
+        title: "Course assigned successfully",
         description: `Course has been assigned to ${selectedStudent?.firstName} ${selectedStudent?.lastName}`,
       });
       setIsAssignDialogOpen(false);
       setSelectedCourseId("");
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments/counts"] });
     },
     onError: (error: any) => {
       toast({
@@ -147,6 +196,49 @@ export default function AdminStudents() {
   const openAssignDialog = (student: any) => {
     setSelectedStudent(student);
     setIsAssignDialogOpen(true);
+  };
+
+  const openAddDialog = () => {
+    setStudentForm(emptyStudentForm);
+    setShowPassword(false);
+    setIsAddDialogOpen(true);
+  };
+
+  const updateStudentForm = (field: keyof typeof emptyStudentForm, value: string) => {
+    setStudentForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCreateStudent = () => {
+    const required: (keyof typeof emptyStudentForm)[] = [
+      "firstName",
+      "lastName",
+      "email",
+      "mobileNumber",
+      "dateOfBirth",
+      "educationLevel",
+      "schoolCollege",
+      "yearOfStudy",
+      "username",
+      "password",
+    ];
+    const missing = required.find((key) => !studentForm[key]?.trim());
+    if (missing) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all required student details.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (studentForm.password.length < 6) {
+      toast({
+        title: "Weak password",
+        description: "Password must be at least 6 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+    createStudentMutation.mutate(studentForm);
   };
 
   // Open delete confirmation dialog
@@ -219,15 +311,15 @@ export default function AdminStudents() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="rounded-xl">
-                  <DropdownMenuItem className="gap-2">
+                  <DropdownMenuItem className="gap-2" onClick={openAddDialog}>
                     <UserPlus className="h-4 w-4" />
                     Add Single Student
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2">
+                  <DropdownMenuItem className="gap-2" disabled>
                     <Upload className="h-4 w-4" />
                     Bulk Import
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2">
+                  <DropdownMenuItem className="gap-2" disabled>
                     <Download className="h-4 w-4" />
                     Export Template
                   </DropdownMenuItem>
@@ -354,6 +446,216 @@ export default function AdminStudents() {
         </DataTable>
       )}
       
+      {/* Add Student Dialog */}
+      <Dialog
+        open={isAddDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) {
+            setStudentForm(emptyStudentForm);
+            setShowPassword(false);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-brand">
+              <UserPlus className="h-6 w-6 text-white" />
+            </div>
+            <DialogTitle className="text-center text-xl font-bold">
+              Add Single Student
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Create a new student account for your organization.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Hidden decoy fields discourage browser autofill of admin credentials */}
+          <div className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0" aria-hidden="true">
+            <input type="text" name="username" tabIndex={-1} autoComplete="username" />
+            <input type="password" name="password" tabIndex={-1} autoComplete="current-password" />
+          </div>
+
+          <div className="grid gap-3 py-2 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="student-first-name">First Name *</Label>
+              <Input
+                id="student-first-name"
+                value={studentForm.firstName}
+                onChange={(e) => updateStudentForm("firstName", e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="student-last-name">Last Name *</Label>
+              <Input
+                id="student-last-name"
+                value={studentForm.lastName}
+                onChange={(e) => updateStudentForm("lastName", e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="student-email">Email *</Label>
+              <Input
+                id="student-email"
+                type="email"
+                value={studentForm.email}
+                onChange={(e) => updateStudentForm("email", e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="student-mobile">Mobile *</Label>
+              <Input
+                id="student-mobile"
+                value={studentForm.mobileNumber}
+                onChange={(e) => updateStudentForm("mobileNumber", e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Gender</Label>
+              <Select
+                value={studentForm.gender || undefined}
+                onValueChange={(v) => updateStudentForm("gender", v)}
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="student-dob">Date of Birth *</Label>
+              <Input
+                id="student-dob"
+                type="date"
+                value={studentForm.dateOfBirth}
+                onChange={(e) => updateStudentForm("dateOfBirth", e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Education Level *</Label>
+              <Select
+                value={studentForm.educationLevel || undefined}
+                onValueChange={(v) => updateStudentForm("educationLevel", v)}
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Select level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high_school">High School</SelectItem>
+                  <SelectItem value="diploma">Diploma</SelectItem>
+                  <SelectItem value="undergraduate">Undergraduate</SelectItem>
+                  <SelectItem value="graduate">Graduate</SelectItem>
+                  <SelectItem value="postgraduate">Postgraduate</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="student-school">School / College *</Label>
+              <Input
+                id="student-school"
+                value={studentForm.schoolCollege}
+                onChange={(e) => updateStudentForm("schoolCollege", e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Year of Study *</Label>
+              <Select
+                value={studentForm.yearOfStudy || undefined}
+                onValueChange={(v) => updateStudentForm("yearOfStudy", v)}
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Select year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Year 1</SelectItem>
+                  <SelectItem value="2">Year 2</SelectItem>
+                  <SelectItem value="3">Year 3</SelectItem>
+                  <SelectItem value="4">Year 4</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="student-username">Username *</Label>
+              <Input
+                id="student-username"
+                name="student_username_new"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={studentForm.username}
+                onChange={(e) => updateStudentForm("username", e.target.value)}
+                className="rounded-xl"
+                placeholder="Choose a username"
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="student-password">Password *</Label>
+              <div className="relative">
+                <Input
+                  id="student-password"
+                  name="student_password_new"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={studentForm.password}
+                  onChange={(e) => updateStudentForm("password", e.target.value)}
+                  className="rounded-xl pr-10"
+                  placeholder="At least 6 characters"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#718096] hover:text-[#2D3748]"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => setIsAddDialogOpen(false)}
+              disabled={createStudentMutation.isPending}
+              className="flex-1 rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateStudent}
+              disabled={createStudentMutation.isPending}
+              className="flex-1 gap-2 rounded-xl"
+            >
+              {createStudentMutation.isPending ? (
+                "Creating..."
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Create Student
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Enhanced Dialogs */}
       <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
         <DialogContent className="backdrop-blur-sm bg-white/95 border border-white/20 shadow-2xl rounded-3xl max-w-md">
@@ -384,13 +686,11 @@ export default function AdminStudents() {
                   <SelectValue placeholder="Choose a course..." />
                 </SelectTrigger>
                 <SelectContent className="backdrop-blur-sm bg-white/95 border border-white/20 rounded-2xl">
-                  {(courses as any[])
-                    .filter((course) => course.isEnrollmentRequired)
-                    .map((course) => (
-                      <SelectItem key={course.id} value={course.id.toString()} className="rounded-lg">
-                        {course.title}
-                      </SelectItem>
-                    ))}
+                  {(courses as any[]).map((course) => (
+                    <SelectItem key={course.id} value={course.id.toString()} className="rounded-lg">
+                      {course.title}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -445,7 +745,7 @@ export default function AdminStudents() {
           
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
             <div className="flex items-start space-x-3">
-              <Shield className="h-5 w-5 text-amber-600 mt-0.5" />
+              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
               <div className="text-sm text-amber-800">
                 <p className="font-medium">Warning: This will permanently delete:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1">
