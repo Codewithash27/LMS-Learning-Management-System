@@ -135,7 +135,7 @@ export default function UpcomingExams({
             className="w-full"
           >
             <Button 
-              className="w-full py-3 bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-bold rounded-xl hover:shadow-xl transition-all duration-300 group border-0"
+              className="w-full py-3 bg-accent-brand text-white text-sm font-bold rounded-xl hover:shadow-xl transition-all duration-300 group border-0"
               onClick={onScheduleExam}
             >
               <Plus className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />

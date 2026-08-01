@@ -31,7 +31,7 @@ export default function RecentActivities({ activities, className }: RecentActivi
     switch (type) {
       case 'new-course':
         return {
-          bg: 'bg-gradient-to-br from-blue-500 to-purple-600',
+          bg: 'bg-accent-brand',
           icon: <Edit className="h-4 w-4 text-white" />,
           pulse: 'bg-blue-100'
         };

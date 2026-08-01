@@ -1,229 +1,460 @@
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useSidebar } from "@/hooks/use-sidebar";
 import {
   BookOpen,
-  LayoutDashboard,
-  ClipboardList,
-  Users,
-  BarChart2,
   BookOpenCheck,
-  CalendarClock,
-  PieChart,
-  LogOut,
-  User as UserIcon,
   Bot,
-  UsersRound,
-  GraduationCap,
+  BarChart2,
+  ChevronDown,
+  ChevronRight,
+  LayoutDashboard,
+  Menu,
+  Search,
+  User as UserIcon,
+  Users,
   X,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
+import { colorTokens } from "@/tokens/colors";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-type SidebarLinkProps = {
-  href: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  isActive?: boolean;
-  isCollapsed?: boolean;
-  onNavigate?: () => void;
+const DRAWER_WIDTH = 280;
+const COLLAPSED_DRAWER_WIDTH = 88;
+
+type NavChild = { id: string; label: string; href: string };
+type NavItem = {
+  id: string;
+  label: string;
+  href?: string;
+  icon: ReactNode;
+  color: string;
+  children?: NavChild[];
 };
 
-const SidebarLink = ({ href, icon, children, isActive, isCollapsed, onNavigate }: SidebarLinkProps) => {
-  return (
-    <Link href={href} onClick={onNavigate}>
-      <div
-        className={cn(
-          "relative flex items-center gap-3 mx-3 mb-0.5 rounded-xl px-3 py-2.5 text-sm font-medium cursor-pointer transition-colors",
-          isActive
-            ? "bg-blue-50 text-blue-700"
-            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
-          isCollapsed && "justify-center px-2"
-        )}
-      >
-        {isActive && (
-          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-gradient-to-b from-blue-500 to-purple-600" />
-        )}
-        <span className={cn("shrink-0", isActive ? "text-blue-600" : "text-gray-500")}>
-          {icon}
-        </span>
-        {!isCollapsed && <span className="truncate">{children}</span>}
-      </div>
-    </Link>
-  );
+type SidebarProps = {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 };
 
-const SectionLabel = ({ children, isCollapsed }: { children: string; isCollapsed: boolean }) => {
-  if (isCollapsed) return <div className="h-3" />;
-  return (
-    <p className="px-6 pt-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-      {children}
-    </p>
-  );
-};
+function pathMatches(location: string, href: string) {
+  if (href === "/admin/dashboard" || href === "/student/dashboard") {
+    return location === href || location === "/";
+  }
+  return location === href || location.startsWith(href + "/");
+}
 
-export default function Sidebar() {
+export default function Sidebar({
+  mobileOpen = false,
+  onMobileClose,
+  collapsed = false,
+  onToggleCollapse,
+}: SidebarProps) {
   const [location] = useLocation();
-  const { user, logoutMutation } = useAuth();
+  const { user } = useAuth();
   const isMobile = useIsMobile();
-  const { sidebarOpen, closeSidebar } = useSidebar();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+  const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+
+  const menuItems: NavItem[] = useMemo(() => {
+    if (isAdmin) {
+      return [
+        {
+          id: "dashboard",
+          label: "Dashboard",
+          href: "/admin/dashboard",
+          icon: <LayoutDashboard className="h-5 w-5" />,
+          color: colorTokens.menuColors.dashboard,
+        },
+        {
+          id: "academics",
+          label: "Academics",
+          icon: <BookOpen className="h-5 w-5" />,
+          color: colorTokens.menuColors.academics,
+          children: [
+            { id: "courses", label: "Courses", href: "/admin/courses" },
+            { id: "exams", label: "Exams", href: "/admin/exams" },
+            { id: "grading", label: "Grading", href: "/admin/grading" },
+          ],
+        },
+        {
+          id: "students",
+          label: "Students",
+          icon: <Users className="h-5 w-5" />,
+          color: colorTokens.menuColors.students,
+          children: [
+            { id: "students-list", label: "All Students", href: "/admin/students" },
+            { id: "batches", label: "Batches", href: "/admin/batches" },
+          ],
+        },
+        {
+          id: "reports",
+          label: "Reports",
+          href: "/admin/reports",
+          icon: <BarChart2 className="h-5 w-5" />,
+          color: colorTokens.menuColors.finance,
+        },
+        {
+          id: "profile",
+          label: "Profile",
+          href: "/admin/profile",
+          icon: <UserIcon className="h-5 w-5" />,
+          color: colorTokens.menuColors.settings,
+        },
+      ];
+    }
+
+    return [
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        href: "/student/dashboard",
+        icon: <LayoutDashboard className="h-5 w-5" />,
+        color: colorTokens.menuColors.dashboard,
+      },
+      {
+        id: "learning",
+        label: "Learning",
+        icon: <BookOpenCheck className="h-5 w-5" />,
+        color: colorTokens.menuColors.academics,
+        children: [
+          { id: "my-courses", label: "My Courses", href: "/student/my-courses" },
+          { id: "upcoming", label: "Upcoming Exams", href: "/student/upcoming-exams" },
+          { id: "results", label: "Results & Progress", href: "/student/results" },
+        ],
+      },
+      {
+        id: "ai",
+        label: "AI Assistant",
+        href: "/student/ai-assistant",
+        icon: <Bot className="h-5 w-5" />,
+        color: colorTokens.menuColors.staff,
+      },
+      {
+        id: "profile",
+        label: "My Profile",
+        href: "/student/profile",
+        icon: <UserIcon className="h-5 w-5" />,
+        color: colorTokens.menuColors.settings,
+      },
+    ];
+  }, [isAdmin]);
+
+  useEffect(() => {
+    const next: Record<string, boolean> = {};
+    menuItems.forEach((item) => {
+      if (
+        (item.href && pathMatches(location, item.href)) ||
+        item.children?.some((c) => pathMatches(location, c.href))
+      ) {
+        next[item.id] = true;
+      }
+    });
+    setExpandedSections(next);
+  }, [menuItems, location]);
+
+  const filteredItems = useMemo(() => {
+    if (!searchTerm.trim()) return menuItems;
+    const term = searchTerm.toLowerCase();
+    return menuItems.filter(
+      (item) =>
+        item.label.toLowerCase().includes(term) ||
+        item.children?.some((c) => c.label.toLowerCase().includes(term))
+    );
+  }, [menuItems, searchTerm]);
 
   if (!user) return null;
 
-  const isAdmin = user.role === "admin" || user.role === "superadmin";
-  const isCollapsed = !isMobile && !sidebarOpen;
-  const showDrawer = isMobile ? sidebarOpen : true;
-  const isLoggingOut = logoutMutation.isPending;
-
-  const handleNavigate = () => {
-    if (isMobile) closeSidebar();
+  const toggleSection = (id: string) => {
+    setExpandedSections((prev) => {
+      const wasOpen = prev[id];
+      const next: Record<string, boolean> = {};
+      Object.keys(prev).forEach((key) => {
+        next[key] = false;
+      });
+      if (!wasOpen) next[id] = true;
+      return next;
+    });
   };
 
-  const pathStarts = (prefix: string) =>
-    location === prefix || location.startsWith(prefix + "/");
+  /** Only close the temporary mobile drawer — never collapse the desktop sidebar. */
+  const handleNavigate = () => {
+    if (isMobile) {
+      onMobileClose?.();
+    }
+  };
 
-  const shellClass = cn(
-    "sidebar flex flex-col bg-white/95 backdrop-blur-xl border-r border-gray-200/80 shadow-sm",
-    isCollapsed ? "w-20" : "w-80"
+  const initials = `${user.firstName?.charAt(0) || ""}${user.lastName?.charAt(0) || ""}`.toUpperCase();
+
+  const renderItemInner = (item: NavItem, isActive: boolean, hasChildren: boolean, isExpanded: boolean) => (
+    <>
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center transition-all duration-300",
+          isActive
+            ? "opacity-100 grayscale-0"
+            : "opacity-60 grayscale group-hover:opacity-100 group-hover:grayscale-0 group-hover:scale-110"
+        )}
+        style={{ color: isActive ? item.color : undefined }}
+      >
+        {item.icon}
+      </span>
+      {!collapsed && (
+        <>
+          <span className={cn("flex-1 truncate text-[15px]", isActive ? "font-extrabold" : "font-semibold")}>
+            {item.label}
+          </span>
+          {hasChildren && (
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 transition-transform duration-300",
+                isExpanded ? "rotate-0" : "-rotate-90"
+              )}
+              style={{ color: `${colorTokens.sidebar.text.secondary}8C` }}
+            />
+          )}
+        </>
+      )}
+    </>
   );
 
+  const itemClass = (active: boolean, color: string) =>
+    cn(
+      "group relative flex w-full items-center gap-2 rounded-[20px] mx-1 my-0.5 text-left transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:translate-x-1",
+      collapsed ? "justify-center px-1 py-2.5" : "px-2.5 py-2.5",
+      active ? "font-extrabold" : "font-semibold"
+    );
+
+  const itemStyle = (active: boolean, color: string): React.CSSProperties => ({
+    backgroundColor: active ? `${color}1F` : "transparent",
+    color: active ? color : colorTokens.sidebar.text.secondary,
+    borderLeft: active ? `6px solid ${color}` : "6px solid transparent",
+  });
+
   const navContent = (
-    <>
-      {/* Brand */}
-      <div className={cn("shrink-0 border-b border-gray-100", isCollapsed ? "p-3" : "px-5 py-4")}>
-        <div className="flex items-center gap-3">
-          <div className="shrink-0 p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-md shadow-blue-500/20">
-            <BookOpen className="h-5 w-5 text-white" />
-          </div>
-          {!isCollapsed && (
-            <div className="min-w-0 flex-1">
-              <h1 className="text-base font-bold text-gray-900 truncate">Edu Transform</h1>
-              <p className="text-xs text-gray-500 truncate">Aadi Technology</p>
+    <div
+      className="flex h-full flex-col overflow-hidden border-r shadow-[4px_0_24px_rgba(0,0,0,0.04)] bg-sidebar-warm"
+      style={{ borderColor: colorTokens.sidebar.border, color: colorTokens.sidebar.text.primary }}
+    >
+      <div
+        className="mb-2 flex items-center justify-between px-4 py-5 text-white shadow-[0_8px_20px_rgba(78,205,196,0.25)]"
+        style={{
+          background: `linear-gradient(135deg, ${colorTokens.preschool.turquoise.main} 0%, ${colorTokens.primary.main} 100%)`,
+          borderRadius: "0 0 40px 40px",
+        }}
+      >
+        {!collapsed && (
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white p-1.5 shadow-md">
+              <BookOpen className="h-5 w-5 text-brand-turquoise" />
             </div>
-          )}
-          {isMobile && (
+            <div className="min-w-0">
+              <p className="truncate text-base font-black text-white">Edu Transform</p>
+              <p className="truncate text-xs font-medium text-white/80">Aadi Technology</p>
+            </div>
+          </div>
+        )}
+        <div className={cn("flex items-center gap-1", collapsed && "mx-auto")}>
+          {isMobile ? (
             <button
-              onClick={closeSidebar}
-              className="ml-auto p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+              type="button"
+              onClick={onMobileClose}
+              className="rounded-full bg-white/20 p-2 text-white hover:bg-white/30"
               aria-label="Close sidebar"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="rounded-full bg-white/20 p-2 text-white shadow-sm hover:bg-white/30"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? (
+                <Menu className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4 rotate-180" />
+              )}
             </button>
           )}
         </div>
       </div>
 
-      {/* Nav — scrolls; footer never overlaps */}
-      <nav className="flex-1 overflow-y-auto py-2 min-h-0">
-        {isAdmin ? (
-          <>
-            <SectionLabel isCollapsed={isCollapsed}>Management</SectionLabel>
-            <SidebarLink href="/admin/dashboard" icon={<LayoutDashboard className="h-5 w-5" />} isActive={location === "/admin/dashboard" || location === "/"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Dashboard</SidebarLink>
-            <SidebarLink href="/admin/courses" icon={<BookOpen className="h-5 w-5" />} isActive={pathStarts("/admin/courses")} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Courses</SidebarLink>
-            <SidebarLink href="/admin/exams" icon={<ClipboardList className="h-5 w-5" />} isActive={location === "/admin/exams"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Exams</SidebarLink>
-            <SidebarLink href="/admin/grading" icon={<GraduationCap className="h-5 w-5" />} isActive={location === "/admin/grading"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Grading</SidebarLink>
-            <SidebarLink href="/admin/students" icon={<Users className="h-5 w-5" />} isActive={pathStarts("/admin/students")} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Students</SidebarLink>
-            <SidebarLink href="/admin/batches" icon={<UsersRound className="h-5 w-5" />} isActive={pathStarts("/admin/batches")} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Batches</SidebarLink>
-            <SidebarLink href="/admin/reports" icon={<BarChart2 className="h-5 w-5" />} isActive={location === "/admin/reports"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Reports</SidebarLink>
+      {!collapsed && (
+        <div className="px-4 pb-3">
+          <div
+            className="flex items-center gap-2 rounded-[15px] border bg-white/80 px-3 py-1.5 transition-all focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(78,205,196,0.1)]"
+            style={{ borderColor: `${colorTokens.preschool.turquoise.main}33` }}
+          >
+            <Search
+              className="h-4 w-4 shrink-0"
+              style={{ color: `${colorTokens.preschool.turquoise.main}99` }}
+            />
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Quick Search..."
+              className="w-full bg-transparent text-[15px] font-medium outline-none placeholder:text-muted-foreground"
+              style={{ color: colorTokens.sidebar.text.primary }}
+            />
+          </div>
+        </div>
+      )}
 
-            <SectionLabel isCollapsed={isCollapsed}>Account</SectionLabel>
-            <SidebarLink href="/admin/profile" icon={<UserIcon className="h-5 w-5" />} isActive={location === "/admin/profile"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Profile</SidebarLink>
-          </>
-        ) : (
-          <>
-            <SectionLabel isCollapsed={isCollapsed}>Learning</SectionLabel>
-            <SidebarLink href="/student/dashboard" icon={<LayoutDashboard className="h-5 w-5" />} isActive={location === "/student/dashboard" || location === "/"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Dashboard</SidebarLink>
-            <SidebarLink href="/student/my-courses" icon={<BookOpenCheck className="h-5 w-5" />} isActive={pathStarts("/student/my-courses")} isCollapsed={isCollapsed} onNavigate={handleNavigate}>My Courses</SidebarLink>
-            <SidebarLink href="/student/upcoming-exams" icon={<CalendarClock className="h-5 w-5" />} isActive={location === "/student/upcoming-exams"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Upcoming Exams</SidebarLink>
-            <SidebarLink href="/student/results" icon={<PieChart className="h-5 w-5" />} isActive={location === "/student/results"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>Results & Progress</SidebarLink>
-            <SidebarLink href="/student/ai-assistant" icon={<Bot className="h-5 w-5" />} isActive={location === "/student/ai-assistant"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>AI Assistant</SidebarLink>
+      <nav className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-1 py-1">
+        <TooltipProvider delayDuration={0}>
+          {filteredItems.map((item) => {
+            const hasChildren = !!item.children?.length;
+            const childActive = item.children?.some((c) => pathMatches(location, c.href)) ?? false;
+            const selfActive = item.href ? pathMatches(location, item.href) : false;
+            const isActive = selfActive || childActive;
+            const isExpanded = !!expandedSections[item.id];
 
-            <SectionLabel isCollapsed={isCollapsed}>Account</SectionLabel>
-            <SidebarLink href="/student/profile" icon={<UserIcon className="h-5 w-5" />} isActive={location === "/student/profile"} isCollapsed={isCollapsed} onNavigate={handleNavigate}>My Profile</SidebarLink>
-          </>
-        )}
+            const rowContent = renderItemInner(item, isActive, hasChildren, isExpanded);
+
+            const row =
+              item.href && !hasChildren ? (
+                <Link href={item.href} onClick={handleNavigate}>
+                  <div
+                    className={itemClass(isActive, item.color)}
+                    style={itemStyle(isActive, item.color)}
+                  >
+                    {rowContent}
+                  </div>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className={itemClass(isActive, item.color)}
+                  style={itemStyle(isActive, item.color)}
+                  onClick={() => {
+                    if (hasChildren) {
+                      if (collapsed) onToggleCollapse?.();
+                      toggleSection(item.id);
+                    }
+                  }}
+                >
+                  {rowContent}
+                </button>
+              );
+
+            return (
+              <div key={item.id} className="mb-0.5">
+                {collapsed ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>{row}</div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{item.label}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  row
+                )}
+
+                {hasChildren && isExpanded && !collapsed && (
+                  <div className="pb-1">
+                    {item.children!.map((child) => {
+                      const childIsActive = pathMatches(location, child.href);
+                      return (
+                        <Link key={child.id} href={child.href} onClick={handleNavigate}>
+                          <div
+                            className={cn(
+                              "mx-4 ml-[58px] my-0.5 cursor-pointer rounded-[15px] px-4 py-2.5 text-[14px] transition-all duration-200",
+                              childIsActive
+                                ? "bg-brand-blue/10 font-bold text-brand-blue"
+                                : "font-medium text-[color:#718096] hover:bg-brand-blue/5 hover:text-[color:#2D3748]"
+                            )}
+                          >
+                            {child.label}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </TooltipProvider>
       </nav>
 
-      {/* Footer — always visible, never covers links */}
-      <div className={cn("shrink-0 border-t border-gray-100", isCollapsed ? "p-2" : "p-4")}>
-        <div className={cn("flex items-center gap-3 mb-3", isCollapsed && "justify-center mb-2")}>
-          <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
-            {user.firstName?.charAt(0)}
-            {user.lastName?.charAt(0)}
-          </div>
-          {!isCollapsed && (
+      <div
+        className={cn(
+          "mx-4 mb-6 mt-auto rounded-[24px] border bg-white shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_15px_35px_rgba(0,0,0,0.08)]",
+          collapsed ? "p-2" : "px-4 py-3"
+        )}
+        style={{ borderColor: `${colorTokens.sidebar.text.muted}1A` }}
+      >
+        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+          <Avatar
+            className={cn(
+              "border-[3px] border-white shadow-[0_8px_20px_rgba(78,205,196,0.15)]",
+              collapsed ? "h-11 w-11" : "h-[46px] w-[46px]"
+            )}
+          >
+            {user.profilePhoto ? <AvatarImage src={user.profilePhoto} alt="" /> : null}
+            <AvatarFallback className="bg-brand-turquoise text-base font-black text-white">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-gray-900 truncate">
+              <p
+                className="truncate text-[15px] font-black leading-tight"
+                style={{ color: colorTokens.sidebar.text.primary }}
+              >
                 {user.firstName} {user.lastName}
               </p>
-              <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+              <p
+                className="mt-0.5 text-xs font-bold uppercase tracking-wide"
+                style={{ color: colorTokens.sidebar.text.secondary }}
+              >
+                {user.role}
+              </p>
             </div>
           )}
         </div>
-
-        <button
-          onClick={() => logoutMutation.mutate()}
-          disabled={isLoggingOut}
-          className={cn(
-            "w-full flex items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors",
-            isCollapsed ? "p-2.5" : "px-3 py-2.5",
-            isLoggingOut
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-gray-50 text-gray-600 hover:bg-red-50 hover:text-red-600 border border-gray-100"
-          )}
-        >
-          {isLoggingOut ? (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent border-blue-500" />
-          ) : (
-            <>
-              <LogOut className="h-4 w-4" />
-              {!isCollapsed && <span>Sign Out</span>}
-            </>
-          )}
-        </button>
-
-        {!isCollapsed && (
-          <p className="mt-2 text-center text-[10px] text-gray-400">
-            by <span className="font-medium text-gray-500">Aman Hukkerikar</span>
-          </p>
-        )}
       </div>
-    </>
+    </div>
   );
 
   if (isMobile) {
     return (
-      <AnimatePresence>
-        {showDrawer && (
-          <>
-            <motion.div
-              key="sidebar-backdrop"
-              className="fixed inset-0 z-40 bg-black/40"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={closeSidebar}
-            />
-            <motion.div
-              key="sidebar-drawer"
-              className={cn(shellClass, "fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] h-screen")}
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 320, damping: 32 }}
-            >
-              {navContent}
-            </motion.div>
-          </>
+      <>
+        {mobileOpen && (
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={onMobileClose} aria-hidden />
         )}
-      </AnimatePresence>
+        <aside
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 h-screen transition-transform duration-300 ease-out",
+            mobileOpen ? "translate-x-0" : "-translate-x-full"
+          )}
+          style={{ width: DRAWER_WIDTH }}
+        >
+          {navContent}
+        </aside>
+      </>
     );
   }
 
   return (
-    <div className={cn(shellClass, "fixed top-0 left-0 z-50 h-screen")}>
+    <aside
+      className="h-screen shrink-0 transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+      style={{ width: collapsed ? COLLAPSED_DRAWER_WIDTH : DRAWER_WIDTH }}
+    >
       {navContent}
-    </div>
+    </aside>
   );
 }

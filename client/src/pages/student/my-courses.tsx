@@ -180,7 +180,7 @@ export default function StudentMyCourses() {
                   
                   return (
                     <Card key={course.id} className="overflow-hidden backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
-                      <div className="h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 relative flex items-center justify-center">
+                      <div className="h-32 bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10 relative flex items-center justify-center">
                         <BookOpen className="h-12 w-12 text-blue-500/60" />
                         <div className="absolute top-3 right-3">
                           <Badge className="bg-green-100 text-green-800">

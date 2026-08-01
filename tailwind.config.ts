@@ -9,6 +9,11 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        card: "var(--radius-card)",
+        "3xl": "1.5rem",
+      },
+      boxShadow: {
+        "card-soft": "0 10px 30px rgba(0, 0, 0, 0.03)",
       },
       colors: {
         background: "hsl(var(--background))",
@@ -44,6 +49,25 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        brand: {
+          blue: "#1976d2",
+          turquoise: "#4ECDC4",
+          coral: "#FF6B6B",
+          lavender: "#9F7AEA",
+          peach: "#F6AD55",
+          mint: "#48BB78",
+          sunshine: "#FFE66D",
+        },
+        cream: {
+          DEFAULT: "#FFF9F0",
+          subtle: "#FFF5E6",
+          muted: "#FFE8CC",
+        },
+        warm: {
+          border: "#F4E4D7",
+          "border-subtle": "#FAF0E6",
+          "border-strong": "#E8D5C4",
+        },
         chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",
@@ -64,31 +88,31 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      width: {
+        drawer: "var(--drawer-width)",
+        "drawer-collapsed": "var(--drawer-width-collapsed)",
+      },
+      spacing: {
+        drawer: "var(--drawer-width)",
+        "drawer-collapsed": "var(--drawer-width-collapsed)",
+      },
     },
   },
   plugins: [
-    require("tailwindcss-animate"), 
-    require("@tailwindcss/typography"), 
-    require("@tailwindcss/aspect-ratio")
+    require("tailwindcss-animate"),
+    require("@tailwindcss/typography"),
+    require("@tailwindcss/aspect-ratio"),
   ],
 } satisfies Config;

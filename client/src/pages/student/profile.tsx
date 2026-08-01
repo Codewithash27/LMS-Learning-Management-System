@@ -146,7 +146,7 @@ export default function StudentProfile() {
                 <div className="relative">
                   <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
                     <AvatarImage src={(user as any).profileImage} alt={`${user.firstName} ${user.lastName}`} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-2xl font-bold">
+                    <AvatarFallback className="bg-accent-brand text-white text-2xl font-bold">
                       {user.firstName?.[0]?.toUpperCase()}{user.lastName?.[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -183,7 +183,7 @@ export default function StudentProfile() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                     <div className="flex items-center gap-3 text-sm">
-                      <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10">
                         <Mail className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
@@ -193,7 +193,7 @@ export default function StudentProfile() {
                     </div>
                     
                     <div className="flex items-center gap-3 text-sm">
-                      <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10">
                         <BookOpen className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
@@ -203,7 +203,7 @@ export default function StudentProfile() {
                     </div>
                     
                     <div className="flex items-center gap-3 text-sm">
-                      <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10">
                         <GraduationCap className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
@@ -219,13 +219,13 @@ export default function StudentProfile() {
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
+          <Card className="bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10 backdrop-blur-sm border border-white/20 shadow-lg">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
                 <p className="text-sm text-muted-foreground">Courses</p>
                 <h3 className="text-2xl font-semibold">{(enrollments as any[]).length}</h3>
               </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
+              <div className="p-3 rounded-2xl bg-accent-brand shadow-lg">
                 <BookOpen className="h-6 w-6 text-white" />
               </div>
             </CardContent>

@@ -1,41 +1,31 @@
-import { useState } from "react";
-import { Link } from "wouter";
+import { useState, useEffect } from "react";
 import Header from "@/components/layout/header";
+import ListToolbar from "@/components/layout/list-toolbar";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import CourseEditor from "@/components/courses/course-editor";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Edit,
+  Trash2,
   MoreVertical,
   BookOpen,
-  Clock,
   Users,
-  BarChart3,
-  PlayCircle,
-  Image as ImageIcon,
-  Sparkles,
-  CheckCircle,
-  Calendar,
   Eye,
-  BarChart,
-  GraduationCap,
-  Target,
-  TrendingUp
+  LayoutGrid,
+  List,
+  Clock,
+  UserPlus,
+  CheckCircle2,
 } from "lucide-react";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -46,7 +36,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -55,33 +45,74 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { motion, AnimatePresence } from "framer-motion";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import DataTable from "@/components/primitives/DataTable";
+import { useClientPagination } from "@/hooks/use-client-pagination";
+import { TableCell, TableRow } from "@/components/ui/table";
 
 export default function AdminCourses() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [view, setView] = useState<"grid" | "table">("grid");
+  const [view, setView] = useState<"grid" | "list">("list");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
+  const [initialEnrolledIds, setInitialEnrolledIds] = useState<number[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const { toast } = useToast();
-  
-  // Fetch courses
+
   const { data: courses = [] as any[], isLoading: isLoadingCourses } = useQuery<any[]>({
     queryKey: ["/api/courses"],
   });
-  
-  // Delete course mutation
+
+  const { data: allUsers = [] } = useQuery<any[]>({
+    queryKey: ["/api/users"],
+  });
+
+  const students = allUsers.filter((u) => u.role === "student");
+
+  const courseIdsKey = courses.map((c) => c.id).join(",");
+
+  const { data: enrollmentCounts = {} } = useQuery<Record<number, number>>({
+    queryKey: ["/api/enrollments/counts", courseIdsKey],
+    enabled: courses.length > 0,
+    queryFn: async () => {
+      const pairs = await Promise.all(
+        courses.map(async (course) => {
+          try {
+            const res = await apiRequest("GET", `/api/enrollments/course/${course.id}`);
+            const list = await res.json();
+            return [course.id, Array.isArray(list) ? list.length : 0] as const;
+          } catch {
+            return [course.id, 0] as const;
+          }
+        })
+      );
+      return Object.fromEntries(pairs);
+    },
+  });
+
+  const { data: courseEnrollments = [], isLoading: isLoadingEnrollments } = useQuery<any[]>({
+    queryKey: ["/api/enrollments/course", selectedCourse?.id],
+    queryFn: async () => {
+      if (!selectedCourse?.id) return [];
+      const res = await apiRequest("GET", `/api/enrollments/course/${selectedCourse.id}`);
+      return res.json();
+    },
+    enabled: isAssignDialogOpen && !!selectedCourse?.id,
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (courseId: number) => {
       await apiRequest("DELETE", `/api/courses/${courseId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ["/api/courses"]});
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
       toast({
-        title: "🎉 Course deleted successfully",
+        title: "Course deleted",
         description: `${selectedCourse?.title} has been deleted`,
       });
       setIsDeleteDialogOpen(false);
@@ -92,16 +123,59 @@ export default function AdminCourses() {
         description: error.message || "There was an error deleting the course",
         variant: "destructive",
       });
-    }
+    },
   });
-  
-  // Handle opening the course editor for creation
+
+  const assignMutation = useMutation({
+    mutationFn: async ({
+      courseId,
+      toAdd,
+      toRemove,
+    }: {
+      courseId: number;
+      toAdd: number[];
+      toRemove: number[];
+    }) => {
+      for (const userId of toAdd) {
+        await apiRequest("POST", "/api/enrollments/assign", { userId, courseId });
+      }
+      for (const userId of toRemove) {
+        await apiRequest("DELETE", "/api/enrollments/assign", { userId, courseId });
+      }
+    },
+    onSuccess: (_data, vars) => {
+      toast({
+        title: "Enrollments updated",
+        description: `${selectedCourse?.title}: ${vars.toAdd.length} added, ${vars.toRemove.length} removed`,
+      });
+      setIsAssignDialogOpen(false);
+      setSelectedStudentIds([]);
+      setInitialEnrolledIds([]);
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments/course"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments/counts"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update enrollments",
+        description: error.message || "There was an error updating enrollments",
+        variant: "destructive",
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (!isAssignDialogOpen || isLoadingEnrollments) return;
+    const enrolledIds = courseEnrollments.map((e: any) => e.userId);
+    setInitialEnrolledIds(enrolledIds);
+    setSelectedStudentIds(enrolledIds);
+  }, [isAssignDialogOpen, isLoadingEnrollments, courseEnrollments]);
+
   const handleCreateCourse = () => {
     setSelectedCourse(null);
     setIsEditorOpen(true);
   };
-  
-  // Handle opening the course editor for editing
+
   const handleEditCourse = async (course: any) => {
     if (!course?.id) {
       toast({
@@ -111,14 +185,13 @@ export default function AdminCourses() {
       });
       return;
     }
-    
+
     try {
       const response = await apiRequest("GET", `/api/courses/${course.id}`);
       const fullCourseData = await response.json();
       setSelectedCourse(fullCourseData);
       setIsEditorOpen(true);
-    } catch (error) {
-      console.error("Error fetching course details:", error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch course details. Please try again.",
@@ -126,611 +199,599 @@ export default function AdminCourses() {
       });
     }
   };
-  
-  // Handle opening the delete confirmation dialog
+
   const handleDeleteCourse = (course: any) => {
     setSelectedCourse(course);
     setIsDeleteDialogOpen(true);
   };
-  
-  // Confirm deletion
+
+  const openAssignDialog = (course: any) => {
+    setSelectedCourse(course);
+    setSelectedStudentIds([]);
+    setInitialEnrolledIds([]);
+    setIsAssignDialogOpen(true);
+  };
+
+  const toggleStudent = (studentId: number, checked: boolean) => {
+    setSelectedStudentIds((prev) =>
+      checked ? [...prev, studentId] : prev.filter((id) => id !== studentId)
+    );
+  };
+
+  const handleAssignStudent = () => {
+    if (!selectedCourse?.id) return;
+    const toAdd = selectedStudentIds.filter((id) => !initialEnrolledIds.includes(id));
+    const toRemove = initialEnrolledIds.filter((id) => !selectedStudentIds.includes(id));
+    if (toAdd.length === 0 && toRemove.length === 0) {
+      toast({
+        title: "No changes",
+        description: "Enrollment selection is unchanged.",
+      });
+      return;
+    }
+    assignMutation.mutate({
+      courseId: selectedCourse.id,
+      toAdd,
+      toRemove,
+    });
+  };
+
+  const getEnrollmentCount = (course: any) =>
+    enrollmentCounts[course.id] ??
+    course.enrollmentCount ??
+    course.enrollments?.length ??
+    0;
+
   const confirmDeleteCourse = () => {
     if (selectedCourse?.id) {
       deleteMutation.mutate(selectedCourse.id);
-    } else {
-      toast({
-        title: "Error",
-        description: "Invalid course data. Cannot delete.",
-        variant: "destructive",
-      });
     }
   };
-  
-  // Filter courses based on search term and filters
+
   const filteredCourses = courses.filter((course: any) => {
-    const matchesSearch = 
+    const matchesSearch =
       (course.title?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (course.description?.toLowerCase() || "").includes(searchTerm.toLowerCase());
-    
     const matchesStatus = statusFilter === "all" || course.status === statusFilter;
     const matchesLevel = levelFilter === "all" || course.difficulty === levelFilter;
-    
     return matchesSearch && matchesStatus && matchesLevel;
   });
-  
-  // Get course statistics
-  const courseStats = {
-    total: courses.length,
-    active: courses.filter((c: any) => c.status === 'active' || !c.status).length,
-    upcoming: courses.filter((c: any) => c.status === 'upcoming').length,
-    completed: courses.filter((c: any) => c.status === 'completed').length,
-  };
 
-  // Helper function to get badge color based on difficulty
+  const {
+    page,
+    pageSize,
+    total,
+    pageItems,
+    setPage,
+    setPageSize,
+  } = useClientPagination(filteredCourses, 10);
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty?.toLowerCase()) {
-      case 'beginner':
-        return 'bg-green-100 text-green-800 border border-green-200';
-      case 'intermediate':
-        return 'bg-blue-100 text-blue-800 border border-blue-200';
-      case 'advanced':
-        return 'bg-purple-100 text-purple-800 border border-purple-200';
-      case 'expert':
-        return 'bg-red-100 text-red-800 border border-red-200';
+      case "beginner":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "intermediate":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "advanced":
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      case "expert":
+        return "bg-red-100 text-red-800 border-red-200";
       default:
-        return 'bg-gray-100 text-gray-800 border border-gray-200';
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
-  // Calculate random progress for demo (replace with actual data)
-  const getRandomProgress = (courseId: number | undefined) => {
-    if (!courseId) return 0;
-    const progress = [87, 74, 65, 92, 51, 78, 83, 69];
-    return progress[courseId % progress.length];
+  const thumbSrc = (course: any) => {
+    if (!course.thumbnail) return null;
+    const t = course.thumbnail;
+    if (
+      typeof t === "string" &&
+      (t.startsWith("http") || t.startsWith("data:") || t.startsWith("/"))
+    ) {
+      return t;
+    }
+    return `/uploads/${t}`;
   };
 
-  // Get random student count for demo
-  const getRandomStudents = (courseId: number | undefined) => {
-    if (!courseId) return 0;
-    const students = [24, 18, 32, 15, 27, 21, 36, 29];
-    return students[courseId % students.length];
-  };
+  const CourseActionsMenu = ({ course }: { course: any }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="sm" variant="ghost" className="h-9 w-9 p-0">
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="rounded-xl">
+        <DropdownMenuItem className="gap-2" onClick={() => handleEditCourse(course)}>
+          <Edit className="h-4 w-4" /> Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem className="gap-2" onClick={() => openAssignDialog(course)}>
+          <UserPlus className="h-4 w-4" /> Assign to Student
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="gap-2"
+          onClick={() => {
+            window.location.href = `/admin/courses/${course.id}/progress`;
+          }}
+        >
+          <Eye className="h-4 w-4" /> Student Progress
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="gap-2 text-destructive focus:text-destructive"
+          onClick={() => handleDeleteCourse(course)}
+        >
+          <Trash2 className="h-4 w-4" /> Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <DashboardLayout>
-      <Header 
-        title="Courses" 
-        subtitle="Manage your courses and curriculum"
-      />
-      
-      {/* Statistics Cards */}
-      <motion.div 
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Courses</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{courseStats.total}</h3>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="flex items-center mt-4 text-sm text-green-600">
-              <Sparkles className="h-4 w-4 mr-1" />
-              <span>+3 new this month</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Courses</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{courseStats.active}</h3>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
-                <PlayCircle className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="flex items-center mt-4 text-sm text-gray-600">
-              <span>Most popular: Web Development</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Students</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">142</h3>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="flex items-center mt-4 text-sm text-green-600">
-              <span>+12 this week</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Avg Completion</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">76%</h3>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg">
-                <Target className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="flex items-center mt-4 text-sm text-gray-600">
-              <span>Trending: +5% this month</span>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-      
-      {/* Search and Controls */}
-      <motion.div 
-        className="mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-            <Input
-              placeholder="Search courses by title or description..."
-              className="pl-10 bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl focus:ring-2 focus:ring-blue-500/20"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <div className="flex gap-3">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-40 bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="upcoming">Upcoming</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={levelFilter} onValueChange={setLevelFilter}>
-              <SelectTrigger className="w-full sm:w-40 bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl">
-                <SelectValue placeholder="Level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                <SelectItem value="beginner">Beginner</SelectItem>
-                <SelectItem value="intermediate">Intermediate</SelectItem>
-                <SelectItem value="advanced">Advanced</SelectItem>
-                <SelectItem value="expert">Expert</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        
-        <div className="flex gap-3 w-full lg:w-auto">
-          <Button 
-            variant="outline" 
-            className="gap-2 bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl hover:shadow-lg transition-all duration-300"
-          >
-            <Filter size={16} />
-            Filter
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className={cn(
-              "gap-2 bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl hover:shadow-lg transition-all duration-300",
-              view === "grid" ? "bg-blue-50 border-blue-200" : ""
-            )}
-            onClick={() => setView("grid")}
-          >
-            <BarChart size={16} />
-            Grid
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className={cn(
-              "gap-2 bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl hover:shadow-lg transition-all duration-300",
-              view === "table" ? "bg-blue-50 border-blue-200" : ""
-            )}
-            onClick={() => setView("table")}
-          >
-            <Calendar size={16} />
-            Table
-          </Button>
-
-          {/* Create Course Button */}
-          <Button 
-            onClick={handleCreateCourse}
-            className="gap-2 bg-gradient-to-br from-blue-500 to-purple-600 text-white border-0 rounded-2xl hover:shadow-xl transition-all duration-300"
-          >
-            <Plus size={16} />
-            Create Course
-          </Button>
-        </div>
-      </motion.div>
-      
-      {/* Courses View */}
-      {isLoadingCourses ? (
-        <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-xl">
-          <CardContent className="p-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-6 bg-gray-200 rounded w-1/4"></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <Card key={i} className="border border-white/20">
-                    <div className="h-40 bg-gray-200 rounded-t-lg"></div>
-                    <CardContent className="pt-6">
-                      <div className="h-6 bg-gray-200 rounded mb-4"></div>
-                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded mb-2 w-2/3"></div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : filteredCourses.length === 0 ? (
-        <motion.div 
-          className="text-center py-16 backdrop-blur-sm bg-white/50 rounded-3xl border border-white/20 shadow-xl"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No courses found</h3>
-          <p className="text-gray-500 mb-6 max-w-md mx-auto">
-            {searchTerm ? "No courses match your search criteria. Try a different search term." : "Get started by creating your first course."}
-          </p>
-          <Button 
-            onClick={handleCreateCourse}
-            className="gap-2 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-2xl hover:shadow-xl"
-          >
-            <Plus className="h-4 w-4" />
-            Create First Course
-          </Button>
-        </motion.div>
-      ) : view === "grid" ? (
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <AnimatePresence>
-            {filteredCourses.map((course: any, index: number) => {
-              const progress = getRandomProgress(course.id);
-              const studentCount = getRandomStudents(course.id);
-              
-              return (
-                <motion.div
-                  key={course.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
+      <Header
+        title="Courses"
+        actions={
+          <ListToolbar
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder="Search courses..."
+            filters={
+              <>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-10 w-[130px] rounded-xl border-warm-border bg-white shadow-sm">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="upcoming">Upcoming</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={levelFilter} onValueChange={setLevelFilter}>
+                  <SelectTrigger className="h-10 w-[130px] rounded-xl border-warm-border bg-white shadow-sm">
+                    <SelectValue placeholder="Level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                    <SelectItem value="expert">Expert</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            }
+            extras={
+              <div className="inline-flex rounded-xl border border-warm-border bg-white p-0.5 shadow-sm">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className={cn(
+                    "h-9 w-9 rounded-lg p-0",
+                    view === "grid" && "bg-brand-turquoise/15 text-brand-turquoise"
+                  )}
+                  onClick={() => setView("grid")}
+                  aria-label="Grid view"
                 >
-                  <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group hover:scale-[1.02] overflow-hidden">
-                    {/* Course Header with Thumbnail */}
-                    <div className="h-40 relative flex items-center justify-center overflow-hidden">
-                      {course.thumbnail ? (
-                        <img 
-                          src={typeof course.thumbnail === 'string' && (course.thumbnail.startsWith("http") || course.thumbnail.startsWith("data:") || course.thumbnail.startsWith("/"))
-                            ? course.thumbnail 
-                            : `/uploads/${course.thumbnail}`} 
-                          alt={course.title || "Course thumbnail"}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-all duration-500">
-                          <BookOpen className="h-12 w-12 text-blue-600/60 group-hover:text-blue-600/80 transition-colors duration-300" />
-                        </div>
-                      )}
-                      
-                      <div className="absolute top-3 left-3">
-                        <Badge className={cn("px-3 py-1 rounded-full font-medium text-xs", getDifficultyColor(course.difficulty))}>
-                          {course.difficulty || 'All Levels'}
-                        </Badge>
-                      </div>
-                      
-                      <div className="absolute top-3 right-3">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-300">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rounded-2xl border border-white/20 shadow-xl backdrop-blur-sm bg-white/95">
-                            <DropdownMenuItem 
-                              onClick={() => handleEditCourse(course)}
-                              className="rounded-lg gap-2 hover:bg-purple-50 transition-colors"
-                            >
-                              <Edit className="h-4 w-4 text-purple-600" />
-                              <span className="font-medium">Edit Course</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="rounded-lg gap-2 hover:bg-blue-50 transition-colors">
-                              <Eye className="h-4 w-4 text-blue-600" />
-                              <span className="font-medium">View Details</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => window.location.href = `/admin/courses/${course.id}/progress`}
-                              className="rounded-lg gap-2 hover:bg-green-50 transition-colors"
-                            >
-                              <Users className="h-4 w-4 text-green-600" />
-                              <span className="font-medium">Student Progress</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-gray-200/50" />
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteCourse(course)}
-                              className="rounded-lg gap-2 hover:bg-red-50 text-red-600 focus:text-red-600 transition-colors"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="font-medium">Delete Course</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      
-                      {/* Progress overlay */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-4">
-                        <div className="flex justify-between items-center text-white">
-                          <span className="text-sm font-medium">Progress</span>
-                          <span className="text-sm font-bold">{progress}%</span>
-                        </div>
-                        <Progress value={progress} className="h-2 mt-2 bg-white/20 [&>div]:bg-gradient-to-r [&>div]:from-green-400 [&>div]:to-emerald-400" />
-                      </div>
-                    </div>
-                    
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <CardTitle className="font-heading text-lg line-clamp-2 leading-tight text-gray-900">
-                          {course.title}
-                        </CardTitle>
-                      </div>
-                      
-                      <p className="text-sm text-gray-600 line-clamp-3 mb-4 leading-relaxed">
-                        {course.description}
-                      </p>
-                      
-                      <div className="flex gap-2 flex-wrap mb-4">
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-medium">
-                          {course.category || 'General'}
-                        </Badge>
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                          {course.duration || '8'} weeks
-                        </Badge>
-                      </div>
-                      
-                      {/* Course Stats */}
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <Users className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium">{studentCount} students</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <TrendingUp className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium">{progress}% complete</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                    
-                    <CardFooter className="border-t border-white/20 pt-4 bg-gradient-to-r from-gray-50/50 to-gray-100/50">
-                      <div className="flex gap-2 w-full">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex-1 gap-1 bg-white/50 backdrop-blur-sm border border-white/20 rounded-xl hover:shadow-lg transition-all duration-300"
-                          onClick={() => handleEditCourse(course)}
-                        >
-                          <Edit className="h-4 w-4" />
-                          Edit
-                        </Button>
-                        <Button 
-                          size="sm"
-                          variant="outline" 
-                          className="flex-1 gap-1 bg-white/50 backdrop-blur-sm border border-white/20 rounded-xl hover:shadow-lg transition-all duration-300"
-                        >
-                          <Eye className="h-4 w-4" />
-                          View
-                        </Button>
-                      </div>
-                    </CardFooter>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </motion.div>
-      ) : (
-        // Table View
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className={cn(
+                    "h-9 w-9 rounded-lg p-0",
+                    view === "list" && "bg-brand-turquoise/15 text-brand-turquoise"
+                  )}
+                  onClick={() => setView("list")}
+                  aria-label="List view"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            }
+            action={
+              <Button
+                type="button"
+                onClick={handleCreateCourse}
+                className="h-11 w-11 shrink-0 rounded-xl p-0"
+                aria-label="Create course"
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+            }
+          />
+        }
+      />
+
+      {/* Content */}
+      {isLoadingCourses ? (
+        <div
+          className={cn(
+            view === "grid"
+              ? "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+              : "space-y-3"
+          )}
         >
-          <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/20 bg-gradient-to-r from-gray-50/50 to-gray-100/50">
-                    <th className="text-left p-4 font-semibold text-gray-900">Course</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Category</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Level</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Duration</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Students</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Progress</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Status</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCourses.map((course: any, index: number) => {
-                    const progress = getRandomProgress(course.id);
-                    const studentCount = getRandomStudents(course.id);
-                    
-                    return (
-                      <motion.tr 
-                        key={course.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
-                        className="border-b border-white/20 hover:bg-gray-50/50 transition-colors duration-200"
-                      >
-                        <td className="p-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                              {course.thumbnail ? (
-                                <img 
-                                  src={typeof course.thumbnail === 'string' && (course.thumbnail.startsWith("http") || course.thumbnail.startsWith("data:") || course.thumbnail.startsWith("/"))
-                                    ? course.thumbnail 
-                                    : `/uploads/${course.thumbnail}`} 
-                                  alt={course.title || "Course thumbnail"}
-                                  className="w-10 h-10 rounded-lg object-cover"
-                                />
-                              ) : (
-                                <BookOpen className="h-5 w-5 text-blue-600" />
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900">{course.title}</div>
-                              <div className="text-sm text-gray-500 line-clamp-1">{course.description}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            {course.category || 'General'}
-                          </Badge>
-                        </td>
-                        <td className="p-4">
-                          <Badge className={cn("px-2 py-1 text-xs", getDifficultyColor(course.difficulty))}>
-                            {course.difficulty || 'All Levels'}
-                          </Badge>
-                        </td>
-                        <td className="p-4 text-sm text-gray-600">
-                          {course.duration || '8'} weeks
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center space-x-2">
-                            <Users className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium">{studentCount}</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center space-x-3">
-                            <Progress value={progress} className="w-20 h-2 [&>div]:bg-gradient-to-r [&>div]:from-green-400 [&>div]:to-emerald-400" />
-                            <span className="text-sm font-medium text-gray-700">{progress}%</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <Badge className="bg-green-100 text-green-800 border border-green-200">
-                            {course.status === 'active' || !course.status ? 'Active' : course.status}
-                          </Badge>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 bg-white/50 backdrop-blur-sm border border-white/20 hover:shadow-lg transition-all duration-300"
-                              onClick={() => handleEditCourse(course)}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 bg-white/50 backdrop-blur-sm border border-white/20 hover:shadow-lg transition-all duration-300"
-                            >
-                              <Eye className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 bg-white/50 backdrop-blur-sm border border-white/20 hover:shadow-lg transition-all duration-300 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDeleteCourse(course)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </motion.div>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div
+              key={i}
+              className={cn(
+                "animate-pulse rounded-card bg-muted",
+                view === "grid" ? "h-64" : "h-20"
+              )}
+            />
+          ))}
+        </div>
+      ) : filteredCourses.length === 0 ? (
+        <Card>
+          <CardContent className="px-6 py-14 text-center">
+            <BookOpen className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mb-1 text-lg font-semibold text-foreground">No courses found</h3>
+            <p className="mb-4 text-[15px] text-muted-foreground">
+              {searchTerm
+                ? "No courses match your search."
+                : "Get started by creating your first course."}
+            </p>
+            <Button onClick={handleCreateCourse} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create Course
+            </Button>
+          </CardContent>
+        </Card>
+      ) : view === "grid" ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filteredCourses.map((course: any) => {
+            const src = thumbSrc(course);
+            const enrollmentCount = getEnrollmentCount(course);
+            return (
+              <Card
+                key={course.id}
+                className="flex flex-col overflow-hidden transition-shadow hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)]"
+              >
+                <div className="relative h-36 bg-gradient-to-br from-brand-turquoise/15 to-brand-blue/10">
+                  {src ? (
+                    <img
+                      src={src}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <BookOpen className="h-10 w-10 text-brand-turquoise/70" />
+                    </div>
+                  )}
+                  <div className="absolute left-3 top-3">
+                    <Badge
+                      className={cn(
+                        "border px-2 py-0.5 text-xs font-medium",
+                        getDifficultyColor(course.difficulty)
+                      )}
+                    >
+                      {course.difficulty || "All Levels"}
+                    </Badge>
+                  </div>
+                  <div className="absolute right-2 top-2">
+                    <div className="rounded-lg bg-white/90 shadow-sm">
+                      <CourseActionsMenu course={course} />
+                    </div>
+                  </div>
+                </div>
+
+                <CardContent className="flex flex-1 flex-col gap-2 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="line-clamp-2 text-[17px] font-semibold leading-snug text-foreground">
+                      {course.title}
+                    </h3>
+                    <Badge variant="outline" className="shrink-0 text-xs">
+                      {course.status === "active" || !course.status ? "Active" : course.status}
+                    </Badge>
+                  </div>
+                  <p className="line-clamp-2 text-[15px] text-muted-foreground">
+                    {course.description || "No description"}
+                  </p>
+                  <div className="mt-auto flex flex-wrap gap-3 pt-2 text-sm text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Users className="h-3.5 w-3.5" />
+                      {enrollmentCount} enrolled
+                    </span>
+                    {course.category ? <span>{course.category}</span> : null}
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {course.duration || "8"} weeks
+                    </span>
+                  </div>
+                </CardContent>
+
+                <CardFooter className="gap-2 border-t border-border p-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 gap-1.5"
+                    onClick={() => handleEditCourse(course)}
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 gap-1.5"
+                    onClick={() => openAssignDialog(course)}
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Assign
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 gap-1.5"
+                    onClick={() => {
+                      window.location.href = `/admin/courses/${course.id}/progress`;
+                    }}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    Progress
+                  </Button>
+                </CardFooter>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <DataTable
+          title="Course Directory"
+          columns={[
+            { key: "course", label: "Course" },
+            { key: "level", label: "Level" },
+            { key: "category", label: "Category" },
+            { key: "duration", label: "Duration" },
+            { key: "enrolled", label: "Enrolled" },
+            { key: "status", label: "Status" },
+            { key: "actions", label: "Actions", align: "right" },
+          ]}
+          isEmpty={filteredCourses.length === 0}
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        >
+          {pageItems.map((course: any) => {
+            const src = thumbSrc(course);
+            const enrollmentCount = getEnrollmentCount(course);
+            return (
+              <TableRow key={course.id} className="hover:bg-[#FFF5E6]/70">
+                <TableCell className="py-3.5 pl-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#4ECDC4]/15">
+                      {src ? (
+                        <img src={src} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <BookOpen className="h-5 w-5 text-[#4ECDC4]" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-[15px] font-semibold text-[#2D3748]">
+                        {course.title}
+                      </p>
+                      <p className="line-clamp-1 text-xs text-[#718096]">
+                        {course.description || "No description"}
+                      </p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    className={cn(
+                      "rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide",
+                      getDifficultyColor(course.difficulty)
+                    )}
+                  >
+                    {course.difficulty || "All Levels"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-[15px] text-[#2D3748]/90">
+                  {course.category || "General"}
+                </TableCell>
+                <TableCell className="text-[15px] text-[#2D3748]/90">
+                  {course.duration || "8"} weeks
+                </TableCell>
+                <TableCell className="text-[15px] text-[#2D3748]/90">
+                  {enrollmentCount}
+                </TableCell>
+                <TableCell>
+                  <Badge className="rounded-full border border-green-200 bg-green-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-green-800">
+                    {course.status === "active" || !course.status ? "Active" : course.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="pr-5 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 p-0 text-[#1976d2] hover:bg-[#1976d2]/10"
+                      aria-label="Edit"
+                      onClick={() => handleEditCourse(course)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 p-0 text-[#4ECDC4] hover:bg-[#4ECDC4]/10"
+                      aria-label="Assign to student"
+                      onClick={() => openAssignDialog(course)}
+                    >
+                      <UserPlus className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 p-0 text-[#1976d2]/80 hover:bg-[#1976d2]/10"
+                      aria-label="Progress"
+                      onClick={() => {
+                        window.location.href = `/admin/courses/${course.id}/progress`;
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 p-0 text-[#d32f2f] hover:bg-[#d32f2f]/10"
+                      aria-label="Delete"
+                      onClick={() => handleDeleteCourse(course)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </DataTable>
       )}
-      
-      {/* Course Editor Dialog */}
-      <CourseEditor 
-        key={selectedCourse?.id || 'new-course'}
+
+      <CourseEditor
+        key={selectedCourse?.id || "new-course"}
         open={isEditorOpen}
         onOpenChange={setIsEditorOpen}
         course={selectedCourse}
       />
-      
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="backdrop-blur-sm bg-white/95 border border-white/20 shadow-2xl rounded-3xl max-w-md">
+
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <div className="p-3 bg-red-100 rounded-2xl w-12 h-12 flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="h-6 w-6 text-red-600" />
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-brand">
+              <UserPlus className="h-6 w-6 text-white" />
             </div>
-            <DialogTitle className="text-xl font-bold text-center text-gray-900">
-              Delete Course
+            <DialogTitle className="text-center text-xl font-bold">
+              Assign to Student
             </DialogTitle>
-            <DialogDescription className="text-center text-gray-600">
-              {selectedCourse && 
-                `Are you sure you want to delete "${selectedCourse.title}"? This action cannot be undone.`
-              }
+            <DialogDescription className="text-center">
+              {selectedCourse
+                ? `Select students for "${selectedCourse.title}". Checked = enrolled.`
+                : "Select students to enroll"}
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-            <div className="flex items-start space-x-3">
-              <GraduationCap className="h-5 w-5 text-amber-600 mt-0.5" />
-              <div className="text-sm text-amber-800">
-                <p className="font-medium">Warning: This will permanently delete:</p>
-                <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li>Course content and modules</li>
-                  <li>All student enrollments</li>
-                  <li>Progress and completion data</li>
-                  <li>Associated materials and resources</li>
+
+          <div className="space-y-3 py-1">
+            <div className="flex items-center justify-between text-sm text-[#718096]">
+              <span>
+                {selectedStudentIds.length} of {students.length} selected
+              </span>
+              <span>{initialEnrolledIds.length} currently enrolled</span>
+            </div>
+
+            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-[#F4E4D7] bg-white">
+              {isLoadingEnrollments ? (
+                <div className="flex items-center justify-center py-10">
+                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                </div>
+              ) : students.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm text-[#718096]">
+                  No students available
+                </p>
+              ) : (
+                <ul className="divide-y divide-[#F4E4D7]/80">
+                  {students.map((student) => {
+                    const checked = selectedStudentIds.includes(student.id);
+                    const wasEnrolled = initialEnrolledIds.includes(student.id);
+                    return (
+                      <li key={student.id}>
+                        <label
+                          className={cn(
+                            "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-[#FFF5E6]/70",
+                            checked && "bg-[#4ECDC4]/5"
+                          )}
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(value) =>
+                              toggleStudent(student.id, value === true)
+                            }
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[15px] font-medium text-[#2D3748]">
+                              {student.firstName} {student.lastName}
+                            </p>
+                            <p className="truncate text-xs text-[#718096]">
+                              {student.username}
+                              {student.email ? ` · ${student.email}` : ""}
+                            </p>
+                          </div>
+                          {wasEnrolled ? (
+                            <Badge className="shrink-0 rounded-full border border-green-200 bg-green-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-800">
+                              Enrolled
+                            </Badge>
+                          ) : null}
+                        </label>
+                      </li>
+                    );
+                  })}
                 </ul>
-              </div>
+              )}
             </div>
           </div>
-          
-          <DialogFooter className="flex flex-col sm:flex-row gap-3">
+
+          <DialogFooter className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => setIsAssignDialogOpen(false)}
+              disabled={assignMutation.isPending}
+              className="flex-1 rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAssignStudent}
+              disabled={assignMutation.isPending || isLoadingEnrollments}
+              className="flex-1 gap-2 rounded-xl"
+            >
+              {assignMutation.isPending ? (
+                "Saving..."
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Save Enrollments
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100">
+              <Trash2 className="h-6 w-6 text-red-600" />
+            </div>
+            <DialogTitle className="text-center text-lg">Delete Course</DialogTitle>
+            <DialogDescription className="text-center text-[15px]">
+              {selectedCourse &&
+                `Are you sure you want to delete "${selectedCourse.title}"? This cannot be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <div className="flex gap-2">
+              <Users className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>Course content, enrollments, and progress data will be removed.</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
             <Button
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
               disabled={deleteMutation.isPending}
-              className="flex-1 rounded-2xl border border-white/20 bg-white/50 backdrop-blur-sm"
             >
               Cancel
             </Button>
@@ -738,16 +799,8 @@ export default function AdminCourses() {
               variant="destructive"
               onClick={confirmDeleteCourse}
               disabled={deleteMutation.isPending}
-              className="flex-1 rounded-2xl hover:shadow-xl transition-all duration-300"
             >
-              {deleteMutation.isPending ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent border-white mr-2" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete Course"
-              )}
+              {deleteMutation.isPending ? "Deleting..." : "Delete Course"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -177,23 +177,26 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Course routes
   app.get("/api/courses", isAuthenticated, async (req, res) => {
     try {
-      const courses = await storage.getCoursesByTenant(req.user.tenantId);
+      const courses = await storage.getCoursesByTenant(req.user!.tenantId);
       
-      // If user is admin or superadmin, return all courses
-      if (req.user.role === "admin" || req.user.role === "superadmin") {
-        res.json(courses);
+      // If user is admin or superadmin, return courses with enrollment counts
+      if (req.user!.role === "admin" || req.user!.role === "superadmin") {
+        const counts = await storage.getEnrollmentCountsByTenant(req.user!.tenantId);
+        const withCounts = courses.map((course) => ({
+          ...course,
+          enrollmentCount: counts[course.id] ?? 0,
+        }));
+        res.json(withCounts);
         return;
       }
       
       // For students, filter courses based on enrollment requirements
-      // Get student's enrollments
-      const enrollments = await storage.getEnrollmentsByUser(req.user.id);
+      const enrollments = await storage.getEnrollmentsByUser(req.user!.id);
       const enrolledCourseIds = enrollments.map(enrollment => enrollment.courseId);
       
-      // Filter courses: include both free courses and enrolled courses
       const availableCourses = courses.filter(course => 
-        !course.isEnrollmentRequired || // Free courses
-        enrolledCourseIds.includes(course.id) // Enrolled courses
+        !course.isEnrollmentRequired ||
+        enrolledCourseIds.includes(course.id)
       );
       
       res.json(availableCourses);
@@ -678,6 +681,36 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       res.status(201).json(enrollment);
     } catch (error) {
       res.status(500).json({ message: "Failed to assign course to user" });
+    }
+  });
+
+  // Admin unenroll student from course
+  app.delete("/api/enrollments/assign", isAdmin, async (req, res) => {
+    try {
+      const { userId, courseId } = req.body;
+
+      if (!userId || !courseId) {
+        return res.status(400).json({ message: "Both userId and courseId are required" });
+      }
+
+      const course = await storage.getCourse(courseId);
+      if (!course || course.tenantId !== req.user!.tenantId) {
+        return res.status(403).json({ message: "Course not found or access denied" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || user.tenantId !== req.user!.tenantId) {
+        return res.status(403).json({ message: "User not found or access denied" });
+      }
+
+      const deleted = await storage.deleteEnrollmentByUserAndCourse(userId, courseId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Enrollment not found" });
+      }
+
+      res.json({ message: "Enrollment removed" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to remove enrollment" });
     }
   });
 

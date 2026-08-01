@@ -268,7 +268,7 @@ export default function AdminReports() {
           
           <Button 
             onClick={handleExportReport}
-            className="gap-2 bg-gradient-to-br from-blue-500 to-purple-600 text-white border-0 rounded-2xl hover:shadow-xl transition-all duration-300"
+            className="gap-2 bg-accent-brand text-white border-0 rounded-2xl hover:shadow-xl transition-all duration-300"
           >
             <Download className="h-4 w-4" />
             Export Report
@@ -276,99 +276,7 @@ export default function AdminReports() {
         </div>
       </motion.div>
       
-      {/* Statistics Cards */}
-      <motion.div 
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Students</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.totalStudents}</h3>
-                <div className="flex items-center mt-2 text-sm">
-                  {trends.students.isPositive ? (
-                    <span className="text-green-600 flex items-center">
-                      <ArrowUpRight className="h-3 w-3 mr-1" />
-                      +{trends.students.value}% this month
-                    </span>
-                  ) : (
-                    <span className="text-red-600 flex items-center">
-                      <ArrowDownRight className="h-3 w-3 mr-1" />
-                      {trends.students.value}% this month
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Courses</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.activeCourses}</h3>
-                <div className="flex items-center mt-2 text-sm">
-                  <span className="text-green-600 flex items-center">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    +{trends.courses.value} new this month
-                  </span>
-                </div>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Exams</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.totalExams}</h3>
-                <div className="flex items-center mt-2 text-sm">
-                  <span className="text-gray-600">
-                    {stats.totalExams > 0 ? `${Math.round((stats.totalExams / stats.activeCourses) * 10) / 10} per course` : 'No exams yet'}
-                  </span>
-                </div>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
-                <ClipboardList className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Avg Completion</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.avgCompletion}%</h3>
-                <div className="flex items-center mt-2 text-sm">
-                  <span className="text-green-600 flex items-center">
-                    <TrendingUp className="h-3 w-3 mr-1" />
-                    +5% this month
-                  </span>
-                </div>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg">
-                <Target className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      
       
       {/* Additional Stats Row */}
       <motion.div 

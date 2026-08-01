@@ -199,143 +199,28 @@ export default function AdminDashboard() {
         subtitle={`Welcome back, ${user?.firstName || 'Admin'}. Here's what's happening with your platform.`}
       />
       
-      {/* Main Statistics Cards */}
-      <motion.div 
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Students</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.totalStudents}</h3>
-                <div className="flex items-center mt-2 text-sm">
-                  <span className="text-green-600 flex items-center">
-                    <ArrowUpRight className="h-3 w-3 mr-1" />
-                    +12% this month
-                  </span>
-                </div>
+      {/* Compact stats — dashboard only */}
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          { label: "Students", value: stats.totalStudents, icon: Users, color: "text-brand-turquoise bg-brand-turquoise/10" },
+          { label: "Courses", value: stats.activeCourses, icon: BookOpen, color: "text-brand-mint bg-brand-mint/10" },
+          { label: "Exams", value: stats.totalExams, icon: Calendar, color: "text-brand-peach bg-brand-peach/10" },
+          { label: "Avg Completion", value: `${stats.avgCompletion}%`, icon: Target, color: "text-brand-lavender bg-brand-lavender/10" },
+        ].map((item) => (
+          <Card key={item.label}>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className={cn("rounded-xl p-2.5", item.color)}>
+                <item.icon className="h-5 w-5" />
               </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
-                <Users className="h-6 w-6 text-white" />
+              <div className="min-w-0">
+                <p className="text-sm text-muted-foreground">{item.label}</p>
+                <p className="text-xl font-bold text-foreground">{item.value}</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-        <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Courses</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.activeCourses}</h3>
-                <div className="flex items-center mt-2 text-sm">
-                  <span className="text-green-600 flex items-center">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    +3 new this month
-                  </span>
-                </div>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Upcoming Exams</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.totalExams}</h3>
-                <div className="flex items-center mt-2 text-sm">
-                  <span className="text-gray-600">
-                    {upcomingExams.length} scheduled
-                  </span>
-                </div>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
-                <Calendar className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Avg Completion</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.avgCompletion}%</h3>
-                <div className="flex items-center mt-2 text-sm">
-                  <span className="text-green-600 flex items-center">
-                    <TrendingUp className="h-3 w-3 mr-1" />
-                    +5% this month
-                  </span>
-                </div>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg">
-                <Target className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-      
-      {/* Additional Stats Row */}
-      <motion.div 
-        className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Enrollments</p>
-                <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.totalEnrollments}</h3>
-              </div>
-              <div className="p-2 rounded-xl bg-blue-100">
-                <Award className="h-5 w-5 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Activity Logs</p>
-                <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.totalActivityLogs}</h3>
-              </div>
-              <div className="p-2 rounded-xl bg-amber-100">
-                <Activity className="h-5 w-5 text-amber-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Avg Score</p>
-                <h3 className="text-2xl font-bold text-gray-900 mt-1">87%</h3>
-              </div>
-              <div className="p-2 rounded-xl bg-green-100">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-      
       {/* Charts and Metrics Section */}
       <div className="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div

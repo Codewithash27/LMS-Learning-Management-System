@@ -53,7 +53,7 @@ export default function StudentAIAssistant() {
               <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                    <div className="p-2 rounded-xl bg-accent-brand">
                       <BookOpen className="h-4 w-4 text-white" />
                     </div>
                     Study Assistance
@@ -92,7 +92,7 @@ export default function StudentAIAssistant() {
               <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                    <div className="p-2 rounded-xl bg-accent-brand">
                       <GraduationCap className="h-4 w-4 text-white" />
                     </div>
                     Tips for Better Results

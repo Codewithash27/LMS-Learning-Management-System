@@ -66,8 +66,11 @@ export interface IStorage {
   getEnrollment(id: number): Promise<Enrollment | undefined>;
   getEnrollmentsByUser(userId: number): Promise<Enrollment[]>;
   getEnrollmentsByCourse(courseId: number): Promise<Enrollment[]>;
+  getEnrollmentCountsByTenant(tenantId: number): Promise<Record<number, number>>;
   createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment>;
   updateEnrollment(id: number, enrollment: Partial<Enrollment>): Promise<Enrollment | undefined>;
+  deleteEnrollment(id: number): Promise<boolean>;
+  deleteEnrollmentByUserAndCourse(userId: number, courseId: number): Promise<boolean>;
   
   // Lesson Progress operations
   getLessonProgress(userId: number, lessonId: number): Promise<LessonProgress | undefined>;
@@ -327,6 +330,24 @@ export class DatabaseStorage implements IStorage {
   async getEnrollmentsByCourse(courseId: number): Promise<Enrollment[]> {
     return await db.select().from(enrollments).where(eq(enrollments.courseId, courseId));
   }
+
+  async getEnrollmentCountsByTenant(tenantId: number): Promise<Record<number, number>> {
+    const rows = await db
+      .select({
+        courseId: enrollments.courseId,
+        count: sql<number>`cast(count(*) as int)`,
+      })
+      .from(enrollments)
+      .innerJoin(courses, eq(enrollments.courseId, courses.id))
+      .where(eq(courses.tenantId, tenantId))
+      .groupBy(enrollments.courseId);
+
+    const counts: Record<number, number> = {};
+    for (const row of rows) {
+      counts[row.courseId] = Number(row.count) || 0;
+    }
+    return counts;
+  }
   
   async createEnrollment(insertEnrollment: InsertEnrollment): Promise<Enrollment> {
     const enrollmentWithDefaults = {
@@ -347,6 +368,19 @@ export class DatabaseStorage implements IStorage {
       .where(eq(enrollments.id, id))
       .returning();
     return updatedEnrollment;
+  }
+
+  async deleteEnrollment(id: number): Promise<boolean> {
+    const result = await db.delete(enrollments).where(eq(enrollments.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async deleteEnrollmentByUserAndCourse(userId: number, courseId: number): Promise<boolean> {
+    const result = await db
+      .delete(enrollments)
+      .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)))
+      .returning();
+    return result.length > 0;
   }
   
   // Lesson Progress operations
@@ -1014,12 +1048,24 @@ export class MemStorage implements IStorage {
   async getEnrollmentsByCourse(courseId: number): Promise<Enrollment[]> {
     throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
   }
+
+  async getEnrollmentCountsByTenant(tenantId: number): Promise<Record<number, number>> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
   
   async createEnrollment(insertEnrollment: InsertEnrollment): Promise<Enrollment> {
     throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
   }
   
   async updateEnrollment(id: number, enrollmentData: Partial<Enrollment>): Promise<Enrollment | undefined> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+
+  async deleteEnrollment(id: number): Promise<boolean> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+
+  async deleteEnrollmentByUserAndCourse(userId: number, courseId: number): Promise<boolean> {
     throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
   }
   

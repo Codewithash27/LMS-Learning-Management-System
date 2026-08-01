@@ -17,15 +17,15 @@ type StatCardProps = {
 
 export default function StatCard({ title, value, change, icon, iconColor, delay = 0 }: StatCardProps) {
   const gradientColors = {
-    primary: 'from-blue-500/10 to-purple-500/10',
-    accent: 'from-green-500/10 to-emerald-500/10', 
-    secondary: 'from-orange-500/10 to-red-500/10'
+    primary: 'from-brand-turquoise/10 to-brand-blue/10',
+    accent: 'from-brand-mint/10 to-emerald-500/10',
+    secondary: 'from-brand-peach/10 to-brand-coral/10',
   };
 
   const iconGradients = {
-    primary: 'from-blue-500 to-purple-600',
-    accent: 'from-green-500 to-emerald-600',
-    secondary: 'from-orange-500 to-red-600'
+    primary: 'bg-accent-brand',
+    accent: 'bg-gradient-to-br from-brand-mint to-emerald-600',
+    secondary: 'bg-gradient-to-br from-brand-peach to-brand-coral',
   };
 
   return (
@@ -34,19 +34,18 @@ export default function StatCard({ title, value, change, icon, iconColor, delay 
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
     >
-      <Card className="w-full relative overflow-hidden group backdrop-blur-sm bg-white/70 border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
-        {/* Animated gradient background */}
+      <Card className="w-full relative overflow-hidden group hover:shadow-[0_15px_35px_rgba(0,0,0,0.06)] transition-all duration-300 hover:scale-[1.02]">
         <div className={cn(
           "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500",
           gradientColors[iconColor]
         )} />
-        
+
         <CardContent className="p-6 relative z-10">
           <div className="flex justify-between items-start">
             <div className="space-y-2">
               <p className="text-neutral-600 text-sm font-medium">{title}</p>
-              <motion.h3 
-                className="text-3xl font-bold bg-gradient-to-br from-gray-900 to-gray-700 bg-clip-text text-transparent"
+              <motion.h3
+                className="text-3xl font-bold text-foreground"
                 initial={{ scale: 0.5 }}
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.5, delay: delay + 0.2 }}
@@ -54,16 +53,16 @@ export default function StatCard({ title, value, change, icon, iconColor, delay 
                 {value}
               </motion.h3>
               {change && (
-                <motion.p 
+                <motion.p
                   className="text-xs flex items-center gap-1"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.5, delay: delay + 0.4 }}
                 >
                   <span className={cn(
-                    "font-semibold px-2 py-1 rounded-full",
-                    change.positive 
-                      ? "bg-green-100 text-green-700" 
+                    "font-semibold px-2 py-1 rounded-lg",
+                    change.positive
+                      ? "bg-green-100 text-green-700"
                       : "bg-red-100 text-red-700"
                   )}>
                     {change.positive ? '↗' : '↘'} {change.value}
@@ -72,9 +71,9 @@ export default function StatCard({ title, value, change, icon, iconColor, delay 
                 </motion.p>
               )}
             </div>
-            <motion.div 
+            <motion.div
               className={cn(
-                "p-3 rounded-2xl bg-gradient-to-br shadow-lg",
+                "p-3 rounded-2xl shadow-lg text-white",
                 iconGradients[iconColor]
               )}
               initial={{ scale: 0, rotate: -180 }}

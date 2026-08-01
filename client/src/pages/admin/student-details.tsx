@@ -251,7 +251,7 @@ export default function StudentDetailsPage() {
               <User className="h-16 w-16 text-gray-400 mb-4" />
               <p className="mb-4 text-xl font-semibold text-gray-900">Student not found</p>
               <Link href="/admin/students">
-                <Button className="gap-2 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-2xl">
+                <Button className="gap-2 bg-accent-brand text-white rounded-2xl">
                   <ArrowLeft className="h-4 w-4" />
                   Back to Students
                 </Button>
@@ -311,7 +311,7 @@ export default function StudentDetailsPage() {
                       {student.profilePhoto ? (
                         <AvatarImage src={student.profilePhoto} alt={`${student.firstName} ${student.lastName}`} />
                       ) : (
-                        <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold">
+                        <AvatarFallback className="text-2xl bg-accent-brand text-white font-bold">
                           {student.firstName.charAt(0)}{student.lastName.charAt(0)}
                         </AvatarFallback>
                       )}
@@ -511,7 +511,7 @@ export default function StudentDetailsPage() {
                       <p className="mb-2 text-lg font-semibold text-gray-900">No courses enrolled</p>
                       <p className="text-sm text-gray-500 text-center mb-6">This student has not enrolled in any courses yet</p>
                       <Link href="/admin/courses">
-                        <Button className="gap-2 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-2xl">
+                        <Button className="gap-2 bg-accent-brand text-white rounded-2xl">
                           <BookOpen className="h-4 w-4" />
                           Browse Courses
                         </Button>

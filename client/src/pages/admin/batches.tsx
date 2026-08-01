@@ -5,10 +5,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Users, Clock, Target, TrendingUp, Plus, Search, Filter, MoreVertical, Edit, Trash2, Eye, BarChart, GraduationCap, Sparkles, PlayCircle, BookOpen } from "lucide-react";
+import { Calendar as CalendarIcon, Users, Clock, Plus, Eye, GraduationCap } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import Header from "@/components/layout/header";
+import ListToolbar from "@/components/layout/list-toolbar";
+import DataTable from "@/components/primitives/DataTable";
+import { useClientPagination } from "@/hooks/use-client-pagination";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,14 +20,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import {
@@ -53,22 +51,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from "@/components/ui/dropdown-menu";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 
@@ -94,7 +76,6 @@ export default function BatchesPage() {
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [view, setView] = useState<"grid" | "table">("grid");
 
   const queryClient = useQueryClient();
 
@@ -268,13 +249,14 @@ export default function BatchesPage() {
     return matchesSearch && matchesStatus;
   }) || [];
 
-  // Get batch statistics
-  const batchStats = {
-    total: batches?.length || 0,
-    active: batches?.filter(b => b.isActive).length || 0,
-    upcoming: batches?.filter(b => new Date(b.startDate) > new Date()).length || 0,
-    completed: batches?.filter(b => new Date(b.startDate) < new Date() && !b.isActive).length || 0,
-  };
+  const {
+    page,
+    pageSize,
+    total,
+    pageItems,
+    setPage,
+    setPageSize,
+  } = useClientPagination(filteredBatches, 10);
 
   // Calculate random student count for demo
   const getRandomStudents = (batchId: number) => {
@@ -290,495 +272,173 @@ export default function BatchesPage() {
 
   return (
     <DashboardLayout>
-      <Header 
-        title="Batch Management" 
-        subtitle="Create and manage training batches for courses"
+      <Header
+        title="Batches"
+        actions={
+          <ListToolbar
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder="Search batches..."
+            filters={
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-10 w-[140px] rounded-xl border-warm-border bg-white shadow-sm">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            }
+            action={
+              <Button
+                type="button"
+                onClick={() => setOpenCreateDialog(true)}
+                className="h-11 w-11 shrink-0 rounded-xl p-0"
+                aria-label="Create batch"
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+            }
+          />
+        }
       />
-      
-      {/* Statistics Cards */}
-      <motion.div 
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Batches</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{batchStats.total}</h3>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="flex items-center mt-4 text-sm text-green-600">
-              <Sparkles className="h-4 w-4 mr-1" />
-              <span>+2 new this month</span>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Batches</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">{batchStats.active}</h3>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
-                <PlayCircle className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="flex items-center mt-4 text-sm text-gray-600">
-              <span>Currently running classes</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Students</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">186</h3>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
-                <GraduationCap className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="flex items-center mt-4 text-sm text-green-600">
-              <span>+8 this week</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Avg Progress</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-2">78%</h3>
-              </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg">
-                <Target className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="flex items-center mt-4 text-sm text-gray-600">
-              <span>Trending: +4% this month</span>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-      
-      {/* Search and Controls */}
-      <motion.div 
-        className="mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-            <Input
-              placeholder="Search batches by name or code..."
-              className="pl-10 bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl focus:ring-2 focus:ring-blue-500/20"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <div className="flex gap-3">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-40 bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        
-        <div className="flex gap-3 w-full lg:w-auto">
-          <Button 
-            variant="outline" 
-            className="gap-2 bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl hover:shadow-lg transition-all duration-300"
-          >
-            <Filter size={16} />
-            Filter
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className={cn(
-              "gap-2 bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl hover:shadow-lg transition-all duration-300",
-              view === "grid" ? "bg-blue-50 border-blue-200" : ""
-            )}
-            onClick={() => setView("grid")}
-          >
-            <BarChart size={16} />
-            Grid
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className={cn(
-              "gap-2 bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl hover:shadow-lg transition-all duration-300",
-              view === "table" ? "bg-blue-50 border-blue-200" : ""
-            )}
-            onClick={() => setView("table")}
-          >
-            <CalendarIcon size={16} />
-            Table
-          </Button>
-
-          {/* Create Batch Button */}
-          <Button 
-            onClick={() => setOpenCreateDialog(true)}
-            className="gap-2 bg-gradient-to-br from-blue-500 to-purple-600 text-white border-0 rounded-2xl hover:shadow-xl transition-all duration-300"
-          >
-            <Plus size={16} />
-            Create Batch
-          </Button>
-        </div>
-      </motion.div>
-      
-      {/* Batches View */}
       {isLoadingBatches ? (
-        <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-xl">
-          <CardContent className="p-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-6 bg-gray-200 rounded w-1/4"></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <Card key={i} className="border border-white/20">
-                    <div className="h-40 bg-gray-200 rounded-t-lg"></div>
-                    <CardContent className="pt-6">
-                      <div className="h-6 bg-gray-200 rounded mb-4"></div>
-                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded mb-2 w-2/3"></div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : filteredBatches.length === 0 ? (
-        <motion.div 
-          className="text-center py-16 backdrop-blur-sm bg-white/50 rounded-3xl border border-white/20 shadow-xl"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No batches found</h3>
-          <p className="text-gray-500 mb-6 max-w-md mx-auto">
-            {searchTerm ? "No batches match your search criteria. Try a different search term." : "Get started by creating your first batch."}
-          </p>
-          <Button 
-            onClick={() => setOpenCreateDialog(true)}
-            className="gap-2 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-2xl hover:shadow-xl"
-          >
-            <Plus className="h-4 w-4" />
-            Create First Batch
-          </Button>
-        </motion.div>
-      ) : view === "grid" ? (
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <AnimatePresence>
-            {filteredBatches.map((batch, index) => {
-              const course = courses?.find(c => c.id === batch.courseId);
-              const trainer = trainers?.find(t => t.id === batch.trainerId);
-              const studentCount = getRandomStudents(batch.id);
-              const progress = getRandomProgress(batch.id);
-              
-              return (
-                <motion.div
-                  key={batch.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                >
-                  <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group hover:scale-[1.02] overflow-hidden">
-                    {/* Batch Header */}
-                    <div className="h-40 relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-500/20 group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-all duration-500">
-                      <div className="text-center p-6">
-                        <Badge className="mb-3 bg-white/80 backdrop-blur-sm text-gray-800 border border-white/20">
-                          {batch.batchCode}
-                        </Badge>
-                        <h3 className="text-xl font-bold text-gray-900 line-clamp-2">
-                          {batch.name}
-                        </h3>
-                        <p className="text-sm text-gray-600 mt-2">
-                          {course?.title || "Unknown Course"}
-                        </p>
-                      </div>
-                      
-                      <div className="absolute top-3 right-3">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-300">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rounded-2xl border border-white/20 shadow-xl backdrop-blur-sm bg-white/95">
-                            <DropdownMenuItem className="rounded-lg gap-2 hover:bg-purple-50 transition-colors">
-                              <Edit className="h-4 w-4 text-purple-600" />
-                              <span className="font-medium">Edit Batch</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="rounded-lg gap-2 hover:bg-blue-50 transition-colors">
-                              <Eye className="h-4 w-4 text-blue-600" />
-                              <span className="font-medium">View Details</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => {
-                                setSelectedBatchId(batch.id);
-                                setOpenEnrollDialog(true);
-                              }}
-                              className="rounded-lg gap-2 hover:bg-green-50 transition-colors"
-                            >
-                              <Users className="h-4 w-4 text-green-600" />
-                              <span className="font-medium">Enroll Students</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-gray-200/50" />
-                            <DropdownMenuItem className="rounded-lg gap-2 hover:bg-red-50 text-red-600 focus:text-red-600 transition-colors">
-                              <Trash2 className="h-4 w-4" />
-                              <span className="font-medium">Delete Batch</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      
-                      {/* Progress overlay */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-4">
-                        <div className="flex justify-between items-center text-white">
-                          <span className="text-sm font-medium">Progress</span>
-                          <span className="text-sm font-bold">{progress}%</span>
-                        </div>
-                        <Progress value={progress} className="h-2 mt-2 bg-white/20 [&>div]:bg-gradient-to-r [&>div]:from-green-400 [&>div]:to-emerald-400" />
-                      </div>
-                    </div>
-                    
-                    <CardContent className="p-6">
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <Badge variant={batch.isActive ? "default" : "secondary"} className={cn(
-                            batch.isActive 
-                              ? "bg-green-100 text-green-800 border border-green-200" 
-                              : "bg-gray-100 text-gray-800 border border-gray-200"
-                          )}>
-                            {batch.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                          <div className="text-sm text-gray-500">
-                            {new Date(batch.startDate).toLocaleDateString()}
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <BookOpen className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium">{course?.title || "Unknown Course"}</span>
-                          </div>
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <Users className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium">
-                              {trainer ? `${trainer.firstName} ${trainer.lastName}` : "Unknown Trainer"}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <Clock className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium">{batch.batchTime}</span>
-                          </div>
-                        </div>
-                        
-                        {batch.description && (
-                          <p className="text-sm text-gray-600 line-clamp-2">
-                            {batch.description}
-                          </p>
-                        )}
-                      </div>
-                      
-                      {/* Batch Stats */}
-                      <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <GraduationCap className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium">{studentCount} students</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <TrendingUp className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium">{progress}% progress</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                    
-                    <CardFooter className="border-t border-white/20 pt-4 bg-gradient-to-r from-gray-50/50 to-gray-100/50">
-                      <div className="flex gap-2 w-full">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex-1 gap-1 bg-white/50 backdrop-blur-sm border border-white/20 rounded-xl hover:shadow-lg transition-all duration-300"
-                          asChild
-                        >
-                          <Link href={`/admin/batches/${batch.id}`}>
-                            <Eye className="h-4 w-4" />
-                            View
-                          </Link>
-                        </Button>
-                        <Button 
-                          size="sm"
-                          variant="outline" 
-                          className="flex-1 gap-1 bg-white/50 backdrop-blur-sm border border-white/20 rounded-xl hover:shadow-lg transition-all duration-300"
-                          onClick={() => {
-                            setSelectedBatchId(batch.id);
-                            setOpenEnrollDialog(true);
-                          }}
-                        >
-                          <Users className="h-4 w-4" />
-                          Enroll
-                        </Button>
-                      </div>
-                    </CardFooter>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </motion.div>
+        <div className="flex min-h-[240px] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
       ) : (
-        // Table View
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/20 bg-gradient-to-r from-gray-50/50 to-gray-100/50">
-                    <th className="text-left p-4 font-semibold text-gray-900">Batch</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Course</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Trainer</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Start Date</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Time</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Students</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Progress</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Status</th>
-                    <th className="text-left p-4 font-semibold text-gray-900">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredBatches.map((batch, index) => {
-                    const course = courses?.find(c => c.id === batch.courseId);
-                    const trainer = trainers?.find(t => t.id === batch.trainerId);
-                    const studentCount = getRandomStudents(batch.id);
-                    const progress = getRandomProgress(batch.id);
-                    
-                    return (
-                      <motion.tr 
-                        key={batch.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
-                        className="border-b border-white/20 hover:bg-gray-50/50 transition-colors duration-200"
-                      >
-                        <td className="p-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                              <Users className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900">{batch.name}</div>
-                              <div className="text-sm text-gray-500">{batch.batchCode}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="font-medium text-gray-900">
-                            {course?.title || "Unknown Course"}
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="text-sm text-gray-600">
-                            {trainer ? `${trainer.firstName} ${trainer.lastName}` : "Unknown Trainer"}
-                          </div>
-                        </td>
-                        <td className="p-4 text-sm text-gray-600">
-                          {new Date(batch.startDate).toLocaleDateString()}
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center space-x-2">
-                            <Clock className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium">{batch.batchTime}</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center space-x-2">
-                            <GraduationCap className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium">{studentCount}</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center space-x-3">
-                            <Progress value={progress} className="w-20 h-2 [&>div]:bg-gradient-to-r [&>div]:from-green-400 [&>div]:to-emerald-400" />
-                            <span className="text-sm font-medium text-gray-700">{progress}%</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <Badge className={cn(
-                            batch.isActive 
-                              ? "bg-green-100 text-green-800 border border-green-200" 
-                              : "bg-gray-100 text-gray-800 border border-gray-200"
-                          )}>
-                            {batch.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 bg-white/50 backdrop-blur-sm border border-white/20 hover:shadow-lg transition-all duration-300"
-                              asChild
-                            >
-                              <Link href={`/admin/batches/${batch.id}`}>
-                                <Eye className="h-3 w-3" />
-                              </Link>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 bg-white/50 backdrop-blur-sm border border-white/20 hover:shadow-lg transition-all duration-300"
-                              onClick={() => {
-                                setSelectedBatchId(batch.id);
-                                setOpenEnrollDialog(true);
-                              }}
-                            >
-                              <Users className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        <DataTable
+          title="Batch Directory"
+          columns={[
+            { key: "batch", label: "Batch" },
+            { key: "course", label: "Course" },
+            { key: "trainer", label: "Trainer" },
+            { key: "start", label: "Start Date" },
+            { key: "time", label: "Time" },
+            { key: "students", label: "Students" },
+            { key: "progress", label: "Progress" },
+            { key: "status", label: "Status" },
+            { key: "actions", label: "Actions", align: "right" },
+          ]}
+          isEmpty={filteredBatches.length === 0}
+          empty={
+            <div className="text-center">
+              <Users className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
+              <h3 className="mb-1 text-lg font-semibold">No batches found</h3>
+              <p className="mb-4 text-[15px] text-muted-foreground">
+                {searchTerm
+                  ? "No batches match your search."
+                  : "Create your first batch to get started."}
+              </p>
+              {!searchTerm && (
+                <Button type="button" onClick={() => setOpenCreateDialog(true)} className="gap-2 rounded-xl">
+                  <Plus className="h-4 w-4" />
+                  Create Batch
+                </Button>
+              )}
             </div>
-          </Card>
-        </motion.div>
+          }
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        >
+          {pageItems.map((batch) => {
+            const course = courses?.find(c => c.id === batch.courseId);
+            const trainer = trainers?.find(t => t.id === batch.trainerId);
+            const studentCount = getRandomStudents(batch.id);
+            const progress = getRandomProgress(batch.id);
+
+            return (
+              <TableRow key={batch.id} className="hover:bg-[#FFF5E6]/70">
+                <TableCell className="py-3.5 pl-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ECDC4]/15">
+                      <Users className="h-5 w-5 text-[#4ECDC4]" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-[15px] font-semibold text-[#2D3748]">{batch.name}</p>
+                      <p className="text-xs text-[#718096]">{batch.batchCode}</p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="text-[15px] text-[#2D3748]/90">
+                  {course?.title || "Unknown Course"}
+                </TableCell>
+                <TableCell className="text-[15px] text-[#2D3748]/90">
+                  {trainer ? `${trainer.firstName} ${trainer.lastName}` : "Unknown Trainer"}
+                </TableCell>
+                <TableCell className="text-[15px] text-[#2D3748]/90">
+                  {new Date(batch.startDate).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5 text-[15px] text-[#2D3748]/90">
+                    <Clock className="h-3.5 w-3.5 text-[#A0AEC0]" />
+                    <span>{batch.batchTime}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5 text-[15px] text-[#2D3748]/90">
+                    <GraduationCap className="h-3.5 w-3.5 text-[#A0AEC0]" />
+                    <span>{studentCount}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Progress value={progress} className="h-2 w-16" />
+                    <span className="text-sm text-[#718096]">{progress}%</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    className={cn(
+                      "rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide",
+                      batch.isActive
+                        ? "border-green-200 bg-green-100 text-green-800"
+                        : "border-gray-200 bg-gray-100 text-gray-800"
+                    )}
+                  >
+                    {batch.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="pr-5 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <Link href={`/admin/batches/${batch.id}`}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 p-0 text-[#1976d2] hover:bg-[#1976d2]/10"
+                        aria-label="View"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 p-0 text-[#4ECDC4] hover:bg-[#4ECDC4]/10"
+                      aria-label="Enroll students"
+                      onClick={() => {
+                        setSelectedBatchId(batch.id);
+                        setOpenEnrollDialog(true);
+                      }}
+                    >
+                      <Users className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </DataTable>
       )}
-      
+
       {/* Create Batch Dialog */}
       <Dialog open={openCreateDialog} onOpenChange={setOpenCreateDialog}>
         <DialogContent className="backdrop-blur-sm bg-white/95 border border-white/20 shadow-2xl rounded-3xl max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1035,7 +695,7 @@ export default function BatchesPage() {
                 <Button
                   type="submit"
                   disabled={createBatchMutation.isPending}
-                  className="flex-1 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 text-white hover:shadow-xl transition-all duration-300"
+                  className="flex-1 rounded-2xl bg-accent-brand text-white hover:shadow-xl transition-all duration-300"
                 >
                   {createBatchMutation.isPending ? (
                     <>

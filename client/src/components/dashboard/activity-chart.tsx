@@ -38,7 +38,7 @@ export default function ActivityChart({ data, changePercentage, isPositiveChange
                 className={cn(
                   "text-sm rounded-md transition-all duration-200",
                   timeframe === time 
-                    ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg" 
+                    ? "bg-accent-brand text-white shadow-lg" 
                     : "text-gray-600 hover:text-gray-900"
                 )}
               >
@@ -63,7 +63,7 @@ export default function ActivityChart({ data, changePercentage, isPositiveChange
                 className={cn(
                   "w-full rounded-t-xl relative overflow-hidden group cursor-pointer",
                   item.isCurrentDay 
-                    ? "bg-gradient-to-t from-blue-500 to-purple-600 shadow-lg" 
+                    ? "bg-accent-brand shadow-lg" 
                     : "bg-gradient-to-t from-gray-300 to-gray-400"
                 )}
                 style={{ height: `${item.percentage}%` }}

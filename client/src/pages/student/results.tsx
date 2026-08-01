@@ -210,13 +210,13 @@ export default function StudentResults() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
                 <p className="text-sm text-muted-foreground">Average Score</p>
                 <h3 className="text-2xl font-semibold">{averageScore}%</h3>
               </div>
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
+              <div className="p-3 rounded-2xl bg-accent-brand shadow-lg">
                 <Award className="h-6 w-6 text-white" />
               </div>
             </CardContent>
