@@ -200,7 +200,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </span>
           </div>
           <p className="text-center text-[11px] font-medium text-muted-foreground">
-            © {new Date().getFullYear()} Edu Transform. All rights reserved to Aadi Technology
+            © {new Date().getFullYear()} Edu Transform. All rights reserved to Aman Hukkerikar
           </p>
           <div className="hidden w-[100px] sm:block" />
         </footer>

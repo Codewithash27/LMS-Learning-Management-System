@@ -261,7 +261,7 @@ export default function Sidebar({
             </div>
             <div className="min-w-0">
               <p className="truncate text-base font-black text-white">Edu Transform</p>
-              <p className="truncate text-xs font-medium text-white/80">Aadi Technology</p>
+              <p className="truncate text-xs font-medium text-white/80">Aman Hukkerikar</p>
             </div>
           </div>
         )}
