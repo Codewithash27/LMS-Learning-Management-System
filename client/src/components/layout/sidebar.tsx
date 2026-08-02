@@ -2,16 +2,11 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   BookOpen,
-  BookOpenCheck,
   Bot,
-  BarChart2,
   ChevronDown,
   ChevronRight,
-  LayoutDashboard,
   Menu,
   Search,
-  User as UserIcon,
-  Users,
   X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,6 +20,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import dashboardIcon from "@/assets/sidebar/dashboard.png";
+import academicsIcon from "@/assets/sidebar/academics.png";
+import studentsIcon from "@/assets/sidebar/students.png";
+import reportsIcon from "@/assets/sidebar/reports.png";
+import userIcon from "@/assets/sidebar/user.png";
 
 const DRAWER_WIDTH = 280;
 const COLLAPSED_DRAWER_WIDTH = 88;
@@ -38,6 +38,17 @@ type NavItem = {
   color: string;
   children?: NavChild[];
 };
+
+function NavIcon({ src, alt }: { src: string; alt: string }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-6 w-6 object-contain"
+      draggable={false}
+    />
+  );
+}
 
 type SidebarProps = {
   mobileOpen?: boolean;
@@ -74,13 +85,13 @@ export default function Sidebar({
           id: "dashboard",
           label: "Dashboard",
           href: "/admin/dashboard",
-          icon: <LayoutDashboard className="h-5 w-5" />,
+          icon: <NavIcon src={dashboardIcon} alt="Dashboard" />,
           color: colorTokens.menuColors.dashboard,
         },
         {
           id: "academics",
           label: "Academics",
-          icon: <BookOpen className="h-5 w-5" />,
+          icon: <NavIcon src={academicsIcon} alt="Academics" />,
           color: colorTokens.menuColors.academics,
           children: [
             { id: "courses", label: "Courses", href: "/admin/courses" },
@@ -91,7 +102,7 @@ export default function Sidebar({
         {
           id: "students",
           label: "Students",
-          icon: <Users className="h-5 w-5" />,
+          icon: <NavIcon src={studentsIcon} alt="Students" />,
           color: colorTokens.menuColors.students,
           children: [
             { id: "students-list", label: "All Students", href: "/admin/students" },
@@ -102,14 +113,14 @@ export default function Sidebar({
           id: "reports",
           label: "Reports",
           href: "/admin/reports",
-          icon: <BarChart2 className="h-5 w-5" />,
+          icon: <NavIcon src={reportsIcon} alt="Reports" />,
           color: colorTokens.menuColors.finance,
         },
         {
           id: "profile",
           label: "Profile",
           href: "/admin/profile",
-          icon: <UserIcon className="h-5 w-5" />,
+          icon: <NavIcon src={userIcon} alt="Profile" />,
           color: colorTokens.menuColors.settings,
         },
       ];
@@ -120,13 +131,13 @@ export default function Sidebar({
         id: "dashboard",
         label: "Dashboard",
         href: "/student/dashboard",
-        icon: <LayoutDashboard className="h-5 w-5" />,
+        icon: <NavIcon src={dashboardIcon} alt="Dashboard" />,
         color: colorTokens.menuColors.dashboard,
       },
       {
         id: "learning",
         label: "Learning",
-        icon: <BookOpenCheck className="h-5 w-5" />,
+        icon: <NavIcon src={academicsIcon} alt="Learning" />,
         color: colorTokens.menuColors.academics,
         children: [
           { id: "my-courses", label: "My Courses", href: "/student/my-courses" },
@@ -145,7 +156,7 @@ export default function Sidebar({
         id: "profile",
         label: "My Profile",
         href: "/student/profile",
-        icon: <UserIcon className="h-5 w-5" />,
+        icon: <NavIcon src={userIcon} alt="My Profile" />,
         color: colorTokens.menuColors.settings,
       },
     ];
@@ -261,7 +272,7 @@ export default function Sidebar({
             </div>
             <div className="min-w-0">
               <p className="truncate text-base font-black text-white">Edu Transform</p>
-              <p className="truncate text-xs font-medium text-white/80">Aman Hukkerikar</p>
+              <p className="truncate text-xs font-medium text-white/80">Ash</p>
             </div>
           </div>
         )}
