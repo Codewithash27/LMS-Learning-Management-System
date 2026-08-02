@@ -77,13 +77,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-app-main transition-[width,margin] duration-300 ease-out">
         <header className="sticky top-0 z-30 border-b border-[var(--color-border-subtle)] glass-appbar">
-          <div className="flex h-14 items-center justify-between gap-2 px-3 sm:h-[60px] sm:px-4 md:h-[68px] md:px-6">
-            <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-12 items-center justify-between gap-2 px-3 sm:h-12 sm:px-4 md:px-5">
+            <div className="flex min-w-0 items-center gap-2">
               {isMobile && (
                 <button
                   type="button"
                   onClick={() => setMobileOpen(true)}
-                  className="rounded-lg p-2 text-foreground hover:bg-black/5"
+                  className="rounded-lg p-1.5 text-foreground hover:bg-black/5"
                   aria-label="Open menu"
                 >
                   <Menu className="h-5 w-5" />
@@ -91,11 +91,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
               )}
 
               <Link href={homePath}>
-                <div className="flex min-w-0 cursor-pointer items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-brand shadow-md">
-                    <BookOpen className="h-5 w-5 text-white" />
+                <div className="flex min-w-0 cursor-pointer items-center gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-brand shadow-sm md:hidden">
+                    <BookOpen className="h-4 w-4 text-white" />
                   </div>
-                  <span className="hidden truncate text-base font-bold text-foreground sm:block md:text-lg">
+                  <span className="truncate text-sm font-bold text-foreground md:hidden">
                     Edu Transform
                   </span>
                 </div>
@@ -185,24 +185,24 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </header>
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto">
-          <div className="w-full min-w-0 px-2 py-1 sm:px-4 sm:py-2 md:px-4 lg:px-6 xl:px-8">
+          <div className="w-full min-w-0 px-3 py-2 sm:px-4 md:px-5">
             {children}
           </div>
         </main>
 
-        <footer className="sticky bottom-0 z-20 flex h-[50px] items-center justify-between border-t border-[var(--color-border-subtle)] bg-white px-4 py-2">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-brand">
-              <BookOpen className="h-4 w-4 text-white" />
+        <footer className="sticky bottom-0 z-20 flex h-10 shrink-0 items-center justify-between border-t border-[var(--color-border-subtle)] bg-white px-3 sm:px-4">
+          <div className="flex items-center gap-1.5">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent-brand">
+              <BookOpen className="h-3 w-3 text-white" />
             </div>
-            <span className="hidden text-xs font-semibold text-foreground sm:inline">
+            <span className="hidden text-[11px] font-semibold text-foreground sm:inline">
               Edu Transform
             </span>
           </div>
-          <p className="text-center text-[11px] font-medium text-muted-foreground">
+          <p className="min-w-0 truncate text-center text-[10px] font-medium text-muted-foreground">
             © {new Date().getFullYear()} Edu Transform. All rights reserved to Aman Hukkerikar
           </p>
-          <div className="hidden w-[100px] sm:block" />
+          <div className="hidden w-14 shrink-0 sm:block" />
         </footer>
       </div>
     </div>

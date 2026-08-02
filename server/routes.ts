@@ -1348,6 +1348,275 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
     }
   });
 
+  // Live admin dashboard aggregates (tenant-scoped)
+  app.get("/api/admin/dashboard", isAdmin, async (req, res) => {
+    try {
+      const tenantId = Number(req.user!.tenantId);
+      if (!Number.isFinite(tenantId)) {
+        return res.status(400).json({ message: "Invalid tenant" });
+      }
+
+      const users = await storage.getUsersByTenant(tenantId);
+      const courses = await storage.getCoursesByTenant(tenantId);
+      const exams = await storage.getExamsByTenant(tenantId);
+      const logs = await storage.getActivityLogsByTenant(tenantId);
+      const students = users.filter((u) => u.role === "student");
+      const userById = new Map(users.map((u) => [u.id, u]));
+
+      const enrollmentsByCourse = await Promise.all(
+        courses.map(async (course) => ({
+          course,
+          enrollments: await storage.getEnrollmentsByCourse(course.id),
+        }))
+      );
+
+      let totalEnrollments = 0;
+      let progressSum = 0;
+      const coursePerformance = enrollmentsByCourse
+        .map(({ course, enrollments }) => {
+          totalEnrollments += enrollments.length;
+          const avg =
+            enrollments.length === 0
+              ? 0
+              : Math.round(
+                  enrollments.reduce((s, e) => s + (Number(e.progress) || 0), 0) /
+                    enrollments.length
+                );
+          progressSum += avg;
+          return {
+            id: course.id,
+            name: course.title,
+            percentage: avg,
+            enrolled: enrollments.length,
+          };
+        })
+        .sort((a, b) => b.percentage - a.percentage || b.enrolled - a.enrolled)
+        .slice(0, 5);
+
+      const avgCompletion =
+        courses.length === 0 ? 0 : Math.round(progressSum / courses.length);
+
+      const signalLogs = logs.filter((l) => l.activityType !== "dashboard_view");
+      const now = new Date();
+
+      const startOfDay = (d: Date) => {
+        const x = new Date(d);
+        x.setHours(0, 0, 0, 0);
+        return x;
+      };
+
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const weekly: { day: string; percentage: number; count: number; isCurrentDay?: boolean }[] =
+        [];
+      for (let i = 6; i >= 0; i--) {
+        const day = new Date(now);
+        day.setDate(now.getDate() - i);
+        const start = startOfDay(day);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 1);
+        const count = signalLogs.filter((l) => {
+          const t = new Date(l.timestamp as any).getTime();
+          return t >= start.getTime() && t < end.getTime();
+        }).length;
+        weekly.push({
+          day: dayNames[day.getDay()],
+          count,
+          percentage: 0,
+          isCurrentDay: i === 0,
+        });
+      }
+      const weekMax = Math.max(...weekly.map((d) => d.count), 1);
+      weekly.forEach((d) => {
+        d.percentage = Math.round((d.count / weekMax) * 100);
+      });
+
+      const thisWeekCount = weekly.reduce((s, d) => s + d.count, 0);
+      const prevWeekStart = startOfDay(new Date(now));
+      prevWeekStart.setDate(prevWeekStart.getDate() - 13);
+      const prevWeekEnd = startOfDay(new Date(now));
+      prevWeekEnd.setDate(prevWeekEnd.getDate() - 6);
+      const prevWeekCount = signalLogs.filter((l) => {
+        const t = new Date(l.timestamp as any).getTime();
+        return t >= prevWeekStart.getTime() && t < prevWeekEnd.getTime();
+      }).length;
+      const weekChangePct =
+        prevWeekCount === 0
+          ? thisWeekCount > 0
+            ? 100
+            : 0
+          : Math.round(((thisWeekCount - prevWeekCount) / prevWeekCount) * 100);
+
+      const monthly: { day: string; percentage: number; count: number }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const end = new Date(now);
+        end.setDate(now.getDate() - i * 5);
+        const start = new Date(end);
+        start.setDate(end.getDate() - 4);
+        start.setHours(0, 0, 0, 0);
+        const endExclusive = new Date(end);
+        endExclusive.setHours(23, 59, 59, 999);
+        const count = signalLogs.filter((l) => {
+          const t = new Date(l.timestamp as any).getTime();
+          return t >= start.getTime() && t <= endExclusive.getTime();
+        }).length;
+        monthly.push({
+          day: `${start.getMonth() + 1}/${start.getDate()}`,
+          count,
+          percentage: 0,
+        });
+      }
+      const monthMax = Math.max(...monthly.map((d) => d.count), 1);
+      monthly.forEach((d) => {
+        d.percentage = Math.round((d.count / monthMax) * 100);
+      });
+
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const yearly: { day: string; percentage: number; count: number }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const start = new Date(d.getFullYear(), d.getMonth(), 1);
+        const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+        const count = signalLogs.filter((l) => {
+          const t = new Date(l.timestamp as any).getTime();
+          return t >= start.getTime() && t < end.getTime();
+        }).length;
+        yearly.push({
+          day: monthNames[d.getMonth()],
+          count,
+          percentage: 0,
+        });
+      }
+      const yearMax = Math.max(...yearly.map((d) => d.count), 1);
+      yearly.forEach((d) => {
+        d.percentage = Math.round((d.count / yearMax) * 100);
+      });
+
+      const timeAgo = (ts: string | Date) => {
+        const diffMin = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
+        if (diffMin < 1) return "Just now";
+        if (diffMin < 60) return `${diffMin}m ago`;
+        if (diffMin < 1440) return `${Math.floor(diffMin / 60)}h ago`;
+        if (diffMin < 10080) return `${Math.floor(diffMin / 1440)}d ago`;
+        return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      };
+
+      const recentActivities: {
+        id: number;
+        type: "new-course" | "exam-results" | "deadline" | "new-students" | "progress";
+        title: string;
+        description: string;
+        time: string;
+      }[] = [];
+
+      const sortedLogs = [...signalLogs].sort(
+        (a, b) => new Date(b.timestamp as any).getTime() - new Date(a.timestamp as any).getTime()
+      );
+
+      for (const log of sortedLogs) {
+        if (recentActivities.length >= 6) break;
+        try {
+          const actor = userById.get(log.userId);
+          const actorName = actor
+            ? `${actor.firstName || ""} ${actor.lastName || ""}`.trim() || actor.username
+            : null;
+
+          let type: "new-course" | "exam-results" | "deadline" | "new-students" | "progress" =
+            "progress";
+          let title = "Activity";
+          let description = actorName || "System";
+
+          if (log.activityType === "lesson_complete") {
+            type = "progress";
+            const course = await storage.getCourse(log.resourceId);
+            title = course?.title || `Course #${log.resourceId}`;
+            description = ["Lesson Completed", actorName].filter(Boolean).join(" · ");
+          } else if (
+            log.activityType === "exam_start" ||
+            log.activityType === "exam_complete"
+          ) {
+            type = "exam-results";
+            const exam = await storage.getExam(log.resourceId);
+            const course = exam ? await storage.getCourse(exam.courseId) : null;
+            title = course?.title || exam?.title || `Exam #${log.resourceId}`;
+            description = [
+              log.activityType === "exam_complete" ? "Exam Submitted" : "Exam Started",
+              exam?.title,
+              actorName,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+          } else if (
+            log.activityType === "course_assign" ||
+            log.activityType === "course_enroll"
+          ) {
+            type = "new-course";
+            const course = await storage.getCourse(log.resourceId);
+            title = course?.title || `Course #${log.resourceId}`;
+            description = [
+              log.activityType === "course_assign" ? "Course Assigned" : "Student Enrolled",
+              actorName,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+          } else {
+            continue;
+          }
+
+          recentActivities.push({
+            id: log.id,
+            type,
+            title,
+            description,
+            time: timeAgo(log.timestamp as any),
+          });
+        } catch {
+          // skip malformed log
+        }
+      }
+
+      const publishedExams = exams
+        .filter((e) => e.acceptingResponses !== false)
+        .slice(0, 3)
+        .map((exam) => {
+          const course = courses.find((c) => c.id === exam.courseId);
+          return {
+            id: exam.id,
+            title: exam.title,
+            subtitle: course?.title || "Course",
+            urgency: "high" as const,
+            urgencyLabel: "Open",
+            time: "Accepting responses",
+          };
+        });
+
+      const publishedExamCount = exams.filter((e) => e.acceptingResponses !== false).length;
+      const closedExams = exams.filter((e) => e.acceptingResponses === false).length;
+
+      res.json({
+        stats: {
+          totalStudents: students.length,
+          activeCourses: courses.length,
+          totalExams: exams.length,
+          publishedExams: publishedExamCount,
+          closedExams,
+          totalEnrollments,
+          avgCompletion,
+          activityEvents: signalLogs.length,
+        },
+        coursePerformance,
+        activitySeries: { weekly, monthly, yearly },
+        weekChangePct,
+        thisWeekCount,
+        prevWeekCount,
+        recentActivities,
+        upcomingExams: publishedExams,
+      });
+    } catch (error) {
+      console.error("Failed to build admin dashboard:", error);
+      res.status(500).json({ message: "Failed to load dashboard data" });
+    }
+  });
+
   app.post("/api/activity-logs", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertActivityLogSchema.parse({
