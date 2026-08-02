@@ -3,24 +3,17 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Users, Clock, Plus, Eye, GraduationCap } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { batchFormSchema, type BatchFormValues } from "@/lib/form-schemas";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import Header from "@/components/layout/header";
 import ListToolbar from "@/components/layout/list-toolbar";
 import DataTable from "@/components/primitives/DataTable";
+import EnrollStudentsDialog from "@/components/batches/enroll-students-dialog";
 import { useClientPagination } from "@/hooks/use-client-pagination";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   TableCell,
   TableRow,
@@ -53,27 +46,20 @@ import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import {
+  CreateFormDialog,
+  CreateFormFooter,
+  FormSection,
+  createFormControlClass,
+  createFormLabelClass,
+} from "@/components/ui/create-form-dialog";
 
-// Define the form schema for batch creation
-const batchFormSchema = z.object({
-  name: z.string().min(3, { message: "Batch name must be at least 3 characters" }),
-  batchCode: z.string().min(2, { message: "Batch code must be at least 2 characters" }),
-  courseId: z.coerce.number({ required_error: "Please select a course" }),
-  trainerId: z.coerce.number({ required_error: "Please select a trainer" }),
-  startDate: z.date({ required_error: "Please select a start date" }),
-  batchTime: z.string().min(1, { message: "Please enter batch time" }),
-  description: z.string().optional(),
-  maxStudents: z.coerce.number().optional(),
-  isActive: z.boolean().default(true)
-});
-
-type BatchFormValues = z.infer<typeof batchFormSchema>;
+const CREATE_BATCH_FORM_ID = "create-batch-form";
 
 export default function BatchesPage() {
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openEnrollDialog, setOpenEnrollDialog] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
-  const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -185,56 +171,13 @@ export default function BatchesPage() {
     },
   });
 
-  // Mutation for batch enrollment
-  const enrollStudentsMutation = useMutation({
-    mutationFn: async ({ batchId, userIds }: { batchId: number; userIds: number[] }) => {
-      return await apiRequest("POST", "/api/batch-enrollments/bulk", { batchId, userIds });
-    },
-    onSuccess: () => {
-      toast({
-        title: "🎉 Students enrolled successfully",
-        description: "Students have been enrolled to the batch successfully.",
-      });
-      setOpenEnrollDialog(false);
-      setSelectedStudents([]);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to enroll students",
-        description: error.message || "Please try again later.",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Handle form submission
   function onSubmit(values: BatchFormValues) {
     createBatchMutation.mutate(values);
   }
 
-  // Handle student enrollment
-  function enrollStudents() {
-    if (selectedBatchId && selectedStudents.length > 0) {
-      enrollStudentsMutation.mutate({ batchId: selectedBatchId, userIds: selectedStudents });
-    } else {
-      toast({
-        title: "No students selected",
-        description: "Please select at least one student to enroll.",
-        variant: "destructive",
-      });
-    }
-  }
-
-  // Toggle student selection
-  function toggleStudentSelection(studentId: number) {
-    setSelectedStudents(prev => {
-      if (prev.includes(studentId)) {
-        return prev.filter(id => id !== studentId);
-      } else {
-        return [...prev, studentId];
-      }
-    });
-  }
+  const selectedBatch = batches?.find((b) => b.id === selectedBatchId);
+  const selectedBatchCourse = courses?.find((c) => c.id === selectedBatch?.courseId);
 
   // Filter batches based on search term and filters
   const filteredBatches = batches?.filter((batch) => {
@@ -439,41 +382,48 @@ export default function BatchesPage() {
         </DataTable>
       )}
 
-      {/* Create Batch Dialog */}
-      <Dialog open={openCreateDialog} onOpenChange={setOpenCreateDialog}>
-        <DialogContent className="backdrop-blur-sm bg-white/95 border border-white/20 shadow-2xl rounded-3xl max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="p-3 bg-blue-100 rounded-2xl w-12 h-12 flex items-center justify-center mx-auto mb-4">
-              <Users className="h-6 w-6 text-blue-600" />
-            </div>
-            <DialogTitle className="text-xl font-bold text-center text-gray-900">
-              Create New Batch
-            </DialogTitle>
-            <DialogDescription className="text-center text-gray-600">
-              Fill in the details to create a new batch. All students in a batch will be enrolled
-              in the associated course.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <CreateFormDialog
+        open={openCreateDialog}
+        onOpenChange={setOpenCreateDialog}
+        title="Create Batch"
+        description="Fill in the details to create a new batch. Students in a batch will be enrolled in the associated course."
+        icon={<Users className="h-7 w-7 text-white" />}
+        maxWidth="max-w-2xl"
+        footer={
+          <CreateFormFooter
+            formId={CREATE_BATCH_FORM_ID}
+            onCancel={() => setOpenCreateDialog(false)}
+            submitLabel="Create Batch"
+            pendingLabel="Creating..."
+            isPending={createBatchMutation.isPending}
+          />
+        }
+      >
+        <Form {...form}>
+          <form
+            id={CREATE_BATCH_FORM_ID}
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+          >
+            <FormSection
+              title="Batch details"
+              description="Name, code, course, and description"
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Batch Name</FormLabel>
+                      <FormLabel className={createFormLabelClass}>Batch Name</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Enter batch name" 
-                          className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-xl"
-                          {...field} 
+                        <Input
+                          placeholder="Enter batch name"
+                          className={createFormControlClass}
+                          {...field}
                         />
                       </FormControl>
-                      <FormDescription>
-                        A descriptive name for the batch
-                      </FormDescription>
+                      <FormDescription>A descriptive name for the batch</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -484,36 +434,32 @@ export default function BatchesPage() {
                   name="batchCode"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Batch Code</FormLabel>
+                      <FormLabel className={createFormLabelClass}>Batch Code</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Enter batch code" 
-                          className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-xl"
-                          {...field} 
+                        <Input
+                          placeholder="Enter batch code"
+                          className={createFormControlClass}
+                          {...field}
                         />
                       </FormControl>
-                      <FormDescription>
-                        A unique code for this batch
-                      </FormDescription>
+                      <FormDescription>A unique code for this batch</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="courseId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Course</FormLabel>
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel className={createFormLabelClass}>Course</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value?.toString()}
                       >
                         <FormControl>
-                          <SelectTrigger className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-xl">
+                          <SelectTrigger className={createFormControlClass}>
                             <SelectValue placeholder="Select a course" />
                           </SelectTrigger>
                         </FormControl>
@@ -524,10 +470,7 @@ export default function BatchesPage() {
                             </SelectItem>
                           ) : (
                             courses?.map((course) => (
-                              <SelectItem
-                                key={course.id}
-                                value={course.id.toString()}
-                              >
+                              <SelectItem key={course.id} value={course.id.toString()}>
                                 {course.title}
                               </SelectItem>
                             ))
@@ -544,16 +487,41 @@ export default function BatchesPage() {
 
                 <FormField
                   control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel className={createFormLabelClass}>Description (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter batch description"
+                          className={createFormControlClass}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </FormSection>
+
+            <FormSection
+              title="Schedule & trainer"
+              description="When the batch runs and who leads it"
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
                   name="trainerId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Trainer</FormLabel>
+                      <FormLabel className={createFormLabelClass}>Trainer</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value?.toString()}
                       >
                         <FormControl>
-                          <SelectTrigger className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-xl">
+                          <SelectTrigger className={createFormControlClass}>
                             <SelectValue placeholder="Select a trainer" />
                           </SelectTrigger>
                         </FormControl>
@@ -564,10 +532,7 @@ export default function BatchesPage() {
                             </SelectItem>
                           ) : (
                             trainers.map((trainer) => (
-                              <SelectItem
-                                key={trainer.id}
-                                value={trainer.id.toString()}
-                              >
+                              <SelectItem key={trainer.id} value={trainer.id.toString()}>
                                 {trainer.firstName} {trainer.lastName}
                               </SelectItem>
                             ))
@@ -581,29 +546,44 @@ export default function BatchesPage() {
                     </FormItem>
                   )}
                 />
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="batchTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>Batch Time</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., 09:00 AM"
+                          className={createFormControlClass}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="startDate"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Start Date</FormLabel>
+                      <FormLabel className={createFormLabelClass}>Start Date</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
-                              variant={"outline"}
-                              className={`w-full pl-3 text-left font-normal bg-white/70 backdrop-blur-sm border border-white/20 rounded-xl ${
+                              type="button"
+                              variant="outline"
+                              className={cn(
+                                createFormControlClass,
+                                "w-full justify-start pl-3 text-left font-normal",
                                 !field.value && "text-muted-foreground"
-                              }`}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
                               )}
+                            >
+                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -627,198 +607,36 @@ export default function BatchesPage() {
 
                 <FormField
                   control={form.control}
-                  name="batchTime"
+                  name="isActive"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Batch Time</FormLabel>
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-[#F4E4D7] bg-white p-4 sm:col-span-2">
                       <FormControl>
-                        <Input 
-                          placeholder="e.g., 09:00 AM" 
-                          className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-xl"
-                          {...field} 
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className={createFormLabelClass}>Active Batch</FormLabel>
+                        <FormDescription>Is this batch currently active?</FormDescription>
+                      </div>
                     </FormItem>
                   )}
                 />
               </div>
+            </FormSection>
+          </form>
+        </Form>
+      </CreateFormDialog>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter batch description" 
-                        className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-xl"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-white/20 p-4 bg-white/50 backdrop-blur-sm">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>Active Batch</FormLabel>
-                      <FormDescription>
-                        Is this batch currently active?
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setOpenCreateDialog(false)}
-                  disabled={createBatchMutation.isPending}
-                  className="flex-1 rounded-2xl border border-white/20 bg-white/50 backdrop-blur-sm"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createBatchMutation.isPending}
-                  className="flex-1 rounded-2xl bg-accent-brand text-white hover:shadow-xl transition-all duration-300"
-                >
-                  {createBatchMutation.isPending ? (
-                    <>
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent border-white mr-2" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Batch"
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Enrollment Dialog */}
-      <Dialog open={openEnrollDialog} onOpenChange={setOpenEnrollDialog}>
-        <DialogContent className="backdrop-blur-sm bg-white/95 border border-white/20 shadow-2xl rounded-3xl max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="p-3 bg-green-100 rounded-2xl w-12 h-12 flex items-center justify-center mx-auto mb-4">
-              <GraduationCap className="h-6 w-6 text-green-600" />
-            </div>
-            <DialogTitle className="text-xl font-bold text-center text-gray-900">
-              Enroll Students to Batch
-            </DialogTitle>
-            <DialogDescription className="text-center text-gray-600">
-              Select students to enroll in this batch. Students will also be enrolled in the
-              associated course.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* Show selected batch details */}
-            {selectedBatchId && batches && (
-              <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200/50 p-4">
-                <h3 className="font-medium text-gray-900">Selected Batch:</h3>
-                <p className="text-gray-600">
-                  {batches.find(b => b.id === selectedBatchId)?.name} - 
-                  {courses?.find(c => c.id === batches.find(b => b.id === selectedBatchId)?.courseId)?.title}
-                </p>
-              </div>
-            )}
-
-            {students.length === 0 ? (
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No students available for enrollment</p>
-              </div>
-            ) : (
-              <div>
-                <div className="mb-4 flex justify-between items-center">
-                  <h3 className="font-medium text-gray-900">Select Students:</h3>
-                  <div className="text-sm text-gray-500 bg-white/70 backdrop-blur-sm border border-white/20 rounded-xl px-3 py-1">
-                    {selectedStudents.length} students selected
-                  </div>
-                </div>
-                <div className="max-h-[300px] overflow-y-auto border border-white/20 rounded-2xl divide-y divide-white/20">
-                  {students.map((student) => (
-                    <div
-                      key={student.id}
-                      className="flex items-center p-4 hover:bg-gray-50/50 transition-colors duration-200"
-                    >
-                      <Checkbox
-                        id={`student-${student.id}`}
-                        checked={selectedStudents.includes(student.id)}
-                        onCheckedChange={() => toggleStudentSelection(student.id)}
-                        className="mr-4 data-[state=checked]:bg-blue-600"
-                      />
-                      <label
-                        htmlFor={`student-${student.id}`}
-                        className="flex-1 flex items-center cursor-pointer"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mr-3">
-                          <span className="font-medium text-blue-600">
-                            {student.firstName[0]}{student.lastName[0]}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {student.firstName} {student.lastName}
-                          </p>
-                          <p className="text-sm text-gray-500">{student.email}</p>
-                        </div>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => setOpenEnrollDialog(false)}
-              disabled={enrollStudentsMutation.isPending}
-              className="flex-1 rounded-2xl border border-white/20 bg-white/50 backdrop-blur-sm"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              disabled={
-                enrollStudentsMutation.isPending || 
-                selectedStudents.length === 0 || 
-                !selectedBatchId
-              }
-              onClick={enrollStudents}
-              className="flex-1 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 text-white hover:shadow-xl transition-all duration-300"
-            >
-              {enrollStudentsMutation.isPending ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent border-white mr-2" />
-                  Enrolling...
-                </>
-              ) : (
-                "Enroll Selected Students"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EnrollStudentsDialog
+        open={openEnrollDialog}
+        onOpenChange={setOpenEnrollDialog}
+        batchId={selectedBatchId}
+        batchName={selectedBatch?.name}
+        courseTitle={selectedBatchCourse?.title}
+        students={students}
+      />
     </DashboardLayout>
   );
 }

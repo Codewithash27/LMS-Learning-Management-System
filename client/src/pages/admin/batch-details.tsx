@@ -4,6 +4,7 @@ import { useParams, Link } from "wouter";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import EnrollStudentsDialog from "@/components/batches/enroll-students-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,28 +22,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, UserPlus, ArrowLeft } from "lucide-react";
 
 export default function BatchDetailsPage() {
   const [openEnrollDialog, setOpenEnrollDialog] = useState(false);
-  const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const { id } = useParams<{ id: string }>();
   const batchId = parseInt(id);
   const queryClient = useQueryClient();
@@ -122,29 +112,6 @@ export default function BatchDetailsPage() {
     user.role === 'student' && !enrolledUserIds.includes(user.id)
   ) || [];
 
-  // Mutation for batch enrollment
-  const enrollStudentsMutation = useMutation({
-    mutationFn: async ({ batchId, userIds }: { batchId: number; userIds: number[] }) => {
-      return await apiRequest("POST", "/api/batch-enrollments/bulk", { batchId, userIds });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Students enrolled",
-        description: "Students have been enrolled to the batch successfully.",
-      });
-      setOpenEnrollDialog(false);
-      setSelectedStudents([]);
-      queryClient.invalidateQueries({ queryKey: [`/api/batches/${batchId}/enrollments`] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to enroll students",
-        description: error.message || "Please try again later.",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Mutation for removing a student from batch
   const removeStudentMutation = useMutation({
     mutationFn: async (enrollmentId: number) => {
@@ -165,30 +132,6 @@ export default function BatchDetailsPage() {
       });
     },
   });
-
-  // Toggle student selection for enrollment
-  function toggleStudentSelection(studentId: number) {
-    setSelectedStudents(prev => {
-      if (prev.includes(studentId)) {
-        return prev.filter(id => id !== studentId);
-      } else {
-        return [...prev, studentId];
-      }
-    });
-  }
-
-  // Handle student enrollment
-  function enrollStudents() {
-    if (selectedStudents.length > 0) {
-      enrollStudentsMutation.mutate({ batchId, userIds: selectedStudents });
-    } else {
-      toast({
-        title: "No students selected",
-        description: "Please select at least one student to enroll.",
-        variant: "destructive",
-      });
-    }
-  }
 
   // Handle student removal
   function removeStudent(enrollmentId: number) {
@@ -306,69 +249,17 @@ export default function BatchDetailsPage() {
           <TabsContent value="students" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Enrolled Students ({enrolledStudents.length})</h2>
-              <Dialog open={openEnrollDialog} onOpenChange={setOpenEnrollDialog}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Enroll Students
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[725px] max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Enroll Students to Batch</DialogTitle>
-                    <DialogDescription>
-                      Select students to enroll in this batch. Students will also be enrolled in the
-                      associated course.
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="py-4">
-                    <h3 className="font-medium mb-2">Available Students:</h3>
-                    {availableStudents.length === 0 ? (
-                      <p className="text-sm text-gray-500">No more students available to enroll.</p>
-                    ) : (
-                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                        {availableStudents.map((student) => (
-                          <div key={student.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100">
-                            <Checkbox
-                              id={`student-${student.id}`}
-                              checked={selectedStudents.includes(student.id)}
-                              onCheckedChange={() => toggleStudentSelection(student.id)}
-                            />
-                            <label
-                              htmlFor={`student-${student.id}`}
-                              className="flex-grow cursor-pointer"
-                            >
-                              <div className="font-medium">{student.firstName} {student.lastName}</div>
-                              <p className="text-sm text-gray-500">{student.email}</p>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      disabled={
-                        enrollStudentsMutation.isPending || 
-                        selectedStudents.length === 0
-                      }
-                      onClick={enrollStudents}
-                    >
-                      {enrollStudentsMutation.isPending ? "Enrolling..." : "Enroll Selected Students"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Button type="button" onClick={() => setOpenEnrollDialog(true)}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Enroll Students
+              </Button>
             </div>
             
             {enrolledStudents.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center p-8">
                   <p className="mb-4 text-lg text-gray-500">No students enrolled in this batch yet</p>
-                  <Button onClick={() => setOpenEnrollDialog(true)}>
+                  <Button type="button" onClick={() => setOpenEnrollDialog(true)}>
                     Enroll Your First Student
                   </Button>
                 </CardContent>
@@ -408,6 +299,7 @@ export default function BatchDetailsPage() {
                           </TableCell>
                           <TableCell>
                             <Button
+                              type="button"
                               variant="outline"
                               size="sm"
                               onClick={() => enrollment && removeStudent(enrollment.id)}
@@ -439,6 +331,15 @@ export default function BatchDetailsPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <EnrollStudentsDialog
+          open={openEnrollDialog}
+          onOpenChange={setOpenEnrollDialog}
+          batchId={batchId}
+          batchName={batch.name}
+          courseTitle={course?.title}
+          students={availableStudents}
+        />
       </div>
     </DashboardLayout>
   );

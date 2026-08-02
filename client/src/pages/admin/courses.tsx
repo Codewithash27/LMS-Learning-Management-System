@@ -748,6 +748,7 @@ export default function AdminCourses() {
 
           <DialogFooter className="flex flex-col gap-3 sm:flex-row">
             <Button
+              type="button"
               variant="outline"
               onClick={() => setIsAssignDialogOpen(false)}
               disabled={assignMutation.isPending}
@@ -793,6 +794,7 @@ export default function AdminCourses() {
           </div>
           <DialogFooter className="gap-2 sm:gap-2">
             <Button
+              type="button"
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
               disabled={deleteMutation.isPending}

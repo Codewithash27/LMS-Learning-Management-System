@@ -1,47 +1,40 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { 
-  Edit, 
-  Trash, 
-  Plus 
-} from 'lucide-react';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest, queryClient } from '@/lib/queryClient';
-import { useQuery } from '@tanstack/react-query';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Trash, Plus, ClipboardList } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import { examFormSchema, type ExamFormValues } from "@/lib/form-schemas";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  CreateFormDialog,
+  CreateFormFooter,
+  FormSection,
+  createFormControlClass,
+  createFormLabelClass,
+} from "@/components/ui/create-form-dialog";
 
-// Form schema for exam
-const examSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  description: z.string().min(1, "Description is required"),
-  courseId: z.string().min(1, "Please select a course"),
-  acceptingResponses: z.boolean().default(true),
-});
+const EXAM_FORM_ID = "exam-editor-form";
 
-type ExamFormValues = z.infer<typeof examSchema>;
-
-// Question type - Updated for text-based assignment questions
 type QuestionType = {
   id: number;
   text: string;
@@ -64,9 +57,9 @@ type ExamEditorProps = {
 export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEditorProps) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<QuestionType[]>([]);
-  const [examData, setExamData] = useState<ExamFormValues | null>(null);
-  
-  // Fetch the complete exam data when editing
+  const [isSaving, setIsSaving] = useState(false);
+  const isEditing = !!exam?.id;
+
   const { data: fetchedExam, isLoading: isLoadingExam } = useQuery({
     queryKey: [`/api/exams/${exam?.id}`],
     queryFn: async () => {
@@ -74,10 +67,9 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
       const response = await apiRequest("GET", `/api/exams/${exam.id}`);
       return await response.json();
     },
-    enabled: !!exam?.id && open
+    enabled: !!exam?.id && open,
   });
-  
-  // Fetch questions for editing an existing exam
+
   const { data: examQuestions, isLoading: isLoadingQuestions } = useQuery({
     queryKey: [`/api/exams/${exam?.id}/questions`],
     queryFn: async () => {
@@ -85,24 +77,37 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
       const response = await apiRequest("GET", `/api/exams/${exam.id}/questions`);
       return await response.json();
     },
-    enabled: !!exam?.id && open
+    enabled: !!exam?.id && open,
   });
-  
-  // Update exam data when fetched exam changes
+
+  const form = useForm<ExamFormValues>({
+    resolver: zodResolver(examFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      courseId: "",
+      acceptingResponses: true,
+    },
+  });
+
   useEffect(() => {
     if (fetchedExam && exam?.id) {
-      setExamData({
+      form.reset({
         title: fetchedExam.title,
         description: fetchedExam.description,
         courseId: String(fetchedExam.courseId),
-        acceptingResponses: fetchedExam.acceptingResponses !== false
+        acceptingResponses: fetchedExam.acceptingResponses !== false,
       });
-    } else if (!exam?.id) {
-      setExamData(null);
+    } else if (!exam?.id && open) {
+      form.reset({
+        title: "",
+        description: "",
+        courseId: "",
+        acceptingResponses: true,
+      });
     }
-  }, [fetchedExam, exam?.id]);
-  
-  // Update questions when examQuestions data changes
+  }, [fetchedExam, exam?.id, open, form]);
+
   useEffect(() => {
     if (examQuestions && exam?.id) {
       setQuestions(examQuestions);
@@ -111,72 +116,53 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
     }
   }, [examQuestions, exam?.id]);
 
-  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<ExamFormValues>({
-    resolver: zodResolver(examSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      courseId: "",
-      acceptingResponses: true,
-    }
-  });
-  
-  // Reset form with fetched exam data when available
-  useEffect(() => {
-    if (examData) {
-      reset(examData);
-    } else if (!exam?.id) {
-      reset({
-        title: "",
-        description: "",
-        courseId: "",
-        acceptingResponses: true,
-      });
-    }
-  }, [examData, exam?.id, reset]);
-
   const onSubmit = async (data: ExamFormValues) => {
+    const emptyQuestions = questions.filter((q) => !q.text.trim());
+    if (emptyQuestions.length > 0) {
+      toast({
+        title: "Incomplete questions",
+        description: "Please fill in all question text before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
     try {
-      // Convert courseId to number
       const payload = {
         ...data,
-        courseId: parseInt(data.courseId)
+        courseId: parseInt(data.courseId),
       };
 
-      let examId;
-      
+      let examId: number;
+
       if (exam?.id) {
-        // Update existing exam
         await apiRequest("PUT", `/api/exams/${exam.id}`, payload);
         examId = exam.id;
         toast({
           title: "Exam updated",
-          description: "The exam has been updated successfully."
+          description: "The exam has been updated successfully.",
         });
       } else {
-        // Create new exam
         const response = await apiRequest("POST", "/api/exams", payload);
         const newExam = await response.json();
         examId = newExam.id;
         toast({
           title: "Exam created",
-          description: "The exam has been created successfully."
+          description: "The exam has been created successfully.",
         });
       }
-      
-      // Save questions
+
       if (examId) {
         try {
-          // Clear existing questions first
           await apiRequest("DELETE", `/api/exams/${examId}/questions`);
-          
-          // Add all questions
+
           for (let index = 0; index < questions.length; index++) {
             const question = questions[index];
             await apiRequest("POST", `/api/exams/${examId}/questions`, {
               text: question.text,
               order: index,
-              examId
+              examId,
             });
           }
         } catch (err) {
@@ -188,188 +174,243 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
           });
         }
       }
-      
-      queryClient.invalidateQueries({queryKey: ["/api/exams"]});
-      queryClient.invalidateQueries({queryKey: [`/api/exams/${examId}/questions`]});
+
+      queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/exams/${examId}/questions`] });
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "There was an error saving the exam.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const addQuestion = () => {
-    const newQuestionId = questions.length > 0 
-      ? Math.max(...questions.map(q => q.id)) + 1 
-      : 1;
-    
-    setQuestions([...questions, {
-      id: newQuestionId,
-      text: "",
-      order: questions.length
-    }]);
+    const newQuestionId =
+      questions.length > 0 ? Math.max(...questions.map((q) => q.id)) + 1 : 1;
+
+    setQuestions([
+      ...questions,
+      {
+        id: newQuestionId,
+        text: "",
+        order: questions.length,
+      },
+    ]);
   };
 
   const updateQuestionText = (questionId: number, text: string) => {
-    setQuestions(questions.map(question => 
-      question.id === questionId 
-        ? { ...question, text } 
-        : question
-    ));
+    setQuestions(
+      questions.map((question) =>
+        question.id === questionId ? { ...question, text } : question
+      )
+    );
   };
-
-  // No need for option text and correct option methods since we're using text-based questions
 
   const removeQuestion = (questionId: number) => {
-    setQuestions(questions.filter(question => question.id !== questionId));
+    setQuestions(questions.filter((question) => question.id !== questionId));
   };
 
-  // No longer needed for assignment-style text-based exams
+  const isLoading = (isLoadingExam || isLoadingQuestions) && isEditing;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-heading font-semibold">
-            {exam?.id ? "Edit Assignment Exam" : "Create New Assignment Exam"}
-          </DialogTitle>
-        </DialogHeader>
-        
-        {(isLoadingExam || isLoadingQuestions) && exam?.id ? (
-          <div className="flex justify-center items-center p-6">
-            <div className="flex flex-col items-center">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <p className="mt-2 text-sm text-gray-500">Loading exam data...</p>
-            </div>
+    <CreateFormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEditing ? "Edit Exam" : "Create Exam"}
+      description={
+        isEditing
+          ? "Update exam details and assignment questions."
+          : "Create a new assignment exam with text-based questions."
+      }
+      icon={<ClipboardList className="h-7 w-7 text-white" />}
+      maxWidth="max-w-3xl"
+      footer={
+        <CreateFormFooter
+          formId={EXAM_FORM_ID}
+          onCancel={() => onOpenChange(false)}
+          submitLabel={isEditing ? "Update Exam" : "Create Exam"}
+          pendingLabel={isEditing ? "Saving..." : "Creating..."}
+          isPending={isSaving}
+          submitDisabled={isLoading}
+        />
+      }
+    >
+      {isLoading ? (
+        <div className="flex items-center justify-center p-6">
+          <div className="flex flex-col items-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <p className="mt-2 text-sm text-[#718096]">Loading exam data...</p>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <Label htmlFor="title">Exam Title</Label>
-                <Input 
-                  id="title"
-                  placeholder="e.g. Data Structures Mid-Term Exam"
-                  {...register("title")}
-                  className="mt-1"
+        </div>
+      ) : (
+        <Form {...form}>
+          <form
+            id={EXAM_FORM_ID}
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+          >
+            <FormSection
+              title="Exam details"
+              description="Title, course, description, and publish status"
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>Exam Title</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. Data Structures Mid-Term Exam"
+                          className={createFormControlClass}
+                          disabled={isSaving}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                {errors.title && (
-                  <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>
-                )}
-              </div>
-              
-              <div>
-                <Label htmlFor="courseId">Associated Course</Label>
-                <select
-                  id="courseId"
-                  className="w-full mt-1 p-2 border border-input rounded-md bg-background"
-                  {...register("courseId")}
-                >
-                  <option value="">Select Course</option>
-                  {courses.map(course => (
-                    <option key={course.id} value={String(course.id)}>{course.title}</option>
-                  ))}
-                </select>
-                {errors.courseId && (
-                  <p className="text-red-500 text-sm mt-1">{errors.courseId.message}</p>
-                )}
-              </div>
-              
-              <div className="md:col-span-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea 
-                  id="description"
-                  placeholder="Provide a description for the exam"
-                  rows={2}
-                  {...register("description")}
-                  className="mt-1"
-                />
-                {errors.description && (
-                  <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
-                )}
-              </div>
-              
 
-              <div className="md:col-span-2">
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="acceptingResponses"
-                    checked={watch("acceptingResponses") === true}
-                    onCheckedChange={(checked) => {
-                      setValue("acceptingResponses", checked);
-                    }}
-                  />
-                  <Label htmlFor="acceptingResponses" className="cursor-pointer">
-                    Publish exam (students assigned to this course can take it)
-                  </Label>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="courseId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>Associated Course</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={isSaving}
+                      >
+                        <FormControl>
+                          <SelectTrigger className={createFormControlClass}>
+                            <SelectValue placeholder="Select Course" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {courses.map((course) => (
+                            <SelectItem key={course.id} value={String(course.id)}>
+                              {course.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel className={createFormLabelClass}>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Provide a description for the exam"
+                          rows={2}
+                          className={createFormControlClass + " h-auto min-h-[72px] py-2.5"}
+                          disabled={isSaving}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="acceptingResponses"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between gap-3 rounded-xl border border-[#F4E4D7] bg-white p-4 sm:col-span-2">
+                      <FormLabel className={createFormLabelClass + " cursor-pointer"}>
+                        Publish exam (students assigned to this course can take it)
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value === true}
+                          onCheckedChange={field.onChange}
+                          disabled={isSaving}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </div>
-            </div>
-            
-            <div className="border-t border-neutral-light pt-6 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="font-medium">Exam Questions</h4>
-              </div>
-              
-              {questions.map((question, questionIndex) => (
-                <div key={question.id} className="border border-neutral-light rounded-md p-4 mb-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <h5 className="font-medium">Question {questionIndex + 1}</h5>
-                    <div className="flex space-x-2">
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        className="p-1 text-neutral-medium hover:text-red-500"
+            </FormSection>
+
+            <FormSection
+              title="Exam questions"
+              description="Text-based questions for written student answers"
+            >
+              <div className="space-y-3">
+                {questions.map((question, questionIndex) => (
+                  <div
+                    key={question.id}
+                    className="rounded-xl border border-[#F4E4D7] bg-white p-4"
+                  >
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <h5 className="text-sm font-semibold text-[#2D3748]">
+                        Question {questionIndex + 1}
+                      </h5>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-[#A0AEC0] hover:text-red-500"
                         onClick={() => removeQuestion(question.id)}
+                        disabled={isSaving}
+                        aria-label="Remove question"
                       >
                         <Trash className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                  
-                  <div className="mb-3">
-                    <Label htmlFor={`question-${question.id}`}>Question Text</Label>
-                    <Textarea 
+
+                    <label
+                      htmlFor={`question-${question.id}`}
+                      className={createFormLabelClass + " mb-1.5 block"}
+                    >
+                      Question Text
+                    </label>
+                    <Textarea
                       id={`question-${question.id}`}
                       value={question.text}
                       onChange={(e) => updateQuestionText(question.id, e.target.value)}
                       rows={2}
-                      className="w-full p-2 border border-neutral-light rounded-md mt-1"
+                      className={createFormControlClass + " h-auto min-h-[72px] py-2.5"}
+                      disabled={isSaving}
+                      placeholder="Enter the question prompt"
                     />
+                    <p className="mt-2 text-xs text-[#718096]">
+                      Students will provide written answers.
+                    </p>
                   </div>
-                  
-                  <div className="text-sm text-muted-foreground mb-3">
-                    This is a text-based question. Students will provide written answers.
-                  </div>
-                </div>
-              ))}
-              
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="flex items-center text-primary font-medium"
-                onClick={addQuestion}
-              >
-                <Plus className="h-5 w-5 mr-1" />
-                Add New Question
-              </Button>
-            </div>
-            
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                {exam?.id ? "Update Exam" : "Save Exam"}
-              </Button>
-            </DialogFooter>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 gap-2 rounded-xl border-[#F4E4D7] font-semibold text-[#2D3748]"
+                  onClick={addQuestion}
+                  disabled={isSaving}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add New Question
+                </Button>
+              </div>
+            </FormSection>
           </form>
-        )}
-      </DialogContent>
-    </Dialog>
+        </Form>
+      )}
+    </CreateFormDialog>
   );
 }

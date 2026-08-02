@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import Header from "@/components/layout/header";
 import ListToolbar from "@/components/layout/list-toolbar";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
+import {
   Mail,
   Eye,
   EyeOff,
@@ -22,7 +23,7 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -43,7 +44,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -52,10 +53,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  CreateFormDialog,
+  CreateFormFooter,
+  FormSection,
+  createFormControlClass,
+  createFormLabelClass,
+} from "@/components/ui/create-form-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  createStudentSchema,
+  type CreateStudentFormValues,
+} from "@/lib/form-schemas";
 import { cn } from "@/lib/utils";
 
-const emptyStudentForm = {
+const studentFormDefaults: CreateStudentFormValues = {
   firstName: "",
   lastName: "",
   email: "",
@@ -77,11 +97,15 @@ export default function AdminStudents() {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [studentForm, setStudentForm] = useState(emptyStudentForm);
   const [showPassword, setShowPassword] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const assignSelectionReady = useRef(false);
   const { toast } = useToast();
+
+  const studentForm = useForm<CreateStudentFormValues>({
+    resolver: zodResolver(createStudentSchema),
+    defaultValues: studentFormDefaults,
+  });
   
   // Fetch students (users with role "student")
   const { data: allUsers = [], isLoading } = useQuery({
@@ -104,7 +128,7 @@ export default function AdminStudents() {
   });
 
   const createStudentMutation = useMutation({
-    mutationFn: async (payload: typeof emptyStudentForm) => {
+    mutationFn: async (payload: CreateStudentFormValues) => {
       const res = await apiRequest("POST", "/api/users", {
         ...payload,
         gender: payload.gender || undefined,
@@ -117,7 +141,8 @@ export default function AdminStudents() {
         description: `${user.firstName} ${user.lastName} has been created`,
       });
       setIsAddDialogOpen(false);
-      setStudentForm(emptyStudentForm);
+      studentForm.reset(studentFormDefaults);
+      setShowPassword(false);
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: any) => {
@@ -250,46 +275,13 @@ export default function AdminStudents() {
   };
 
   const openAddDialog = () => {
-    setStudentForm(emptyStudentForm);
+    studentForm.reset(studentFormDefaults);
     setShowPassword(false);
     setIsAddDialogOpen(true);
   };
 
-  const updateStudentForm = (field: keyof typeof emptyStudentForm, value: string) => {
-    setStudentForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleCreateStudent = () => {
-    const required: (keyof typeof emptyStudentForm)[] = [
-      "firstName",
-      "lastName",
-      "email",
-      "mobileNumber",
-      "dateOfBirth",
-      "educationLevel",
-      "schoolCollege",
-      "yearOfStudy",
-      "username",
-      "password",
-    ];
-    const missing = required.find((key) => !studentForm[key]?.trim());
-    if (missing) {
-      toast({
-        title: "Missing fields",
-        description: "Please fill in all required student details.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (studentForm.password.length < 6) {
-      toast({
-        title: "Weak password",
-        description: "Password must be at least 6 characters.",
-        variant: "destructive",
-      });
-      return;
-    }
-    createStudentMutation.mutate(studentForm);
+  const handleCreateStudent = (values: CreateStudentFormValues) => {
+    createStudentMutation.mutate(values);
   };
 
   // Open delete confirmation dialog
@@ -498,214 +490,306 @@ export default function AdminStudents() {
       )}
       
       {/* Add Student Dialog */}
-      <Dialog
+      <CreateFormDialog
         open={isAddDialogOpen}
         onOpenChange={(open) => {
           setIsAddDialogOpen(open);
           if (!open) {
-            setStudentForm(emptyStudentForm);
+            studentForm.reset(studentFormDefaults);
             setShowPassword(false);
           }
         }}
+        title="Add Student"
+        description="Create a new student account for your organization."
+        icon={<UserPlus className="h-7 w-7 text-white" />}
+        maxWidth="max-w-2xl"
+        footer={
+          <CreateFormFooter
+            formId="add-student-form"
+            onCancel={() => setIsAddDialogOpen(false)}
+            submitLabel="Create Student"
+            pendingLabel="Creating..."
+            isPending={createStudentMutation.isPending}
+          />
+        }
       >
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
-          <DialogHeader>
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-brand">
-              <UserPlus className="h-6 w-6 text-white" />
-            </div>
-            <DialogTitle className="text-center text-xl font-bold">
-              Add Single Student
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              Create a new student account for your organization.
-            </DialogDescription>
-          </DialogHeader>
+        <div className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0" aria-hidden="true">
+          <input type="text" name="username" tabIndex={-1} autoComplete="username" />
+          <input type="password" name="password" tabIndex={-1} autoComplete="current-password" />
+        </div>
 
-          {/* Hidden decoy fields discourage browser autofill of admin credentials */}
-          <div className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0" aria-hidden="true">
-            <input type="text" name="username" tabIndex={-1} autoComplete="username" />
-            <input type="password" name="password" tabIndex={-1} autoComplete="current-password" />
-          </div>
-
-          <div className="grid gap-3 py-2 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="student-first-name">First Name *</Label>
-              <Input
-                id="student-first-name"
-                value={studentForm.firstName}
-                onChange={(e) => updateStudentForm("firstName", e.target.value)}
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="student-last-name">Last Name *</Label>
-              <Input
-                id="student-last-name"
-                value={studentForm.lastName}
-                onChange={(e) => updateStudentForm("lastName", e.target.value)}
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="student-email">Email *</Label>
-              <Input
-                id="student-email"
-                type="email"
-                value={studentForm.email}
-                onChange={(e) => updateStudentForm("email", e.target.value)}
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="student-mobile">Mobile *</Label>
-              <Input
-                id="student-mobile"
-                value={studentForm.mobileNumber}
-                onChange={(e) => updateStudentForm("mobileNumber", e.target.value)}
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Gender</Label>
-              <Select
-                value={studentForm.gender || undefined}
-                onValueChange={(v) => updateStudentForm("gender", v)}
-              >
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Select gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="student-dob">Date of Birth *</Label>
-              <Input
-                id="student-dob"
-                type="date"
-                value={studentForm.dateOfBirth}
-                onChange={(e) => updateStudentForm("dateOfBirth", e.target.value)}
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Education Level *</Label>
-              <Select
-                value={studentForm.educationLevel || undefined}
-                onValueChange={(v) => updateStudentForm("educationLevel", v)}
-              >
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Select level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high_school">High School</SelectItem>
-                  <SelectItem value="diploma">Diploma</SelectItem>
-                  <SelectItem value="undergraduate">Undergraduate</SelectItem>
-                  <SelectItem value="graduate">Graduate</SelectItem>
-                  <SelectItem value="postgraduate">Postgraduate</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="student-school">School / College *</Label>
-              <Input
-                id="student-school"
-                value={studentForm.schoolCollege}
-                onChange={(e) => updateStudentForm("schoolCollege", e.target.value)}
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Year of Study *</Label>
-              <Select
-                value={studentForm.yearOfStudy || undefined}
-                onValueChange={(v) => updateStudentForm("yearOfStudy", v)}
-              >
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Select year" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Year 1</SelectItem>
-                  <SelectItem value="2">Year 2</SelectItem>
-                  <SelectItem value="3">Year 3</SelectItem>
-                  <SelectItem value="4">Year 4</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="student-username">Username *</Label>
-              <Input
-                id="student-username"
-                name="student_username_new"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                value={studentForm.username}
-                onChange={(e) => updateStudentForm("username", e.target.value)}
-                className="rounded-xl"
-                placeholder="Choose a username"
-              />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="student-password">Password *</Label>
-              <div className="relative">
-                <Input
-                  id="student-password"
-                  name="student_password_new"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  value={studentForm.password}
-                  onChange={(e) => updateStudentForm("password", e.target.value)}
-                  className="rounded-xl pr-10"
-                  placeholder="At least 6 characters"
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#718096] hover:text-[#2D3748]"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
+        <Form {...studentForm}>
+          <form
+            id="add-student-form"
+            onSubmit={studentForm.handleSubmit(handleCreateStudent)}
+            className="space-y-4"
+          >
+            <FormSection
+              title="Personal details"
+              description="Basic identity and contact information"
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={studentForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>First Name *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter first name"
+                          className={createFormControlClass}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </button>
+                />
+                <FormField
+                  control={studentForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>Last Name *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter last name"
+                          className={createFormControlClass}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={studentForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel className={createFormLabelClass}>Email *</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="student@example.com"
+                          className={createFormControlClass}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={studentForm.control}
+                  name="mobileNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>Mobile *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="10+ digit number"
+                          className={createFormControlClass}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={studentForm.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>Gender</FormLabel>
+                      <Select
+                        value={field.value || undefined}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className={createFormControlClass}>
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={studentForm.control}
+                  name="dateOfBirth"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel className={createFormLabelClass}>Date of Birth *</FormLabel>
+                      <FormControl>
+                        <Input type="date" className={createFormControlClass} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-            </div>
-          </div>
+            </FormSection>
 
-          <DialogFooter className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              variant="outline"
-              onClick={() => setIsAddDialogOpen(false)}
-              disabled={createStudentMutation.isPending}
-              className="flex-1 rounded-xl"
+            <FormSection
+              title="Academic details"
+              description="School and current study information"
             >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateStudent}
-              disabled={createStudentMutation.isPending}
-              className="flex-1 gap-2 rounded-xl"
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={studentForm.control}
+                  name="educationLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>Education Level *</FormLabel>
+                      <Select
+                        value={field.value || undefined}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className={createFormControlClass}>
+                            <SelectValue placeholder="Select level" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="high_school">High School</SelectItem>
+                          <SelectItem value="diploma">Diploma</SelectItem>
+                          <SelectItem value="undergraduate">Undergraduate</SelectItem>
+                          <SelectItem value="graduate">Graduate</SelectItem>
+                          <SelectItem value="postgraduate">Postgraduate</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={studentForm.control}
+                  name="yearOfStudy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>Year of Study *</FormLabel>
+                      <Select
+                        value={field.value || undefined}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className={createFormControlClass}>
+                            <SelectValue placeholder="Select year" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="1">Year 1</SelectItem>
+                          <SelectItem value="2">Year 2</SelectItem>
+                          <SelectItem value="3">Year 3</SelectItem>
+                          <SelectItem value="4">Year 4</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={studentForm.control}
+                  name="schoolCollege"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel className={createFormLabelClass}>School / College *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter school or college name"
+                          className={createFormControlClass}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </FormSection>
+
+            <FormSection
+              title="Login credentials"
+              description="Account access for the student portal"
             >
-              {createStudentMutation.isPending ? (
-                "Creating..."
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Create Student
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={studentForm.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>Username *</FormLabel>
+                      <FormControl>
+                        <Input
+                          name="student_username_new"
+                          autoComplete="off"
+                          autoCorrect="off"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          placeholder="Choose a username"
+                          className={createFormControlClass}
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          ref={field.ref}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={studentForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>Password *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            name="student_password_new"
+                            type={showPassword ? "text" : "password"}
+                            autoComplete="new-password"
+                            placeholder="Strong password required"
+                            className={cn(createFormControlClass, "pr-10")}
+                            value={field.value}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            ref={field.ref}
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#718096] hover:text-[#2D3748]"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </FormSection>
+          </form>
+        </Form>
+      </CreateFormDialog>
 
       <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
         <DialogContent className="max-w-lg">
@@ -785,6 +869,7 @@ export default function AdminStudents() {
 
           <DialogFooter className="flex flex-col gap-3 sm:flex-row">
             <Button
+              type="button"
               variant="outline"
               onClick={() => setIsAssignDialogOpen(false)}
               disabled={assignCourseMutation.isPending}

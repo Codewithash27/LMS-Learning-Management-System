@@ -1,10 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,19 +12,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  CreateFormDialog,
+  CreateFormFooter,
+  FormSection,
+  createFormControlClass,
+  createFormLabelClass,
+} from "@/components/ui/create-form-dialog";
+import {
+  courseMetadataSchema,
+  type CourseMetadataFormValues,
+} from "@/lib/form-schemas";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Upload,
   X,
-  Image as ImageIcon,
   BookOpen,
   Clock,
-  Users,
   FileText,
   ChevronDown,
   ChevronRight,
@@ -38,6 +50,18 @@ import {
   Plus,
   UserIcon,
 } from "lucide-react";
+
+const COURSE_FORM_ID = "course-editor-form";
+
+const metadataDefaults: CourseMetadataFormValues = {
+  title: "",
+  description: "",
+  category: "",
+  difficulty: "",
+  duration: 12,
+  instructorId: null,
+  isEnrollmentRequired: true,
+};
 
 interface CourseEditorProps {
   open: boolean;
@@ -91,18 +115,10 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
     { id: 3, text: "", isCorrect: false },
     { id: 4, text: "", isCorrect: false }
   ]);
-  
-  // Initialize form data properly
-  const [formData, setFormData] = useState({
-    title: course?.title || "",
-    description: course?.description || "",
-    category: course?.category || "",
-    difficulty: course?.difficulty || "",
-    duration: course?.duration || 12,
-    instructorId: course?.instructorId || null,
-    moduleCount: course?.moduleCount || 0,
-    lessonCount: course?.lessonCount || 0,
-    isEnrollmentRequired: course?.isEnrollmentRequired ?? true,
+
+  const form = useForm<CourseMetadataFormValues>({
+    resolver: zodResolver(courseMetadataSchema),
+    defaultValues: metadataDefaults,
   });
   
   const [thumbnail, setThumbnail] = useState<File | null>(null);
@@ -213,37 +229,24 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
   // Reset form when course changes or dialog opens/closes
   useEffect(() => {
     if (course && open) {
-      setFormData({
+      form.reset({
         title: course.title || "",
         description: course.description || "",
         category: course.category || "",
         difficulty: course.difficulty || "",
         duration: course.duration || 12,
         instructorId: course.instructorId || null,
-        moduleCount: course.moduleCount || 0,
-        lessonCount: course.lessonCount || 0,
         isEnrollmentRequired: course.isEnrollmentRequired ?? true,
       });
       setThumbnailPreview(formatThumbnailUrl(course.thumbnail) || "");
       setThumbnail(null);
     } else if (!open && !course) {
-      // Reset when dialog closes for new course creation
-      setFormData({
-        title: "",
-        description: "",
-        category: "",
-        difficulty: "",
-        duration: 12,
-        instructorId: null,
-        moduleCount: 0,
-        lessonCount: 0,
-        isEnrollmentRequired: true,
-      });
+      form.reset(metadataDefaults);
       setThumbnailPreview("");
       setThumbnail(null);
       setModules([]);
     }
-  }, [course, open]);
+  }, [course, open, form]);
 
   // Function to upload image to backend
   const uploadImage = async (file: File): Promise<string> => {
@@ -434,24 +437,10 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
   });
 
   const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      category: "",
-      difficulty: "",
-      duration: 12,
-      instructorId: null,
-      moduleCount: 0,
-      lessonCount: 0,
-      isEnrollmentRequired: true,
-    });
+    form.reset(metadataDefaults);
     setThumbnail(null);
     setThumbnailPreview("");
     setModules([]);
-  };
-
-  const handleInputChange = (field: string, value: string | number | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -506,37 +495,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    // Basic validation
-    if (!formData.title.trim()) {
-      toast({
-        title: "Missing information",
-        description: "Please enter a course title.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.category) {
-      toast({
-        title: "Missing information",
-        description: "Please select a category.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.difficulty) {
-      toast({
-        title: "Missing information",
-        description: "Please select a difficulty level.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleSubmit = async (values: CourseMetadataFormValues) => {
     try {
       setIsUploading(true);
 
@@ -567,16 +526,16 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
 
       // Prepare data for API
       const submitData = {
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        difficulty: formData.difficulty,
-        duration: formData.duration,
-        instructorId: formData.instructorId,
+        title: values.title,
+        description: values.description || "",
+        category: values.category,
+        difficulty: values.difficulty,
+        duration: values.duration,
+        instructorId: values.instructorId,
         moduleCount: modules.length,
         lessonCount: modules.reduce((sum, module) => sum + (module.lessons?.length || 0), 0),
         thumbnail: thumbnailUrl,
-        isEnrollmentRequired: formData.isEnrollmentRequired,
+        isEnrollmentRequired: values.isEnrollmentRequired,
       };
 
       console.log("Submitting course data with thumbnail:", submitData.thumbnail);
@@ -945,181 +904,239 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
   }, [thumbnailPreview]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-heading flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-primary" />
-            {course ? "Edit Course" : "Create New Course"}
-          </DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Course Title */}
-          <Card className="border-gray-200">
-            <CardContent className="pt-6">
-              <Label htmlFor="title" className="text-sm font-medium mb-2 block">
-                Course Title
-              </Label>
-              <Input
-                id="title"
-                placeholder="e.g. Advanced Web Development with React"
-                value={formData.title}
-                onChange={(e) => handleInputChange("title", e.target.value)}
-                className="border-gray-200 focus:border-primary"
+    <CreateFormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={course ? "Edit Course" : "Create Course"}
+      description={
+        course
+          ? "Update course details, content, and thumbnail."
+          : "Set up a new course with modules, lessons, and a cover image."
+      }
+      icon={<BookOpen className="h-7 w-7 text-white" />}
+      maxWidth="max-w-4xl"
+      footer={
+        <CreateFormFooter
+          formId={COURSE_FORM_ID}
+          onCancel={() => onOpenChange(false)}
+          submitLabel={course ? "Update Course" : "Create Course"}
+          pendingLabel={thumbnail ? "Uploading Image..." : "Saving..."}
+          isPending={isSubmitting}
+        />
+      }
+    >
+      <Form {...form}>
+        <form
+          id={COURSE_FORM_ID}
+          onSubmit={form.handleSubmit(handleSubmit)}
+          className="space-y-4"
+        >
+          <FormSection
+            title="Course details"
+            description="Title, description, category, and difficulty"
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel className={createFormLabelClass}>Course Title</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. Advanced Web Development with React"
+                        className={createFormControlClass}
+                        disabled={isSubmitting}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </CardContent>
-          </Card>
 
-          {/* Course Description */}
-          <Card className="border-gray-200">
-            <CardContent className="pt-6">
-              <Label htmlFor="description" className="text-sm font-medium mb-2 block">
-                Course Description
-              </Label>
-              <Textarea
-                id="description"
-                placeholder="Provide a detailed description of the course"
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-                rows={4}
-                className="border-gray-200 focus:border-primary resize-none"
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel className={createFormLabelClass}>Course Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Provide a detailed description of the course"
+                        rows={4}
+                        className={createFormControlClass + " h-auto min-h-[100px] resize-none py-2.5"}
+                        disabled={isSubmitting}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </CardContent>
-          </Card>
 
-          {/* Category and Difficulty */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-gray-200">
-              <CardContent className="pt-6">
-                <Label htmlFor="category" className="text-sm font-medium mb-2 block">
-                  Category
-                </Label>
-                <Select 
-                  value={formData.category} 
-                  onValueChange={(value) => handleInputChange("category", value)}
-                >
-                  <SelectTrigger className="border-gray-200 focus:border-primary">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className={createFormLabelClass}>Category</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isSubmitting}
+                    >
+                      <FormControl>
+                        <SelectTrigger className={createFormControlClass}>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <Card className="border-gray-200">
-              <CardContent className="pt-6">
-                <Label htmlFor="difficulty" className="text-sm font-medium mb-2 block">
-                  Difficulty Level
-                </Label>
-                <Select 
-                  value={formData.difficulty} 
-                  onValueChange={(value) => handleInputChange("difficulty", value)}
-                >
-                  <SelectTrigger className="border-gray-200 focus:border-primary">
-                    <SelectValue placeholder="Select difficulty" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {difficulties.map((difficulty) => (
-                      <SelectItem key={difficulty} value={difficulty}>
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            className={
-                              difficulty === 'Beginner' ? 'bg-green-100 text-green-800' :
-                              difficulty === 'Intermediate' ? 'bg-blue-100 text-blue-800' :
-                              'bg-purple-100 text-purple-800'
-                            }
-                          >
-                            {difficulty}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
-          </div>
+              <FormField
+                control={form.control}
+                name="difficulty"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className={createFormLabelClass}>Difficulty Level</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isSubmitting}
+                    >
+                      <FormControl>
+                        <SelectTrigger className={createFormControlClass}>
+                          <SelectValue placeholder="Select difficulty" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {difficulties.map((difficulty) => (
+                          <SelectItem key={difficulty} value={difficulty}>
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                className={
+                                  difficulty === "Beginner"
+                                    ? "bg-green-100 text-green-800"
+                                    : difficulty === "Intermediate"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-purple-100 text-purple-800"
+                                }
+                              >
+                                {difficulty}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {/* Duration and Instructor */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-gray-200">
-              <CardContent className="pt-6">
-                <Label htmlFor="duration" className="text-sm font-medium mb-2 block">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-500" />
-                    Duration (weeks)
-                  </div>
-                </Label>
-                <Input
-                  id="duration"
-                  type="number"
-                  min="1"
-                  max="52"
-                  value={formData.duration}
-                  onChange={(e) => handleInputChange("duration", parseInt(e.target.value) || 0)}
-                  className="border-gray-200 focus:border-primary"
-                />
-              </CardContent>
-            </Card>
+              <FormField
+                control={form.control}
+                name="duration"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className={createFormLabelClass}>
+                      <span className="inline-flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-[#A0AEC0]" />
+                        Duration (weeks)
+                      </span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={52}
+                        className={createFormControlClass}
+                        disabled={isSubmitting}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <Card className="border-gray-200">
-              <CardContent className="pt-6">
-                <Label htmlFor="instructorId" className="text-sm font-medium mb-2 block">
-                  <div className="flex items-center gap-2">
-                    <UserIcon className="h-4 w-4 text-gray-500" />
-                    Instructor
-                  </div>
-                </Label>
-                <Select 
-                  value={formData.instructorId ? String(formData.instructorId) : ""} 
-                  onValueChange={(value) => handleInputChange("instructorId", value ? parseInt(value) : null)}
-                >
-                  <SelectTrigger className="border-gray-200 focus:border-primary">
-                    <SelectValue placeholder="Select instructor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {instructors.map((instructor) => (
-                      <SelectItem key={instructor.id} value={String(instructor.id)}>
-                        {instructor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
-          </div>
+              <FormField
+                control={form.control}
+                name="instructorId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className={createFormLabelClass}>
+                      <span className="inline-flex items-center gap-2">
+                        <UserIcon className="h-4 w-4 text-[#A0AEC0]" />
+                        Instructor
+                      </span>
+                    </FormLabel>
+                    <Select
+                      value={field.value ? String(field.value) : ""}
+                      onValueChange={(value) =>
+                        field.onChange(value ? parseInt(value) : null)
+                      }
+                      disabled={isSubmitting}
+                    >
+                      <FormControl>
+                        <SelectTrigger className={createFormControlClass}>
+                          <SelectValue placeholder="Select instructor" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {instructors.map((instructor) => (
+                          <SelectItem key={instructor.id} value={String(instructor.id)}>
+                            {instructor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {/* Enrollment Required Checkbox */}
-          <Card className="border-gray-200">
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="isEnrollmentRequired"
-                  checked={formData.isEnrollmentRequired}
-                  onCheckedChange={(checked) => handleInputChange("isEnrollmentRequired", checked as boolean)}
-                />
-                <Label htmlFor="isEnrollmentRequired" className="font-normal">
-                  Enrollment Required (uncheck for free access)
-                </Label>
-              </div>
-            </CardContent>
-          </Card>
+              <FormField
+                control={form.control}
+                name="isEnrollmentRequired"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-[#F4E4D7] bg-white p-4 sm:col-span-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className={createFormLabelClass}>
+                        Enrollment Required
+                      </FormLabel>
+                      <p className="text-xs text-[#718096]">
+                        Uncheck for free access without enrollment
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </div>
+          </FormSection>
 
           {/* Course Content - Modules and Lessons */}
-          <Card className="border-gray-200">
-            <CardContent className="pt-6">
-              <div className="flex justify-between items-center mb-4">
-                <Label className="text-sm font-medium block">
-                  Course Content
-                </Label>
-                <Button type="button" variant="outline" className="gap-2" onClick={addModule}>
+          <FormSection title="Course content" description="Modules and lessons for this course">
+              <div className="mb-4 flex justify-end">
+                <Button type="button" variant="outline" className="gap-2 rounded-xl" onClick={addModule}>
                   <Plus className="h-4 w-4" />
                   Add Module
                 </Button>
@@ -1421,31 +1438,22 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                   <p>No modules added yet. Click "Add Module" to get started.</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+          </FormSection>
 
           {/* Course Thumbnail */}
-          <Card className="border-gray-200">
-            <CardContent className="pt-6">
-              <Label className="text-sm font-medium mb-4 block">
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-gray-500" />
-                  Course Thumbnail / Cover Image
-                </div>
-              </Label>
-              
+          <FormSection title="Course thumbnail" description="Cover image for the course card">
               {thumbnailPreview ? (
                 <div className="relative">
                   <img
                     src={formatThumbnailUrl(thumbnailPreview)}
                     alt="Course thumbnail preview"
-                    className="w-full h-48 object-cover rounded-lg border-2 border-dashed border-gray-200"
+                    className="h-48 w-full rounded-xl border border-[#F4E4D7] object-cover"
                   />
                   <Button
                     type="button"
                     variant="destructive"
                     size="sm"
-                    className="absolute top-2 right-2 h-8 w-8 p-0"
+                    className="absolute right-2 top-2 h-8 w-8 p-0"
                     onClick={handleRemoveThumbnail}
                   >
                     <X className="h-4 w-4" />
@@ -1453,19 +1461,19 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                 </div>
               ) : (
                 <div
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
+                  className="cursor-pointer rounded-xl border-2 border-dashed border-[#F4E4D7] bg-white p-8 text-center transition-colors hover:border-[#4ECDC4]"
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-lg font-medium text-gray-700 mb-2">
+                  <Upload className="mx-auto mb-4 h-12 w-12 text-[#A0AEC0]" />
+                  <p className="mb-2 text-lg font-medium text-[#2D3748]">
                     Drag & drop your course image here
                   </p>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="mb-4 text-sm text-[#718096]">
                     Recommended size: 800x450 pixels • Max 5MB
                   </p>
-                  <Button type="button" variant="outline" className="gap-2">
+                  <Button type="button" variant="outline" className="gap-2 rounded-xl">
                     <Upload className="h-4 w-4" />
                     Choose File
                   </Button>
@@ -1480,41 +1488,12 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                 className="hidden"
               />
               
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="mt-2 text-xs text-[#718096]">
                 Supported formats: JPEG, PNG, GIF, WebP • Max file size: 5MB
               </p>
-            </CardContent>
-          </Card>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="bg-primary hover:bg-primary/90"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  {thumbnail ? "Uploading Image..." : "Saving..."}
-                </div>
-              ) : course ? (
-                "Update Course"
-              ) : (
-                "Create Course"
-              )}
-            </Button>
-          </div>
+          </FormSection>
         </form>
-      </DialogContent>
-    </Dialog>
+      </Form>
+    </CreateFormDialog>
   );
 }
