@@ -11,24 +11,27 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import QuizComponent from "@/components/courses/quiz-component";
 import VideoComponent from "@/components/courses/video-component";
 import {
   BookOpen,
   BookText,
   CheckCircle2,
   ChevronLeft,
+  Clock,
   FileText,
   Play,
   Video
 } from "lucide-react";
 import { getCourseThumbnailSrc } from "@/lib/course-thumbnail";
+import { hasQuizDraft, loadQuizDraft } from "@/lib/quiz-draft";
+import { getQuizAttempts } from "@/lib/quiz-attempts";
 
 export default function StudentCourseDetails() {
   const [location] = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
   const [activeModuleId, setActiveModuleId] = useState<number | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<number | null>(null);
+  const [draftTick, setDraftTick] = useState(0);
   const { toast } = useToast();
   
   // Extract course ID from URL
@@ -119,6 +122,19 @@ export default function StudentCourseDetails() {
       setActiveLessonId(null);
     }
   }, [lessons, activeModuleId]);
+
+  // Refresh progress when returning from quiz tab
+  useEffect(() => {
+    const onFocus = () => {
+      if (courseId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/course-progress/${courseId}`] });
+        queryClient.invalidateQueries({ queryKey: ["/api/enrollments/user"] });
+      }
+      setDraftTick((t) => t + 1);
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [courseId]);
   
   // Find active lesson
   const activeLesson = (lessons as any[]).find(lesson => lesson.id === activeLessonId);
@@ -402,17 +418,98 @@ export default function StudentCourseDetails() {
                         </CardHeader>
                         <CardContent>
                           {activeLesson.contentType === 'quiz' ? (
-                            <QuizComponent 
-                              quizData={activeLesson.quizData} 
-                              onComplete={(score, total) => {
-                                toast({
-                                  title: "Quiz Completed",
-                                  description: `You scored ${score}/${total} (${Math.round((score/total) * 100)}%)`,
-                                  duration: 5000,
-                                });
-                                markLessonComplete(activeLesson.id);
-                              }}
-                            />
+                            <div className="rounded-2xl border border-warm-border bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10 p-6 space-y-4">
+                              {(() => {
+                                const hasDraft =
+                                  !!activeModuleId &&
+                                  hasQuizDraft(courseId, activeModuleId, activeLesson.id);
+                                const attempts =
+                                  activeModuleId
+                                    ? getQuizAttempts(courseId, activeModuleId, activeLesson.id)
+                                    : 0;
+                                void draftTick;
+                                const ctaLabel = hasDraft
+                                  ? "Continue Test"
+                                  : attempts > 0
+                                    ? "Retake Test"
+                                    : "Start Test";
+                                return (
+                                  <>
+                              <div className="flex items-start justify-between gap-4">
+                                <div>
+                                  <h3 className="text-lg font-semibold">{activeLesson.title}</h3>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    MCQ Assignment — opens in a secure new tab
+                                  </p>
+                                </div>
+                                {hasDraft ? (
+                                  <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 shrink-0">
+                                    In progress
+                                  </Badge>
+                                ) : attempts > 0 ? (
+                                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100 shrink-0">
+                                    Attempted ({attempts})
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="shrink-0">
+                                    Not taken
+                                  </Badge>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <FileText className="h-4 w-4" />
+                                  {(() => {
+                                    try {
+                                      const data =
+                                        typeof activeLesson.quizData === "string"
+                                          ? JSON.parse(activeLesson.quizData)
+                                          : activeLesson.quizData;
+                                      return data?.questions?.length || 0;
+                                    } catch {
+                                      return 0;
+                                    }
+                                  })()}{" "}
+                                  questions
+                                </span>
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Clock className="h-4 w-4" />
+                                  {(() => {
+                                    const draft =
+                                      activeModuleId &&
+                                      loadQuizDraft(courseId, activeModuleId, activeLesson.id);
+                                    if (draft) {
+                                      const m = Math.floor(draft.timeLeftSeconds / 60);
+                                      const s = draft.timeLeftSeconds % 60;
+                                      return `${m}:${s.toString().padStart(2, "0")} remaining`;
+                                    }
+                                    return activeLesson.duration && activeLesson.duration > 0
+                                      ? `${activeLesson.duration} min limit`
+                                      : "15 min limit";
+                                  })()}
+                                </span>
+                              </div>
+
+                              <Button
+                                size="lg"
+                                className="w-full sm:w-auto bg-accent-brand text-white hover:opacity-90"
+                                onClick={() => {
+                                  if (!activeModuleId) return;
+                                  window.open(
+                                    `/student/quiz/${courseId}/${activeModuleId}/${activeLesson.id}`,
+                                    "_blank",
+                                    "noopener,noreferrer"
+                                  );
+                                }}
+                              >
+                                <Play className="h-4 w-4 mr-2" />
+                                {ctaLabel}
+                              </Button>
+                                  </>
+                                );
+                              })()}
+                            </div>
                           ) : activeLesson.contentType === 'video' ? (
                             <>
                               <VideoComponent videoUrl={activeLesson.content} />
@@ -443,14 +540,16 @@ export default function StudentCourseDetails() {
                           </Button>
                           
                           <div className="flex space-x-2">
-                            <Button
-                              onClick={() => markLessonComplete(activeLesson.id)}
-                              variant="outline"
-                              className="gap-2"
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                              Mark as Complete
-                            </Button>
+                            {activeLesson.contentType !== "quiz" && (
+                              <Button
+                                onClick={() => markLessonComplete(activeLesson.id)}
+                                variant="outline"
+                                className="gap-2"
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Mark as Complete
+                              </Button>
+                            )}
                             
                             <Button
                               onClick={() => {

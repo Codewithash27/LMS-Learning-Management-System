@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+﻿import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
@@ -1270,8 +1270,71 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   app.get("/api/activity-logs/user", isAuthenticated, async (req, res) => {
     try {
       const logs = await storage.getActivityLogsByUser(req.user!.id);
-      res.json(logs);
+      const lessonProgressList = await storage.getLessonProgressByUser(req.user!.id);
+      const progressByLessonId = new Map(
+        lessonProgressList.map((p) => [p.lessonId, p] as const)
+      );
+
+      const enhanced = [];
+      for (const log of logs) {
+        let courseId: number | null = null;
+        let courseTitle: string | null = null;
+        let lessonTitle: string | null = null;
+        let examTitle: string | null = null;
+
+        if (log.activityType === "lesson_complete") {
+          // Legacy logs stored lessonId; newer logs store courseId
+          const progress = progressByLessonId.get(log.resourceId);
+          if (progress) {
+            courseId = progress.courseId;
+            const course = await storage.getCourse(progress.courseId);
+            courseTitle = course?.title ?? null;
+            const lesson = await storage.getLesson(log.resourceId);
+            lessonTitle = lesson?.title ?? null;
+          } else {
+            const course = await storage.getCourse(log.resourceId);
+            if (course) {
+              courseId = course.id;
+              courseTitle = course.title;
+            }
+          }
+        } else if (
+          log.activityType === "course_assign" ||
+          log.activityType === "course_enroll" ||
+          log.activityType === "course_view" ||
+          log.resourceType === "course"
+        ) {
+          const course = await storage.getCourse(log.resourceId);
+          if (course) {
+            courseId = course.id;
+            courseTitle = course.title;
+          }
+        } else if (
+          log.activityType === "exam_start" ||
+          log.activityType === "exam_complete" ||
+          log.resourceType === "exam"
+        ) {
+          const exam = await storage.getExam(log.resourceId);
+          if (exam) {
+            examTitle = exam.title;
+            courseId = exam.courseId;
+            const course = await storage.getCourse(exam.courseId);
+            courseTitle = course?.title ?? null;
+          }
+        }
+
+        enhanced.push({
+          ...log,
+          courseId,
+          courseTitle,
+          lessonTitle,
+          examTitle,
+        });
+      }
+
+      res.json(enhanced);
     } catch (error) {
+      console.error("Failed to fetch activity logs:", error);
       res.status(500).json({ message: "Failed to fetch activity logs" });
     }
   });
@@ -1683,8 +1746,8 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       await storage.createActivityLog({
         userId: req.user!.id,
         activityType: "lesson_complete",
-        resourceId: validatedData.lessonId,
-        resourceType: "lesson",
+        resourceId: validatedData.courseId,
+        resourceType: "course",
         tenantId: req.user!.tenantId
       });
       
