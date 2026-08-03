@@ -33,11 +33,11 @@ type RecentActivitiesProps = {
 
 const COURSE_PALETTES = [
   {
-    bg: "bg-gradient-to-br from-[#4ECDC4] to-[#1976d2]",
+    bg: "bg-gradient-to-br from-[#0F766E] to-[#0E7490]",
     icon: <BookOpen className="h-3.5 w-3.5 text-white" />,
   },
   {
-    bg: "bg-gradient-to-br from-violet-500 to-purple-600",
+    bg: "bg-gradient-to-br from-[#0E7490] to-[#155E75]",
     icon: <Edit className="h-3.5 w-3.5 text-white" />,
   },
   {
@@ -49,7 +49,7 @@ const COURSE_PALETTES = [
     icon: <ClipboardList className="h-3.5 w-3.5 text-white" />,
   },
   {
-    bg: "bg-gradient-to-br from-sky-500 to-blue-600",
+    bg: "bg-gradient-to-br from-[#0E7490] to-[#155E75]",
     icon: <BookOpen className="h-3.5 w-3.5 text-white" />,
   },
 ];
@@ -81,7 +81,7 @@ export default function RecentActivities({
         };
       case "new-students":
         return {
-          bg: "bg-gradient-to-br from-cyan-500 to-blue-600",
+          bg: "bg-gradient-to-br from-[#14B8A6] to-[#0E7490]",
           icon: <UserPlus className="h-3.5 w-3.5 text-white" />,
         };
       default:
@@ -98,7 +98,7 @@ export default function RecentActivities({
     >
       <CardHeader className="shrink-0 px-4 pb-2 pt-4 sm:px-5">
         <div className="flex items-center gap-2.5">
-          <div className="rounded-xl bg-gradient-to-br from-[#4ECDC4] to-[#1976d2] p-2 shadow-md">
+          <div className="rounded-xl bg-gradient-to-br from-[#0F766E] to-[#0E7490] p-2 shadow-md">
             <Activity className="h-4 w-4 text-white" />
           </div>
           <CardTitle className="bg-gradient-to-br from-gray-900 to-gray-700 bg-clip-text font-heading text-base font-semibold text-transparent">

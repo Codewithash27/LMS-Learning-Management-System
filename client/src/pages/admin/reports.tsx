@@ -331,28 +331,28 @@ export default function AdminReports() {
         <TabsList className="mb-6 bg-white/50 backdrop-blur-sm border border-white/20 rounded-2xl p-1">
           <TabsTrigger 
             value="overview" 
-            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#0F766E] data-[state=active]:to-[#0E7490] data-[state=active]:text-white"
           >
             <BarChart3 className="h-4 w-4 mr-2" />
             Overview
           </TabsTrigger>
           <TabsTrigger 
             value="courses"
-            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#0F766E] data-[state=active]:to-[#0E7490] data-[state=active]:text-white"
           >
             <BookOpen className="h-4 w-4 mr-2" />
             Courses
           </TabsTrigger>
           <TabsTrigger 
             value="students"
-            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#0F766E] data-[state=active]:to-[#0E7490] data-[state=active]:text-white"
           >
             <Users className="h-4 w-4 mr-2" />
             Students
           </TabsTrigger>
           <TabsTrigger 
             value="activity"
-            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#0F766E] data-[state=active]:to-[#0E7490] data-[state=active]:text-white"
           >
             <Activity className="h-4 w-4 mr-2" />
             Activity
@@ -420,7 +420,7 @@ export default function AdminReports() {
               <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-xl">
                 <CardHeader>
                   <CardTitle className="flex items-center text-gray-900">
-                    <PieChartIcon className="h-5 w-5 mr-2 text-purple-600" />
+                    <PieChartIcon className="h-5 w-5 mr-2 text-teal-700" />
                     Course Completion Status
                   </CardTitle>
                   <CardDescription>
@@ -598,7 +598,7 @@ export default function AdminReports() {
                           <span className="text-gray-600">Average Score</span>
                           <span className="font-medium text-gray-900">{course.avgScore}%</span>
                         </div>
-                        <Progress value={course.avgScore} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-blue-400 [&>div]:to-purple-400" />
+                        <Progress value={course.avgScore} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-[#14B8A6] [&>div]:to-[#0E7490]" />
                       </div>
                     </motion.div>
                   ))}
@@ -659,9 +659,9 @@ export default function AdminReports() {
                   </div>
                   <span className="text-2xl font-bold text-gray-900">{stats.activeCourses}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50/50">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-teal-50/50">
                   <div className="flex items-center">
-                    <Users className="h-5 w-5 text-purple-600 mr-3" />
+                    <Users className="h-5 w-5 text-teal-700 mr-3" />
                     <span className="text-gray-700">Total Enrollments</span>
                   </div>
                   <span className="text-2xl font-bold text-gray-900">{stats.totalEnrollments}</span>
@@ -731,12 +731,12 @@ export default function AdminReports() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
-                <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50/50 to-purple-50/50 border border-white/20">
+                <div className="p-4 rounded-xl bg-gradient-to-r from-teal-50/50 to-cyan-50/50 border border-white/20">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Average Score</span>
                     <span className="text-2xl font-bold text-gray-900">87%</span>
                   </div>
-                  <Progress value={87} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-blue-400 [&>div]:to-purple-400" />
+                  <Progress value={87} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-[#14B8A6] [&>div]:to-[#0E7490]" />
                 </div>
                 <div className="p-4 rounded-xl bg-gradient-to-r from-green-50/50 to-emerald-50/50 border border-white/20">
                   <div className="flex items-center justify-between mb-2">
@@ -804,7 +804,7 @@ export default function AdminReports() {
             <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-xl">
               <CardHeader>
                 <CardTitle className="flex items-center text-gray-900">
-                  <Activity className="h-5 w-5 mr-2 text-purple-600" />
+                  <Activity className="h-5 w-5 mr-2 text-teal-700" />
                   Platform Activity Logs
                 </CardTitle>
                 <CardDescription>
@@ -901,8 +901,8 @@ export default function AdminReports() {
                       2-5 PM
                     </h3>
                   </div>
-                  <div className="p-3 rounded-xl bg-purple-100">
-                    <Clock className="h-6 w-6 text-purple-600" />
+                  <div className="p-3 rounded-xl bg-teal-100">
+                    <Clock className="h-6 w-6 text-teal-700" />
                   </div>
                 </div>
               </CardContent>

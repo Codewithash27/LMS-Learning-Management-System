@@ -18,14 +18,14 @@ type StatCardProps = {
 export default function StatCard({ title, value, change, icon, iconColor, delay = 0 }: StatCardProps) {
   const gradientColors = {
     primary: 'from-brand-turquoise/10 to-brand-blue/10',
-    accent: 'from-brand-mint/10 to-emerald-500/10',
-    secondary: 'from-brand-peach/10 to-brand-coral/10',
+    accent: 'from-brand-mint/10 to-brand-turquoise/10',
+    secondary: 'from-brand-blue/10 to-brand-coral/10',
   };
 
   const iconGradients = {
     primary: 'bg-accent-brand',
-    accent: 'bg-gradient-to-br from-brand-mint to-emerald-600',
-    secondary: 'bg-gradient-to-br from-brand-peach to-brand-coral',
+    accent: 'bg-gradient-to-br from-brand-mint to-brand-turquoise',
+    secondary: 'bg-gradient-to-br from-brand-blue to-brand-coral',
   };
 
   return (

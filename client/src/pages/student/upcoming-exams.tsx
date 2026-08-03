@@ -188,8 +188,8 @@ export default function StudentUpcomingExams() {
               >
                 <CardHeader className="pb-2">
                   <div className="mb-2 flex items-start justify-between gap-2">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#4ECDC4]/15">
-                      <FileText className="h-5 w-5 text-[#4ECDC4]" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0F766E]/15">
+                      <FileText className="h-5 w-5 text-[#0F766E]" />
                     </div>
                     <Badge
                       className={cn(
@@ -243,11 +243,11 @@ export default function StudentUpcomingExams() {
             const status = getExamStatus(exam);
             const isAvailable = canTakeExam(exam);
             return (
-              <TableRow key={exam.id} className="hover:bg-[#FFF5E6]/70">
+              <TableRow key={exam.id} className="hover:bg-[#EEF3F5]/70">
                 <TableCell className="py-3.5 pl-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ECDC4]/15">
-                      <FileText className="h-5 w-5 text-[#4ECDC4]" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0F766E]/15">
+                      <FileText className="h-5 w-5 text-[#0F766E]" />
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-[15px] font-semibold text-[#2D3748]">

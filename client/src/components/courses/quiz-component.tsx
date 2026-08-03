@@ -271,7 +271,7 @@ export default function QuizComponent({
         <aside
           className={cn(
             "relative overflow-hidden text-white",
-            "bg-gradient-to-br from-[#4ECDC4] via-[#2bb8c8] to-[#1976d2]",
+            "bg-gradient-to-br from-[#0F766E] via-[#14B8A6] to-[#0E7490]",
             "px-4 py-4 md:py-6 flex flex-col gap-4 md:gap-6"
           )}
         >
@@ -361,7 +361,7 @@ export default function QuizComponent({
                     }}
                     className={cn(
                       "h-8 w-8 rounded-lg text-xs font-bold transition-all",
-                      active && "bg-white text-[#1976d2] shadow-md scale-105",
+                      active && "bg-white text-[#0E7490] shadow-md scale-105",
                       !active && answered && "bg-white/25 text-white ring-1 ring-white/40",
                       !active && !answered && "bg-black/15 text-white/80 hover:bg-white/20"
                     )}
@@ -375,7 +375,7 @@ export default function QuizComponent({
         </aside>
 
         {/* Question stage */}
-        <section className="bg-[#FFF9F0] flex flex-col min-h-0 min-w-0">
+        <section className="bg-[#F4F8F9] flex flex-col min-h-0 min-w-0">
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
             <div className="inline-flex items-center gap-2 rounded-full bg-white border border-warm-border px-3 py-1 text-[11px] font-medium text-muted-foreground mb-4 shadow-sm">
               <span className="h-1.5 w-1.5 rounded-full bg-brand-turquoise animate-pulse" />
@@ -401,7 +401,7 @@ export default function QuizComponent({
                     className={cn(
                       "group flex w-full items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left transition-all",
                       selected
-                        ? "border-transparent bg-white shadow-lg ring-2 ring-[#4ECDC4]/60"
+                        ? "border-transparent bg-white shadow-lg ring-2 ring-[#0F766E]/60"
                         : "border-transparent bg-white/80 hover:bg-white hover:shadow-md"
                     )}
                   >

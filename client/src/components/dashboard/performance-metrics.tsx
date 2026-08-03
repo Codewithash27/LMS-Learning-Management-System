@@ -17,11 +17,11 @@ type PerformanceMetricsProps = {
 };
 
 const COURSE_ICON_COLORS = [
-  "bg-gradient-to-br from-[#4ECDC4] to-[#1976d2]",
-  "bg-gradient-to-br from-violet-500 to-purple-600",
+  "bg-gradient-to-br from-[#0F766E] to-[#0E7490]",
+  "bg-gradient-to-br from-[#0E7490] to-[#155E75]",
   "bg-gradient-to-br from-amber-500 to-orange-600",
   "bg-gradient-to-br from-pink-500 to-rose-600",
-  "bg-gradient-to-br from-sky-500 to-blue-600",
+  "bg-gradient-to-br from-[#0E7490] to-[#155E75]",
 ];
 
 export default function PerformanceMetrics({
@@ -51,7 +51,7 @@ export default function PerformanceMetrics({
     >
       <CardHeader className="shrink-0 px-4 pb-2 pt-4 sm:px-5">
         <div className="flex items-center gap-2.5">
-          <div className="rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 p-2 shadow-md">
+          <div className="rounded-xl bg-gradient-to-br from-[#0E7490] to-[#155E75] p-2 shadow-md">
             <TrendingUp className="h-4 w-4 text-white" />
           </div>
           <CardTitle className="bg-gradient-to-br from-gray-900 to-gray-700 bg-clip-text font-heading text-base font-semibold text-transparent">

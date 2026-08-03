@@ -65,7 +65,7 @@ export default function StudentMyCourses() {
       case "intermediate":
         return "border-blue-200 bg-blue-100 text-blue-800";
       case "advanced":
-        return "border-purple-200 bg-purple-100 text-purple-800";
+        return "border-teal-200 bg-teal-100 text-teal-800";
       default:
         return "border-gray-200 bg-gray-100 text-gray-800";
     }
@@ -252,10 +252,10 @@ export default function StudentMyCourses() {
             const progress = enrollment?.progress || 0;
             const thumb = getCourseThumbnailSrc(course.thumbnail);
             return (
-              <TableRow key={course.id} className="hover:bg-[#FFF5E6]/70">
+              <TableRow key={course.id} className="hover:bg-[#EEF3F5]/70">
                 <TableCell className="py-3.5 pl-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#4ECDC4]/15">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0F766E]/15">
                       {thumb ? (
                         <img
                           src={thumb}
@@ -263,7 +263,7 @@ export default function StudentMyCourses() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <BookOpen className="h-5 w-5 text-[#4ECDC4]" />
+                        <BookOpen className="h-5 w-5 text-[#0F766E]" />
                       )}
                     </div>
                     <div className="min-w-0">
@@ -301,7 +301,7 @@ export default function StudentMyCourses() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 gap-1.5 px-3 text-[#1976d2] hover:bg-[#1976d2]/10"
+                      className="h-9 gap-1.5 px-3 text-[#0E7490] hover:bg-[#0E7490]/10"
                     >
                       {progress > 0 ? (
                         <>

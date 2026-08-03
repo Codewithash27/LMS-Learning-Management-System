@@ -409,7 +409,7 @@ export default function AdminStudents() {
           {pageItems.map((student: any) => {
             const isActive = student.status === "active" || !student.status;
             return (
-              <TableRow key={student.id} className="hover:bg-[#FFF5E6]/70">
+              <TableRow key={student.id} className="hover:bg-[#EEF3F5]/70">
                 <TableCell className="py-3.5 pl-5">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
@@ -455,7 +455,7 @@ export default function AdminStudents() {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="h-9 w-9 p-0 text-[#1976d2] hover:bg-[#1976d2]/10"
+                        className="h-9 w-9 p-0 text-[#0E7490] hover:bg-[#0E7490]/10"
                         aria-label="View"
                       >
                         <Eye className="h-4 w-4" />
@@ -465,7 +465,7 @@ export default function AdminStudents() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 w-9 p-0 text-[#4ECDC4] hover:bg-[#4ECDC4]/10"
+                      className="h-9 w-9 p-0 text-[#0F766E] hover:bg-[#0F766E]/10"
                       aria-label="Assign course"
                       onClick={() => openAssignDialog(student)}
                     >
@@ -815,7 +815,7 @@ export default function AdminStudents() {
               <span>{initialEnrolledIds.length} currently enrolled</span>
             </div>
 
-            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-[#F4E4D7] bg-white">
+            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-[#D4DEE3] bg-white">
               {isLoadingEnrollments ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -825,7 +825,7 @@ export default function AdminStudents() {
                   No courses available
                 </p>
               ) : (
-                <ul className="divide-y divide-[#F4E4D7]/80">
+                <ul className="divide-y divide-[#D4DEE3]/80">
                   {courses.map((course) => {
                     const checked = selectedCourseIds.includes(course.id);
                     const wasEnrolled = initialEnrolledIds.includes(course.id);
@@ -833,8 +833,8 @@ export default function AdminStudents() {
                       <li key={course.id}>
                         <label
                           className={cn(
-                            "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-[#FFF5E6]/70",
-                            checked && "bg-[#4ECDC4]/5"
+                            "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-[#EEF3F5]/70",
+                            checked && "bg-[#0F766E]/5"
                           )}
                         >
                           <Checkbox

@@ -859,7 +859,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
       case 'pdf':
         return <FileText className="h-5 w-5 text-red-500 mr-2" />;
       case 'quiz':
-        return <Edit className="h-5 w-5 text-purple-500 mr-2" />;
+        return <Edit className="h-5 w-5 text-teal-600 mr-2" />;
       default:
         return <FileText className="h-5 w-5 text-gray-500 mr-2" />;
     }
@@ -1030,7 +1030,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                                     ? "bg-green-100 text-green-800"
                                     : difficulty === "Intermediate"
                                       ? "bg-blue-100 text-blue-800"
-                                      : "bg-purple-100 text-purple-800"
+                                      : "bg-teal-100 text-teal-800"
                                 }
                               >
                                 {difficulty}
@@ -1111,7 +1111,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                 control={form.control}
                 name="isEnrollmentRequired"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-[#F4E4D7] bg-white p-4 sm:col-span-2">
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-[#D4DEE3] bg-white p-4 sm:col-span-2">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
@@ -1423,7 +1423,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                           className="text-sm" 
                           onClick={() => addLesson(module.id, 'quiz')}
                         >
-                          <Edit className="h-4 w-4 mr-1 text-purple-500" />
+                          <Edit className="h-4 w-4 mr-1 text-teal-600" />
                           Add Quiz
                         </Button>
                       </div>
@@ -1447,7 +1447,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                   <img
                     src={formatThumbnailUrl(thumbnailPreview)}
                     alt="Course thumbnail preview"
-                    className="h-48 w-full rounded-xl border border-[#F4E4D7] object-cover"
+                    className="h-48 w-full rounded-xl border border-[#D4DEE3] object-cover"
                   />
                   <Button
                     type="button"
@@ -1461,7 +1461,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                 </div>
               ) : (
                 <div
-                  className="cursor-pointer rounded-xl border-2 border-dashed border-[#F4E4D7] bg-white p-8 text-center transition-colors hover:border-[#4ECDC4]"
+                  className="cursor-pointer rounded-xl border-2 border-dashed border-[#D4DEE3] bg-white p-8 text-center transition-colors hover:border-[#0F766E]"
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}

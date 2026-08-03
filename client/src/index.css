@@ -55,7 +55,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(244, 248, 249, 0.85);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -67,50 +67,50 @@
 
 @layer base {
   :root {
-    /* Campus Axis warm preschool tokens → HSL channels for shadcn */
-    --background: 36 100% 97%;           /* #FFF9F0 */
+    /* Paper & Teal — cool academic LMS tokens → HSL channels for shadcn */
+    --background: 195 20% 97%;           /* #F4F8F9 */
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 174 54% 55%;              /* #4ECDC4 turquoise */
+    --primary: 173 78% 26%;              /* #0F766E deep teal */
     --primary-foreground: 0 0% 100%;
-    --secondary: 36 100% 90%;            /* #FFE8CC muted cream */
+    --secondary: 195 14% 91%;            /* #E4EBEE muted paper */
     --secondary-foreground: 222 47% 11%;
-    --muted: 36 100% 95%;                /* #FFF5E6 subtle */
-    --muted-foreground: 215 16% 47%;
-    --accent: 36 100% 95%;
+    --muted: 195 18% 95%;                /* #EEF3F5 subtle */
+    --muted-foreground: 215 16% 40%;
+    --accent: 195 18% 95%;
     --accent-foreground: 222 47% 11%;
-    --destructive: 4 66% 50%;            /* #d32f2f */
+    --destructive: 0 72% 42%;
     --destructive-foreground: 0 0% 100%;
-    --border: 28 40% 90%;                /* #F4E4D7 */
-    --input: 28 40% 90%;
-    --ring: 174 54% 55%;                 /* turquoise focus */
+    --border: 195 14% 86%;               /* #D4DEE3 */
+    --input: 195 14% 86%;
+    --ring: 173 78% 26%;                 /* deep teal focus */
     --radius: 0.5rem;
-    --radius-card: 1.5rem;               /* 24px */
+    --radius-card: 1.5rem;
 
-    --sidebar-background: 36 100% 97%;
+    --sidebar-background: 195 16% 93%;   /* #E8EEF1 */
     --sidebar-foreground: 215 25% 27%;
-    --sidebar-primary: 174 54% 55%;
+    --sidebar-primary: 173 78% 26%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 36 100% 95%;
+    --sidebar-accent: 195 18% 95%;
     --sidebar-accent-foreground: 215 25% 27%;
-    --sidebar-border: 28 40% 90%;
-    --sidebar-ring: 174 54% 55%;
+    --sidebar-border: 195 14% 86%;
+    --sidebar-ring: 173 78% 26%;
 
-    --chart-1: 174 54% 55%;
-    --chart-2: 0 100% 71%;
-    --chart-3: 270 60% 70%;
-    --chart-4: 32 90% 65%;
-    --chart-5: 145 45% 51%;
+    --chart-1: 173 78% 26%;
+    --chart-2: 199 89% 31%;
+    --chart-3: 215 16% 40%;
+    --chart-4: 188 78% 30%;
+    --chart-5: 173 58% 35%;
 
-    --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.03);
-    --color-brand-blue: #1976d2;
-    --color-turquoise: #4ECDC4;
-    --color-bg-default: #FFF9F0;
-    --color-bg-muted: #FFE8CC;
-    --color-border-subtle: #FAF0E6;
+    --shadow-card: 0 10px 30px rgba(15, 23, 42, 0.04);
+    --color-brand-blue: #0E7490;
+    --color-turquoise: #0F766E;
+    --color-bg-default: #F4F8F9;
+    --color-bg-muted: #E4EBEE;
+    --color-border-subtle: #E8EEF2;
     --drawer-width: 280px;
     --drawer-width-collapsed: 88px;
   }
@@ -130,25 +130,25 @@
 
 @layer utilities {
   .bg-app-main {
-    background: linear-gradient(135deg, #FFF9F0 0%, #FFE8CC 100%);
+    background: linear-gradient(135deg, #F4F8F9 0%, #E8EEF1 100%);
   }
 
   .bg-accent-brand {
-    background-image: linear-gradient(135deg, #4ECDC4 0%, #1976d2 100%);
+    background-image: linear-gradient(135deg, #0F766E 0%, #0E7490 100%);
   }
 
   .bg-sidebar-warm {
-    background: linear-gradient(180deg, #FFF9F0 0%, #FAFAFA 100%);
+    background: linear-gradient(180deg, #E8EEF1 0%, #F4F8F9 100%);
   }
 
   .shadow-card-soft {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
   }
 
   .glass-appbar {
-    background-color: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background-color: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
   }
 }
 

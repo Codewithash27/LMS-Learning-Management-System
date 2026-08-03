@@ -287,7 +287,7 @@ export default function AdminCourses() {
       case "intermediate":
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "advanced":
-        return "bg-purple-100 text-purple-800 border-purple-200";
+        return "bg-teal-100 text-teal-800 border-teal-200";
       case "expert":
         return "bg-red-100 text-red-800 border-red-200";
       default:
@@ -568,14 +568,14 @@ export default function AdminCourses() {
             const src = thumbSrc(course);
             const enrollmentCount = getEnrollmentCount(course);
             return (
-              <TableRow key={course.id} className="hover:bg-[#FFF5E6]/70">
+              <TableRow key={course.id} className="hover:bg-[#EEF3F5]/70">
                 <TableCell className="py-3.5 pl-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#4ECDC4]/15">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0F766E]/15">
                       {src ? (
                         <img src={src} alt="" className="h-full w-full object-cover" />
                       ) : (
-                        <BookOpen className="h-5 w-5 text-[#4ECDC4]" />
+                        <BookOpen className="h-5 w-5 text-[#0F766E]" />
                       )}
                     </div>
                     <div className="min-w-0">
@@ -618,7 +618,7 @@ export default function AdminCourses() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 w-9 p-0 text-[#1976d2] hover:bg-[#1976d2]/10"
+                      className="h-9 w-9 p-0 text-[#0E7490] hover:bg-[#0E7490]/10"
                       aria-label="Edit"
                       onClick={() => handleEditCourse(course)}
                     >
@@ -628,7 +628,7 @@ export default function AdminCourses() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 w-9 p-0 text-[#4ECDC4] hover:bg-[#4ECDC4]/10"
+                      className="h-9 w-9 p-0 text-[#0F766E] hover:bg-[#0F766E]/10"
                       aria-label="Assign to student"
                       onClick={() => openAssignDialog(course)}
                     >
@@ -638,7 +638,7 @@ export default function AdminCourses() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 w-9 p-0 text-[#1976d2]/80 hover:bg-[#1976d2]/10"
+                      className="h-9 w-9 p-0 text-[#0E7490]/80 hover:bg-[#0E7490]/10"
                       aria-label="Progress"
                       onClick={() => {
                         window.location.href = `/admin/courses/${course.id}/progress`;
@@ -695,7 +695,7 @@ export default function AdminCourses() {
               <span>{initialEnrolledIds.length} currently enrolled</span>
             </div>
 
-            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-[#F4E4D7] bg-white">
+            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-[#D4DEE3] bg-white">
               {isLoadingEnrollments ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -705,7 +705,7 @@ export default function AdminCourses() {
                   No students available
                 </p>
               ) : (
-                <ul className="divide-y divide-[#F4E4D7]/80">
+                <ul className="divide-y divide-[#D4DEE3]/80">
                   {students.map((student) => {
                     const checked = selectedStudentIds.includes(student.id);
                     const wasEnrolled = initialEnrolledIds.includes(student.id);
@@ -713,8 +713,8 @@ export default function AdminCourses() {
                       <li key={student.id}>
                         <label
                           className={cn(
-                            "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-[#FFF5E6]/70",
-                            checked && "bg-[#4ECDC4]/5"
+                            "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-[#EEF3F5]/70",
+                            checked && "bg-[#0F766E]/5"
                           )}
                         >
                           <Checkbox

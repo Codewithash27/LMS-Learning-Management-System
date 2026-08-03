@@ -19,7 +19,7 @@ export default function SidebarToggle() {
       whileHover={{ scale: 1.05, boxShadow: "0 10px 30px -10px rgba(59, 130, 246, 0.3)" }}
       whileTap={{ scale: 0.95 }}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-purple-600/0 group-hover:from-blue-500/10 group-hover:to-purple-600/10 transition-all duration-300" />
+      <div className="absolute inset-0 bg-gradient-to-br from-teal-500/0 to-cyan-700/0 group-hover:from-teal-500/10 group-hover:to-cyan-700/10 transition-all duration-300" />
       
       {sidebarOpen && !isMobile ? (
         <motion.div

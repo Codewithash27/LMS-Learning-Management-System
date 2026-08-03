@@ -22,7 +22,7 @@ export type CreateFormDialogMaxWidth = keyof typeof maxWidthClass;
 
 /** Shared control look for create/add forms */
 export const createFormControlClass =
-  "h-11 rounded-xl border-[#F4E4D7] bg-white shadow-sm transition-all placeholder:text-[#A0AEC0] focus-visible:border-[#4ECDC4] focus-visible:ring-2 focus-visible:ring-[#4ECDC4]/25";
+  "h-11 rounded-xl border-[#D4DEE3] bg-white shadow-sm transition-all placeholder:text-[#A0AEC0] focus-visible:border-[#0F766E] focus-visible:ring-2 focus-visible:ring-[#0F766E]/25";
 
 export const createFormLabelClass = "text-[13px] font-semibold text-[#2D3748]";
 
@@ -53,13 +53,13 @@ export function CreateFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "flex max-h-[92vh] flex-col gap-0 overflow-hidden border-[#F4E4D7] bg-white p-0 shadow-[0_25px_60px_rgba(45,55,72,0.18)] sm:rounded-2xl",
+          "flex max-h-[92vh] flex-col gap-0 overflow-hidden border-[#D4DEE3] bg-white p-0 shadow-[0_25px_60px_rgba(45,55,72,0.18)] sm:rounded-2xl",
           maxWidthClass[maxWidth],
           className
         )}
       >
-        <div className="shrink-0 border-b border-[#FAF0E6] bg-gradient-to-b from-[#FFFBF5] to-white px-6 pb-5 pt-6">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-brand shadow-[0_10px_24px_rgba(78,205,196,0.35)]">
+        <div className="shrink-0 border-b border-[#E8EEF2] bg-gradient-to-b from-[#FFFBF5] to-white px-6 pb-5 pt-6">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-brand shadow-[0_10px_24px_rgba(15,118,110,0.35)]">
             {icon}
           </div>
           <DialogTitle className="text-center text-xl font-black tracking-tight text-[#2D3748]">
@@ -75,7 +75,7 @@ export function CreateFormDialog({
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
 
         {footer ? (
-          <div className="shrink-0 border-t border-[#FAF0E6] bg-[#FFFBF5]/80 px-6 py-4">
+          <div className="shrink-0 border-t border-[#E8EEF2] bg-[#FFFBF5]/80 px-6 py-4">
             {footer}
           </div>
         ) : null}
@@ -100,7 +100,7 @@ export function FormSection({
   return (
     <section
       className={cn(
-        "rounded-2xl border border-[#F4E4D7] bg-[#FFFBF5]/60 p-4 sm:p-5",
+        "rounded-2xl border border-[#D4DEE3] bg-[#FFFBF5]/60 p-4 sm:p-5",
         className
       )}
     >
@@ -151,7 +151,7 @@ export function CreateFormFooter({
         variant="outline"
         onClick={onCancel}
         disabled={isPending}
-        className="h-11 flex-1 rounded-xl border-[#F4E4D7] bg-white font-semibold text-[#4A5568] hover:bg-white hover:text-[#2D3748]"
+        className="h-11 flex-1 rounded-xl border-[#D4DEE3] bg-white font-semibold text-[#4A5568] hover:bg-white hover:text-[#2D3748]"
       >
         {cancelLabel}
       </Button>
@@ -160,7 +160,7 @@ export function CreateFormFooter({
         form={formId}
         onClick={onSubmit}
         disabled={isPending || submitDisabled}
-        className="h-11 flex-1 gap-2 rounded-xl bg-accent-brand font-bold text-white shadow-[0_8px_20px_rgba(78,205,196,0.3)] hover:opacity-95"
+        className="h-11 flex-1 gap-2 rounded-xl bg-accent-brand font-bold text-white shadow-[0_8px_20px_rgba(15,118,110,0.3)] hover:opacity-95"
       >
         {isPending ? (
           pendingLabel

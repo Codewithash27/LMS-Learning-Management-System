@@ -50,7 +50,7 @@ export default function ActivityChart({
       <CardHeader className="shrink-0 px-4 pb-0 pt-4 sm:px-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="rounded-xl bg-gradient-to-br from-[#4ECDC4] to-[#1976d2] p-2 text-white shadow-md">
+            <div className="rounded-xl bg-gradient-to-br from-[#0F766E] to-[#0E7490] p-2 text-white shadow-md">
               <Activity className="h-4 w-4" />
             </div>
             <CardTitle className="bg-gradient-to-br from-gray-900 to-gray-700 bg-clip-text font-heading text-base font-semibold text-transparent">
@@ -100,7 +100,7 @@ export default function ActivityChart({
                         "relative w-full max-w-[24px] cursor-pointer overflow-hidden rounded-t-md",
                         item.isCurrentDay
                           ? "bg-accent-brand shadow-md"
-                          : "bg-gradient-to-t from-[#4ECDC4] to-[#1976d2]"
+                          : "bg-gradient-to-t from-[#0F766E] to-[#0E7490]"
                       )}
                       style={{ height: `${barPct}%` }}
                       initial={{ height: 0 }}

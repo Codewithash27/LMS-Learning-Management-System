@@ -330,7 +330,7 @@ export default function StudentDetailsPage() {
               
               <CardContent className="space-y-4">
                 {/* Password Section */}
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-4 border border-blue-200">
+                <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-2xl p-4 border border-blue-200">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Key className="h-4 w-4 text-blue-600" />
@@ -445,7 +445,7 @@ export default function StudentDetailsPage() {
             <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-xl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-6 w-6 text-purple-600" />
+                  <Sparkles className="h-6 w-6 text-teal-700" />
                   Learning Progress Summary
                 </CardTitle>
                 <CardDescription>Overview of student's learning journey and performance</CardDescription>
@@ -455,10 +455,10 @@ export default function StudentDetailsPage() {
                   {[
                     { icon: BookOpen, value: enrolledCourses.length, label: "Enrolled Courses", color: "from-blue-500 to-cyan-600" },
                     { icon: CalendarDays, value: enrolledBatches.length, label: "Active Batches", color: "from-green-500 to-emerald-600" },
-                    { icon: Award, value: completedCourses, label: "Completed Courses", color: "from-purple-500 to-pink-600" },
+                    { icon: Award, value: completedCourses, label: "Completed Courses", color: "from-[#0E7490] to-[#0F766E]" },
                     { icon: GraduationCap, value: `${Math.round(averageProgress)}%`, label: "Average Progress", color: "from-orange-500 to-red-600" },
-                    { icon: Clock, value: studentExamAttempts.length, label: "Exam Attempts", color: "from-indigo-500 to-purple-600" },
-                    { icon: Users, value: averageScore !== null ? `${Math.round(averageScore)}%` : 'N/A', label: "Average Score", color: "from-teal-500 to-blue-600" },
+                    { icon: Clock, value: studentExamAttempts.length, label: "Exam Attempts", color: "from-[#155E75] to-[#0E7490]" },
+                    { icon: Users, value: averageScore !== null ? `${Math.round(averageScore)}%` : 'N/A', label: "Average Score", color: "from-[#0D9488] to-[#0E7490]" },
                   ].map((stat, index) => (
                     <motion.div
                       key={stat.label}
@@ -489,7 +489,7 @@ export default function StudentDetailsPage() {
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className="flex items-center gap-2 rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-300"
+                    className="flex items-center gap-2 rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#0F766E] data-[state=active]:to-[#0E7490] data-[state=active]:text-white transition-all duration-300"
                   >
                     <tab.icon className="h-4 w-4" />
                     {tab.label}
@@ -541,7 +541,7 @@ export default function StudentDetailsPage() {
                                     "bg-gradient-to-r text-white border-0",
                                     course.difficulty === 'Beginner' ? "from-green-500 to-emerald-600" :
                                     course.difficulty === 'Intermediate' ? "from-blue-500 to-cyan-600" :
-                                    "from-purple-500 to-pink-600"
+                                    "from-[#0E7490] to-[#0F766E]"
                                   )}>
                                     {course.difficulty}
                                   </Badge>
@@ -652,7 +652,7 @@ export default function StudentDetailsPage() {
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: -10 }}
                                   transition={{ duration: 0.3, delay: index * 0.05 }}
-                                  className="border-b border-white/20 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300"
+                                  className="border-b border-white/20 hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-cyan-50/50 transition-all duration-300"
                                 >
                                   <TableCell className="py-4 font-medium">{batch.name}</TableCell>
                                   <TableCell>
@@ -696,7 +696,7 @@ export default function StudentDetailsPage() {
               {/* Exam Results Tab */}
               <TabsContent value="exams" className="space-y-4 mt-6">
                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Award className="h-5 w-5 text-purple-600" />
+                  <Award className="h-5 w-5 text-teal-700" />
                   Exam Results ({studentExamAttempts.length})
                 </h2>
                 
@@ -736,7 +736,7 @@ export default function StudentDetailsPage() {
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: -10 }}
                                   transition={{ duration: 0.3, delay: index * 0.05 }}
-                                  className="border-b border-white/20 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300"
+                                  className="border-b border-white/20 hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-cyan-50/50 transition-all duration-300"
                                 >
                                   <TableCell className="py-4 font-medium">{attempt.exam?.title || "Unknown Exam"}</TableCell>
                                   <TableCell>{course?.title || "Unknown"}</TableCell>

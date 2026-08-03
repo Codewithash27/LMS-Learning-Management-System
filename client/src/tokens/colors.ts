@@ -1,171 +1,174 @@
 /**
  * Design Tokens — Color System
+ * Paper & Teal theme: cool academic LMS palette.
  * Single source of truth for all UI colors.
- * Supports semantic roles, grayscale, and future multi-theme/tenant branding.
  */
 
 export const colorTokens = {
   /** Brand & semantic palette — main/light/dark/contrast for each role */
   primary: {
-    main: "#1976d2",
-    light: "#42a5f5",
-    dark: "#1565c0",
+    main: "#0F766E",
+    light: "#14B8A6",
+    dark: "#115E59",
     contrast: "#ffffff",
   },
   secondary: {
-    main: "#9c27b0",
-    light: "#ba68c8",
-    dark: "#7b1fa2",
+    main: "#5B7C8D",
+    light: "#7A9AAB",
+    dark: "#3D5A68",
     contrast: "#ffffff",
   },
   success: {
-    main: "#2e7d32",
-    light: "#4caf50",
-    dark: "#1b5e20",
+    main: "#0D9488",
+    light: "#2DD4BF",
+    dark: "#0F766E",
     contrast: "#ffffff",
   },
   warning: {
-    main: "#ed6c02",
-    light: "#ff9800",
-    dark: "#e65100",
+    main: "#B45309",
+    light: "#D97706",
+    dark: "#92400E",
     contrast: "#ffffff",
   },
   error: {
-    main: "#d32f2f",
-    light: "#ef5350",
-    dark: "#c62828",
+    main: "#B91C1C",
+    light: "#DC2626",
+    dark: "#991B1B",
     contrast: "#ffffff",
   },
   info: {
-    main: "#0288d1",
-    light: "#03a9f4",
-    dark: "#01579b",
+    main: "#0E7490",
+    light: "#06B6D4",
+    dark: "#155E75",
     contrast: "#ffffff",
   },
 
   /** Semantic UI aliases common in SaaS dashboards */
   semantic: {
-    active: "#2e7d32",
-    inactive: "#64748b",
-    pending: "#ed6c02",
-    draft: "#94a3b8",
-    rejected: "#d32f2f",
-    archived: "#64748b",
+    active: "#0D9488",
+    inactive: "#64748B",
+    pending: "#B45309",
+    draft: "#94A3B8",
+    rejected: "#B91C1C",
+    archived: "#64748B",
   },
 
-  /** PRESCHOOL THEME - Add these new tokens */
+  /**
+   * Accent scale (replaces preschool rainbow).
+   * Keys kept for compatibility with existing imports.
+   */
   preschool: {
     coral: {
-      main: "#FF6B6B",
-      light: "#FF8787",
-      dark: "#EE5A52",
+      main: "#5B7C8D",
+      light: "#7A9AAB",
+      dark: "#3D5A68",
       contrast: "#ffffff",
     },
     turquoise: {
-      main: "#4ECDC4",
-      light: "#6FD9D1",
-      dark: "#3AB8AF",
+      main: "#0F766E",
+      light: "#14B8A6",
+      dark: "#115E59",
       contrast: "#ffffff",
     },
     sunshine: {
-      main: "#FFE66D",
-      light: "#FFF094",
-      dark: "#F5D94C",
-      contrast: "#2D3748",
+      main: "#94A3B8",
+      light: "#CBD5E1",
+      dark: "#64748B",
+      contrast: "#0F172A",
     },
     lavender: {
-      main: "#9F7AEA",
-      light: "#B794F4",
-      dark: "#805AD5",
+      main: "#475569",
+      light: "#64748B",
+      dark: "#334155",
       contrast: "#ffffff",
     },
     peach: {
-      main: "#F6AD55",
-      light: "#FBD38D",
-      dark: "#ED8936",
+      main: "#0E7490",
+      light: "#22D3EE",
+      dark: "#155E75",
       contrast: "#ffffff",
     },
     mint: {
-      main: "#48BB78",
-      light: "#68D391",
-      dark: "#38A169",
+      main: "#0D9488",
+      light: "#2DD4BF",
+      dark: "#0F766E",
       contrast: "#ffffff",
     },
   },
 
-  /** UPDATE BACKGROUNDS - Changed to warm, preschool-friendly colors */
+  /** Cool paper backgrounds */
   background: {
-    default: "#FFF9F0",        // Warm cream
+    default: "#F4F8F9",
     paper: "#FFFFFF",
-    subtle: "#FFF5E6",         // Lighter warm cream
-    muted: "#FFE8CC",          // Peachy cream
+    subtle: "#EEF3F5",
+    muted: "#E4EBEE",
   },
 
   /** SURFACE — cards, panels, overlays */
   surface: {
     card: "#FFFFFF",
-    elevated: "#FFFBF5",       // Slight warm tint
-    overlay: "rgba(0, 0, 0, 0.5)",
+    elevated: "#F8FBFC",
+    overlay: "rgba(15, 23, 42, 0.45)",
   },
 
-  /** UPDATE BORDERS - Warmer tones */
+  /** Cool gray borders */
   border: {
-    default: "#F4E4D7",        // Warm beige border
-    subtle: "#FAF0E6",         // Very light warm
-    strong: "#E8D5C4",         // Stronger warm border
-    focus: "#4ECDC4",          // Turquoise focus
+    default: "#D4DEE3",
+    subtle: "#E8EEF2",
+    strong: "#C5D0D6",
+    focus: "#0F766E",
   },
 
   /** SIDEBAR SPECIFIC COLORS */
   sidebar: {
-    background: "linear-gradient(180deg, #FFF9F0 0%, #FAFAFA 100%)",
-    backgroundSolid: "#FAFAFA",
-    hover: "#F7FAFC",
-    active: "#FFF9F0",
-    border: "#F4E4D7",         // Warm border
+    background: "linear-gradient(180deg, #E8EEF1 0%, #F4F8F9 100%)",
+    backgroundSolid: "#E8EEF1",
+    hover: "#E2E9ED",
+    active: "#DCE8EA",
+    border: "#D4DEE3",
     text: {
-      primary: "#2D3748",
-      secondary: "#718096",
-      muted: "#A0AEC0",
+      primary: "#1E293B",
+      secondary: "#64748B",
+      muted: "#94A3B8",
     },
   },
 
-  /** MENU ITEM COLORS */
+  /** MENU ITEM COLORS — teal family, academic */
   menuColors: {
-    dashboard: "#4ECDC4",      // Turquoise
-    students: "#FF6B6B",       // Coral
-    academics: "#9F7AEA",      // Lavender
-    fees: "#F6AD55",           // Peach
-    staff: "#4299E1",          // Blue
-    finance: "#48BB78",        // Mint
-    settings: "#718096",       // Gray
+    dashboard: "#0F766E",
+    students: "#0E7490",
+    academics: "#115E59",
+    fees: "#5B7C8D",
+    staff: "#0369A1",
+    finance: "#0D9488",
+    settings: "#64748B",
   },
 
   /** Text — primary, secondary, disabled, hint, inverse */
   text: {
-    primary: "rgba(0, 0, 0, 0.87)",
-    secondary: "rgba(0, 0, 0, 0.6)",
-    disabled: "rgba(0, 0, 0, 0.38)",
-    hint: "rgba(0, 0, 0, 0.38)",
+    primary: "rgba(15, 23, 42, 0.92)",
+    secondary: "rgba(15, 23, 42, 0.62)",
+    disabled: "rgba(15, 23, 42, 0.38)",
+    hint: "rgba(15, 23, 42, 0.38)",
     inverse: "#ffffff",
   },
 
   /** Divider */
-  divider: "rgba(0, 0, 0, 0.12)",
+  divider: "rgba(15, 23, 42, 0.10)",
 
-  /** Grayscale scale — for consistent neutrals and future theming */
+  /** Grayscale scale — cool slate neutrals */
   gray: {
     0: "#ffffff",
-    50: "#f8fafc",
-    100: "#f1f5f9",
-    200: "#e2e8f0",
-    300: "#cbd5e1",
-    400: "#94a3b8",
-    500: "#64748b",
+    50: "#F8FAFC",
+    100: "#F1F5F9",
+    200: "#E2E8F0",
+    300: "#CBD5E1",
+    400: "#94A3B8",
+    500: "#64748B",
     600: "#475569",
     700: "#334155",
-    800: "#1e293b",
-    900: "#0f172a",
+    800: "#1E293B",
+    900: "#0F172A",
     950: "#020617",
   },
 } as const;

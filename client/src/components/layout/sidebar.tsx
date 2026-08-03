@@ -259,9 +259,9 @@ export default function Sidebar({
       style={{ borderColor: colorTokens.sidebar.border, color: colorTokens.sidebar.text.primary }}
     >
       <div
-        className="mb-2 flex items-center justify-between px-4 py-5 text-white shadow-[0_8px_20px_rgba(78,205,196,0.25)]"
+        className="mb-2 flex items-center justify-between px-4 py-5 text-white shadow-[0_8px_20px_rgba(15,118,110,0.28)]"
         style={{
-          background: `linear-gradient(135deg, ${colorTokens.preschool.turquoise.main} 0%, ${colorTokens.primary.main} 100%)`,
+          background: `linear-gradient(135deg, ${colorTokens.primary.main} 0%, ${colorTokens.info.main} 100%)`,
           borderRadius: "0 0 40px 40px",
         }}
       >
@@ -306,12 +306,12 @@ export default function Sidebar({
       {!collapsed && (
         <div className="px-4 pb-3">
           <div
-            className="flex items-center gap-2 rounded-[15px] border bg-white/80 px-3 py-1.5 transition-all focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(78,205,196,0.1)]"
-            style={{ borderColor: `${colorTokens.preschool.turquoise.main}33` }}
+            className="flex items-center gap-2 rounded-[15px] border bg-white/80 px-3 py-1.5 transition-all focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(15,118,110,0.1)]"
+            style={{ borderColor: `${colorTokens.primary.main}33` }}
           >
             <Search
               className="h-4 w-4 shrink-0"
-              style={{ color: `${colorTokens.preschool.turquoise.main}99` }}
+              style={{ color: `${colorTokens.primary.main}99` }}
             />
             <input
               value={searchTerm}
@@ -411,7 +411,7 @@ export default function Sidebar({
         <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
           <Avatar
             className={cn(
-              "border-[3px] border-white shadow-[0_8px_20px_rgba(78,205,196,0.15)]",
+              "border-[3px] border-white shadow-[0_8px_20px_rgba(15,118,110,0.15)]",
               collapsed ? "h-11 w-11" : "h-[46px] w-[46px]"
             )}
           >

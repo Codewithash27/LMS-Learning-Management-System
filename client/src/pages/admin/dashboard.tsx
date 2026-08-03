@@ -92,25 +92,25 @@ export default function AdminDashboard() {
       label: "Students",
       value: isLoading || !stats ? "—" : stats.totalStudents,
       icon: Users,
-      tone: "bg-gradient-to-br from-[#4ECDC4] to-[#1976d2]",
+      tone: "bg-gradient-to-br from-[#0F766E] to-[#0E7490]",
     },
     {
       label: "Courses",
       value: isLoading || !stats ? "—" : stats.activeCourses,
       icon: BookOpen,
-      tone: "bg-gradient-to-br from-emerald-400 to-teal-600",
+      tone: "bg-gradient-to-br from-[#14B8A6] to-[#0F766E]",
     },
     {
       label: "Exams",
       value: isLoading || !stats ? "—" : stats.publishedExams,
       icon: Calendar,
-      tone: "bg-gradient-to-br from-amber-400 to-orange-600",
+      tone: "bg-gradient-to-br from-[#0E7490] to-[#155E75]",
     },
     {
       label: "Completion",
       value: isLoading || !stats ? "—" : `${stats.avgCompletion}%`,
       icon: Target,
-      tone: "bg-gradient-to-br from-violet-500 to-purple-600",
+      tone: "bg-gradient-to-br from-[#5B7C8D] to-[#334155]",
     },
   ];
 
@@ -120,7 +120,7 @@ export default function AdminDashboard() {
       <div className="flex w-full min-w-0 flex-col gap-2.5 sm:gap-3">
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           {statItems.map((item) => (
-            <Card key={item.label} className="border border-[#eee5dc] bg-white shadow-sm">
+            <Card key={item.label} className="border border-[#D4DEE3] bg-white shadow-sm">
               <CardContent className="flex items-center gap-2.5 p-2.5 sm:p-3">
                 <div className={cn("shrink-0 rounded-lg p-2 text-white shadow-sm", item.tone)}>
                   <item.icon className="h-4 w-4" />
@@ -185,29 +185,29 @@ export default function AdminDashboard() {
               href: "/admin/courses",
               label: "Courses",
               icon: BookOpen,
-              tone: "from-[#4ECDC4]/15 to-[#1976d2]/10 text-[#1976d2]",
+              tone: "from-[#0F766E]/15 to-[#0E7490]/10 text-[#0E7490]",
             },
             {
               href: "/admin/exams",
               label: "Exams",
               icon: ClipboardList,
-              tone: "from-emerald-100 to-teal-50 text-emerald-700",
+              tone: "from-teal-100 to-cyan-50 text-teal-800",
             },
             {
               href: "/admin/reports",
               label: "Reports",
               icon: BarChart3,
-              tone: "from-violet-100 to-purple-50 text-violet-700",
+              tone: "from-slate-100 to-slate-50 text-slate-700",
             },
             {
               href: "/admin/students",
               label: "Students",
               icon: Users,
-              tone: "from-amber-100 to-orange-50 text-amber-700",
+              tone: "from-cyan-100 to-teal-50 text-cyan-800",
             },
           ].map((a) => (
             <Link key={a.href} href={a.href}>
-              <Card className="cursor-pointer border border-[#eee5dc] bg-white shadow-sm transition hover:shadow-md">
+              <Card className="cursor-pointer border border-[#D4DEE3] bg-white shadow-sm transition hover:shadow-md">
                 <CardContent
                   className={cn(
                     "flex flex-col items-center gap-1 bg-gradient-to-br py-2.5 sm:py-3",

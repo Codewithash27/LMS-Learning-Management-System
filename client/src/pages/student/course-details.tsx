@@ -241,7 +241,7 @@ export default function StudentCourseDetails() {
                 {(course as any).category}
               </Badge>
               {(course as any).isEnrollmentRequired && (
-                <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                <Badge variant="outline" className="bg-teal-100 text-teal-800">
                   Restricted
                 </Badge>
               )}

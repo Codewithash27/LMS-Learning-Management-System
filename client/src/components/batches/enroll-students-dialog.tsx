@@ -130,7 +130,7 @@ export default function EnrollStudentsDialog({
               <p className="text-sm text-[#718096]">No students available for enrollment</p>
             </div>
           ) : (
-            <div className="divide-y divide-[#F4E4D7] overflow-hidden rounded-xl border border-[#F4E4D7] bg-white">
+            <div className="divide-y divide-[#D4DEE3] overflow-hidden rounded-xl border border-[#D4DEE3] bg-white">
               {students.map((student) => (
                 <div
                   key={student.id}
@@ -145,8 +145,8 @@ export default function EnrollStudentsDialog({
                     htmlFor={`enroll-student-${student.id}`}
                     className="flex flex-1 cursor-pointer items-center gap-3"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ECDC4]/15">
-                      <span className="text-sm font-semibold text-[#4ECDC4]">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0F766E]/15">
+                      <span className="text-sm font-semibold text-[#0F766E]">
                         {student.firstName[0]}
                         {student.lastName[0]}
                       </span>

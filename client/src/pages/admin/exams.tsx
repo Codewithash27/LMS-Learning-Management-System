@@ -255,11 +255,11 @@ export default function AdminExams() {
             const status = getStatusBadge(exam);
             const published = isPublished(exam);
             return (
-              <TableRow key={exam.id} className="hover:bg-[#FFF5E6]/70">
+              <TableRow key={exam.id} className="hover:bg-[#EEF3F5]/70">
                 <TableCell className="py-3.5 pl-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4ECDC4]/15">
-                      <FileText className="h-5 w-5 text-[#4ECDC4]" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0F766E]/15">
+                      <FileText className="h-5 w-5 text-[#0F766E]" />
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-[15px] font-semibold text-[#2D3748]">
@@ -330,7 +330,7 @@ export default function AdminExams() {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="h-9 w-9 p-0 text-[#1976d2] hover:bg-[#1976d2]/10"
+                        className="h-9 w-9 p-0 text-[#0E7490] hover:bg-[#0E7490]/10"
                         aria-label="View"
                       >
                         <Eye className="h-4 w-4" />
@@ -340,7 +340,7 @@ export default function AdminExams() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 w-9 p-0 text-[#4ECDC4] hover:bg-[#4ECDC4]/10"
+                      className="h-9 w-9 p-0 text-[#0F766E] hover:bg-[#0F766E]/10"
                       aria-label="Edit"
                       onClick={() => handleEditExam(exam)}
                     >

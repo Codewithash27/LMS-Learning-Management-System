@@ -401,7 +401,7 @@ export default function StudentTakeQuiz() {
         {!started ? (
           <div className="flex-1 min-h-0 w-full grid grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[300px_1fr] overflow-hidden rounded-2xl border border-white/40 shadow-xl">
             {/* Left: same gradient arena panel */}
-            <aside className="relative overflow-hidden text-white bg-gradient-to-br from-[#4ECDC4] via-[#2bb8c8] to-[#1976d2] px-5 py-6 flex flex-col gap-5">
+            <aside className="relative overflow-hidden text-white bg-gradient-to-br from-[#0F766E] via-[#14B8A6] to-[#0E7490] px-5 py-6 flex flex-col gap-5">
               <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
               <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-black/10 blur-2xl pointer-events-none" />
 
@@ -486,7 +486,7 @@ export default function StudentTakeQuiz() {
             </aside>
 
             {/* Right: rules + CTA */}
-            <section className="bg-[#FFF9F0] flex flex-col min-h-0 min-w-0">
+            <section className="bg-[#F4F8F9] flex flex-col min-h-0 min-w-0">
               <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 sm:py-8">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white border border-warm-border px-3 py-1 text-[11px] font-medium text-muted-foreground mb-4 shadow-sm">
                   <span

@@ -45,9 +45,9 @@ export default function PageHeader({
           <button
             type="button"
             aria-label="Home"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-[0_4px_12px_rgba(78,205,196,0.2)] transition-all duration-200 hover:scale-110 hover:shadow-[0_6px_16px_rgba(78,205,196,0.3)]"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-[0_4px_12px_rgba(15,118,110,0.2)] transition-all duration-200 hover:scale-110 hover:shadow-[0_6px_16px_rgba(15,118,110,0.3)]"
             style={{
-              background: `linear-gradient(135deg, ${colorTokens.preschool.turquoise.main} 0%, ${colorTokens.primary.main} 100%)`,
+              background: `linear-gradient(135deg, ${colorTokens.primary.main} 0%, ${colorTokens.info.main} 100%)`,
             }}
           >
             <Home className="h-5 w-5" />

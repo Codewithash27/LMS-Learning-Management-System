@@ -160,11 +160,11 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-br from-[#EEF3F5] via-white to-[#E4EBEE] relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
+        <div className="absolute top-0 left-0 w-96 h-96 bg-teal-200/25 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-200/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
       </div>
 
       <div className="w-full md:w-1/2 p-6 md:p-8 lg:p-12 flex items-center justify-center relative z-10">
@@ -182,11 +182,11 @@ export default function AuthPage() {
                 transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                 className="flex justify-center mb-4"
               >
-                <div className="bg-gradient-to-br from-primary to-blue-600 p-4 rounded-xl shadow-lg">
+                <div className="bg-gradient-to-br from-primary to-cyan-800 p-4 rounded-xl shadow-lg">
                   <BookOpen className="h-8 w-8 text-white" />
                 </div>
               </motion.div>
-              <CardTitle className="text-3xl font-heading font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+              <CardTitle className="text-3xl font-heading font-bold bg-gradient-to-r from-primary to-cyan-800 bg-clip-text text-transparent">
                 Edu Transform Platform
               </CardTitle>
               <CardDescription className="text-base mt-2">
@@ -218,7 +218,7 @@ export default function AuthPage() {
                   onSubmit={loginForm.handleSubmit(onLoginSubmit)} 
                   className="space-y-5"
                 >
-                  <div className="bg-gradient-to-r from-primary/10 to-blue-100/50 p-4 rounded-lg mb-4 border border-primary/20">
+                  <div className="bg-gradient-to-r from-primary/10 to-teal-100/50 p-4 rounded-lg mb-4 border border-primary/20">
                     <div className="flex items-start gap-3">
                       <div className="bg-primary/20 p-2 rounded-lg">
                         <Sparkles className="h-5 w-5 text-primary" />
@@ -295,7 +295,7 @@ export default function AuthPage() {
                   
                   <Button 
                     type="submit" 
-                    className="w-full h-11 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="w-full h-11 bg-gradient-to-r from-primary to-cyan-800 hover:from-primary/90 hover:to-cyan-800/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
                     disabled={loginMutation.isPending}
                   >
                     {loginMutation.isPending ? (
@@ -690,7 +690,7 @@ export default function AuthPage() {
                   
                   <Button 
                     type="submit" 
-                    className="w-full mt-6 h-11 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="w-full mt-6 h-11 bg-gradient-to-r from-primary to-cyan-800 hover:from-primary/90 hover:to-cyan-800/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
                     disabled={registerMutation.isPending}
                   >
                     {registerMutation.isPending ? (
@@ -714,7 +714,7 @@ export default function AuthPage() {
       </motion.div>
       </div>
       
-      <div className="w-full md:w-1/2 bg-gradient-to-br from-primary via-blue-600 to-purple-600 text-white p-6 md:p-8 lg:p-12 flex items-center justify-center relative z-10 overflow-hidden">
+      <div className="w-full md:w-1/2 bg-gradient-to-br from-[#0F766E] via-[#0E7490] to-[#155E75] text-white p-6 md:p-8 lg:p-12 flex items-center justify-center relative z-10 overflow-hidden">
         {/* Animated background pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>

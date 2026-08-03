@@ -331,7 +331,7 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
                   control={form.control}
                   name="acceptingResponses"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between gap-3 rounded-xl border border-[#F4E4D7] bg-white p-4 sm:col-span-2">
+                    <FormItem className="flex flex-row items-center justify-between gap-3 rounded-xl border border-[#D4DEE3] bg-white p-4 sm:col-span-2">
                       <FormLabel className={createFormLabelClass + " cursor-pointer"}>
                         Publish exam (students assigned to this course can take it)
                       </FormLabel>
@@ -356,7 +356,7 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
                 {questions.map((question, questionIndex) => (
                   <div
                     key={question.id}
-                    className="rounded-xl border border-[#F4E4D7] bg-white p-4"
+                    className="rounded-xl border border-[#D4DEE3] bg-white p-4"
                   >
                     <div className="mb-3 flex items-start justify-between gap-2">
                       <h5 className="text-sm font-semibold text-[#2D3748]">
@@ -399,7 +399,7 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11 gap-2 rounded-xl border-[#F4E4D7] font-semibold text-[#2D3748]"
+                  className="h-11 gap-2 rounded-xl border-[#D4DEE3] font-semibold text-[#2D3748]"
                   onClick={addQuestion}
                   disabled={isSaving}
                 >

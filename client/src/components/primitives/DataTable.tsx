@@ -68,7 +68,7 @@ export default function DataTable({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-card border border-[#F4E4D7] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.03)]",
+        "overflow-hidden rounded-card border border-[#D4DEE3] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.03)]",
         className
       )}
     >
@@ -102,7 +102,7 @@ export default function DataTable({
                       )}
                       style={{
                         background:
-                          "linear-gradient(90deg, #4ECDC4 0%, #1976d2 100%)",
+                          "linear-gradient(90deg, #0F766E 0%, #0E7490 100%)",
                         color: "#ffffff",
                       }}
                     >
@@ -111,21 +111,21 @@ export default function DataTable({
                   ))}
                 </TableRow>
               </TableHeader>
-              <TableBody className="[&_tr]:border-[#F4E4D7]/60">
+              <TableBody className="[&_tr]:border-[#D4DEE3]/60">
                 {children}
               </TableBody>
             </Table>
           </div>
 
           {showPagination ? (
-            <div className="flex flex-col gap-3 border-t border-[#F4E4D7] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-t border-[#D4DEE3] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2 text-sm text-[#718096]">
                 <span>Rows per page</span>
                 <Select
                   value={String(pageSize)}
                   onValueChange={(v) => onPageSizeChange?.(Number(v))}
                 >
-                  <SelectTrigger className="h-8 w-[72px] rounded-lg border-[#F4E4D7] bg-white text-sm">
+                  <SelectTrigger className="h-8 w-[72px] rounded-lg border-[#D4DEE3] bg-white text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -148,7 +148,7 @@ export default function DataTable({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 rounded-full p-0 text-[#718096] hover:bg-[#FFF5E6]"
+                  className="h-8 w-8 rounded-full p-0 text-[#718096] hover:bg-[#EEF3F5]"
                   disabled={page <= 1}
                   onClick={() => onPageChange?.(page - 1)}
                   aria-label="Previous page"
@@ -159,7 +159,7 @@ export default function DataTable({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 rounded-full p-0 text-[#718096] hover:bg-[#FFF5E6]"
+                  className="h-8 w-8 rounded-full p-0 text-[#718096] hover:bg-[#EEF3F5]"
                   disabled={page >= pageCount}
                   onClick={() => onPageChange?.(page + 1)}
                   aria-label="Next page"

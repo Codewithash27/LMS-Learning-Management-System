@@ -131,7 +131,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                           {user.role}
                         </span>
                       </div>
-                      <Avatar className="h-9 w-9 border-2 border-white shadow-[0_4px_12px_rgba(78,205,196,0.25)] sm:h-[42px] sm:w-[42px]">
+                      <Avatar className="h-9 w-9 border-2 border-white shadow-[0_4px_12px_rgba(15,118,110,0.25)] sm:h-[42px] sm:w-[42px]">
                         {user.profilePhoto ? (
                           <AvatarImage src={user.profilePhoto} alt="" />
                         ) : null}

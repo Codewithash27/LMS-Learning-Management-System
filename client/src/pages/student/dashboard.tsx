@@ -376,7 +376,7 @@ export default function StudentDashboard() {
                       <div key={course.id} className="space-y-2">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex min-w-0 items-start gap-3">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#4ECDC4]/15">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#0F766E]/15">
                               {thumb ? (
                                 <img
                                   src={thumb}
@@ -384,7 +384,7 @@ export default function StudentDashboard() {
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
-                                <BookOpen className="h-5 w-5 text-[#4ECDC4]" />
+                                <BookOpen className="h-5 w-5 text-[#0F766E]" />
                               )}
                             </div>
                             <div className="min-w-0">

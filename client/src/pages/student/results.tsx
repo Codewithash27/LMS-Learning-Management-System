@@ -213,8 +213,8 @@ export default function StudentResults() {
   const scoreDistribution = [
     { name: "0–49%", value: 0, color: "#ef4444" },
     { name: "50–69%", value: 0, color: "#f59e0b" },
-    { name: "70–89%", value: 0, color: "#4ECDC4" },
-    { name: "90–100%", value: 0, color: "#1976d2" },
+    { name: "70–89%", value: 0, color: "#0F766E" },
+    { name: "90–100%", value: 0, color: "#0E7490" },
   ];
   mcqScores.forEach((r) => {
     if (r.percent < 50) scoreDistribution[0].value++;
@@ -661,7 +661,7 @@ export default function StudentResults() {
                             type="monotone"
                             dataKey="score"
                             name="Score (%)"
-                            stroke="#4ECDC4"
+                            stroke="#0F766E"
                             strokeWidth={2}
                             activeDot={{ r: 6 }}
                           />
@@ -697,7 +697,7 @@ export default function StudentResults() {
                         <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
                         <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
                         <Tooltip />
-                        <Bar dataKey="progress" name="Completion (%)" fill="#1976d2" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="progress" name="Completion (%)" fill="#0E7490" radius={[0, 4, 4, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
