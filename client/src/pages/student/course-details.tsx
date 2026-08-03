@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   Clock,
+  ExternalLink,
   FileText,
   Play,
   Video
@@ -25,6 +26,15 @@ import {
 import { getCourseThumbnailSrc } from "@/lib/course-thumbnail";
 import { hasQuizDraft, loadQuizDraft } from "@/lib/quiz-draft";
 import { getQuizAttempts } from "@/lib/quiz-attempts";
+
+/** Pull a usable http(s) URL out of lesson content (plain text or light HTML). */
+function extractLessonUrl(content: string | null | undefined): string | null {
+  if (!content) return null;
+  const text = content.replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").trim();
+  const match = text.match(/https?:\/\/[^\s"'<>]+/i);
+  if (!match) return null;
+  return match[0].replace(/[.,);]+$/, "");
+}
 
 export default function StudentCourseDetails() {
   const [location] = useLocation();
@@ -152,11 +162,19 @@ export default function StudentCourseDetails() {
         return <Video className="h-4 w-4" />;
       case 'quiz':
         return <FileText className="h-4 w-4" />;
+      case 'pdf':
+        return <FileText className="h-4 w-4" />;
       case 'text':
       default:
         return <BookText className="h-4 w-4" />;
     }
   };
+
+  const documentUrl =
+    activeLesson &&
+    ["pdf", "text"].includes(String(activeLesson.contentType).toLowerCase())
+      ? extractLessonUrl(activeLesson.content)
+      : null;
   
   // Check if a lesson is completed
   const isLessonCompleted = (lessonId: number) => {
@@ -517,6 +535,41 @@ export default function StudentCourseDetails() {
                                 <div dangerouslySetInnerHTML={{ __html: activeLesson.description || 'No additional description provided.' }}></div>
                               </div>
                             </>
+                          ) : documentUrl ? (
+                            <div className="rounded-2xl border border-warm-border bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10 p-6 space-y-4">
+                              <div className="flex items-start justify-between gap-4">
+                                <div>
+                                  <h3 className="text-lg font-semibold">{activeLesson.title}</h3>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Documentation — opens in a new tab
+                                  </p>
+                                </div>
+                                <Badge variant="outline" className="shrink-0 capitalize">
+                                  {activeLesson.contentType}
+                                </Badge>
+                              </div>
+
+                              {activeLesson.description ? (
+                                <div className="prose prose-sm max-w-none text-muted-foreground">
+                                  <div
+                                    dangerouslySetInnerHTML={{
+                                      __html: activeLesson.description,
+                                    }}
+                                  />
+                                </div>
+                              ) : null}
+
+                              <Button
+                                size="lg"
+                                className="w-full sm:w-auto bg-accent-brand text-white hover:opacity-90"
+                                onClick={() => {
+                                  window.open(documentUrl, "_blank", "noopener,noreferrer");
+                                }}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Open Document
+                              </Button>
+                            </div>
                           ) : (
                             <div className="prose prose-sm max-w-none">
                               <div dangerouslySetInnerHTML={{ __html: activeLesson.content }}></div>

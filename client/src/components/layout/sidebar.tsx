@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
+  BarChart3,
   BookOpen,
   Bot,
   ChevronDown,
   ChevronRight,
+  GraduationCap,
+  LayoutDashboard,
   Menu,
   Search,
+  UserRound,
+  Users,
   X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,11 +25,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import dashboardIcon from "@/assets/sidebar/dashboard.png";
-import academicsIcon from "@/assets/sidebar/academics.png";
-import studentsIcon from "@/assets/sidebar/students.png";
-import reportsIcon from "@/assets/sidebar/reports.png";
-import userIcon from "@/assets/sidebar/user.png";
 
 const DRAWER_WIDTH = 280;
 const COLLAPSED_DRAWER_WIDTH = 88;
@@ -39,15 +39,8 @@ type NavItem = {
   children?: NavChild[];
 };
 
-function NavIcon({ src, alt }: { src: string; alt: string }) {
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className="h-6 w-6 object-contain"
-      draggable={false}
-    />
-  );
+function NavIcon({ children }: { children: ReactNode }) {
+  return <span className="flex h-5 w-5 items-center justify-center [&>svg]:h-5 [&>svg]:w-5">{children}</span>;
 }
 
 type SidebarProps = {
@@ -85,13 +78,21 @@ export default function Sidebar({
           id: "dashboard",
           label: "Dashboard",
           href: "/admin/dashboard",
-          icon: <NavIcon src={dashboardIcon} alt="Dashboard" />,
+          icon: (
+            <NavIcon>
+              <LayoutDashboard strokeWidth={2} />
+            </NavIcon>
+          ),
           color: colorTokens.menuColors.dashboard,
         },
         {
           id: "academics",
           label: "Academics",
-          icon: <NavIcon src={academicsIcon} alt="Academics" />,
+          icon: (
+            <NavIcon>
+              <GraduationCap strokeWidth={2} />
+            </NavIcon>
+          ),
           color: colorTokens.menuColors.academics,
           children: [
             { id: "courses", label: "Courses", href: "/admin/courses" },
@@ -102,7 +103,11 @@ export default function Sidebar({
         {
           id: "students",
           label: "Students",
-          icon: <NavIcon src={studentsIcon} alt="Students" />,
+          icon: (
+            <NavIcon>
+              <Users strokeWidth={2} />
+            </NavIcon>
+          ),
           color: colorTokens.menuColors.students,
           children: [
             { id: "students-list", label: "All Students", href: "/admin/students" },
@@ -113,14 +118,22 @@ export default function Sidebar({
           id: "reports",
           label: "Reports",
           href: "/admin/reports",
-          icon: <NavIcon src={reportsIcon} alt="Reports" />,
+          icon: (
+            <NavIcon>
+              <BarChart3 strokeWidth={2} />
+            </NavIcon>
+          ),
           color: colorTokens.menuColors.finance,
         },
         {
           id: "profile",
           label: "Profile",
           href: "/admin/profile",
-          icon: <NavIcon src={userIcon} alt="Profile" />,
+          icon: (
+            <NavIcon>
+              <UserRound strokeWidth={2} />
+            </NavIcon>
+          ),
           color: colorTokens.menuColors.settings,
         },
       ];
@@ -131,13 +144,21 @@ export default function Sidebar({
         id: "dashboard",
         label: "Dashboard",
         href: "/student/dashboard",
-        icon: <NavIcon src={dashboardIcon} alt="Dashboard" />,
+        icon: (
+          <NavIcon>
+            <LayoutDashboard strokeWidth={2} />
+          </NavIcon>
+        ),
         color: colorTokens.menuColors.dashboard,
       },
       {
         id: "learning",
         label: "Learning",
-        icon: <NavIcon src={academicsIcon} alt="Learning" />,
+        icon: (
+          <NavIcon>
+            <GraduationCap strokeWidth={2} />
+          </NavIcon>
+        ),
         color: colorTokens.menuColors.academics,
         children: [
           { id: "my-courses", label: "My Courses", href: "/student/my-courses" },
@@ -149,14 +170,22 @@ export default function Sidebar({
         id: "ai",
         label: "AI Assistant",
         href: "/student/ai-assistant",
-        icon: <Bot className="h-5 w-5" />,
+        icon: (
+          <NavIcon>
+            <Bot strokeWidth={2} />
+          </NavIcon>
+        ),
         color: colorTokens.menuColors.staff,
       },
       {
         id: "profile",
         label: "My Profile",
         href: "/student/profile",
-        icon: <NavIcon src={userIcon} alt="My Profile" />,
+        icon: (
+          <NavIcon>
+            <UserRound strokeWidth={2} />
+          </NavIcon>
+        ),
         color: colorTokens.menuColors.settings,
       },
     ];
@@ -214,10 +243,10 @@ export default function Sidebar({
         className={cn(
           "flex shrink-0 items-center justify-center transition-all duration-300",
           isActive
-            ? "opacity-100 grayscale-0"
-            : "opacity-60 grayscale group-hover:opacity-100 group-hover:grayscale-0 group-hover:scale-110"
+            ? "opacity-100"
+            : "opacity-70 group-hover:opacity-100 group-hover:scale-110"
         )}
-        style={{ color: isActive ? item.color : undefined }}
+        style={{ color: isActive ? item.color : colorTokens.sidebar.text.secondary }}
       >
         {item.icon}
       </span>
