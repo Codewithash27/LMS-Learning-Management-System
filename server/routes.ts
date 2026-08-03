@@ -1283,7 +1283,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         let examTitle: string | null = null;
 
         if (log.activityType === "lesson_complete") {
-          // Legacy logs stored lessonId; newer logs store courseId
+          // Prefer lessonId (current + legacy); fall back to courseId-based logs
           const progress = progressByLessonId.get(log.resourceId);
           if (progress) {
             courseId = progress.courseId;
@@ -1291,11 +1291,36 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
             courseTitle = course?.title ?? null;
             const lesson = await storage.getLesson(log.resourceId);
             lessonTitle = lesson?.title ?? null;
+          } else if (log.resourceType === "lesson") {
+            const lesson = await storage.getLesson(log.resourceId);
+            if (lesson) {
+              lessonTitle = lesson.title;
+              // Resolve course via module
+              const mod = await storage.getModule(lesson.moduleId);
+              if (mod) {
+                courseId = mod.courseId;
+                const course = await storage.getCourse(mod.courseId);
+                courseTitle = course?.title ?? null;
+              }
+            }
           } else {
+            // Older logs stored courseId
             const course = await storage.getCourse(log.resourceId);
             if (course) {
               courseId = course.id;
               courseTitle = course.title;
+            }
+            // Best-effort: latest completed lesson for this course near this event
+            const matching = lessonProgressList
+              .filter((p) => p.courseId === log.resourceId && p.completed)
+              .sort(
+                (a, b) =>
+                  new Date(b.completedAt as any).getTime() -
+                  new Date(a.completedAt as any).getTime()
+              );
+            if (matching[0]) {
+              const lesson = await storage.getLesson(matching[0].lessonId);
+              lessonTitle = lesson?.title ?? null;
             }
           }
         } else if (
@@ -1527,9 +1552,25 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
 
           if (log.activityType === "lesson_complete") {
             type = "progress";
-            const course = await storage.getCourse(log.resourceId);
-            title = course?.title || `Course #${log.resourceId}`;
-            description = ["Lesson Completed", actorName].filter(Boolean).join(" · ");
+            // resourceId may be lessonId (preferred) or courseId (legacy)
+            let lessonName: string | null = null;
+            let courseName: string | null = null;
+            const asLesson = await storage.getLesson(log.resourceId);
+            if (asLesson) {
+              lessonName = asLesson.title;
+              const mod = await storage.getModule(asLesson.moduleId);
+              if (mod) {
+                const course = await storage.getCourse(mod.courseId);
+                courseName = course?.title ?? null;
+              }
+            } else {
+              const course = await storage.getCourse(log.resourceId);
+              courseName = course?.title ?? null;
+            }
+            title = lessonName || courseName || `Lesson #${log.resourceId}`;
+            description = ["Lesson Completed", courseName, actorName]
+              .filter(Boolean)
+              .join(" · ");
           } else if (
             log.activityType === "exam_start" ||
             log.activityType === "exam_complete"
@@ -2011,12 +2052,12 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       // Create new progress
       const progress = await storage.createLessonProgress(validatedData);
       
-      // Log activity
+      // Log activity — store lessonId so dashboards can show the lesson name
       await storage.createActivityLog({
         userId: req.user!.id,
         activityType: "lesson_complete",
-        resourceId: validatedData.courseId,
-        resourceType: "course",
+        resourceId: validatedData.lessonId,
+        resourceType: "lesson",
         tenantId: req.user!.tenantId
       });
       

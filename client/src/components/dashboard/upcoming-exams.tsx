@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Clock, Plus, ClipboardList, FileText, Award } from "lucide-react";
+import { ArrowUpRight, Clock, Plus, ClipboardList, FileText, Award } from "lucide-react";
 
 type Urgency = "high" | "medium" | "low";
 
@@ -21,6 +21,8 @@ type UpcomingExamsProps = {
   showScheduleButton?: boolean;
   examListHref?: string;
   scheduleLabel?: string;
+  /** Stretch to parent height (equal-height rows). Default: hug content. */
+  fillHeight?: boolean;
   listMaxHeightClass?: string;
 };
 
@@ -31,7 +33,8 @@ export default function UpcomingExams({
   showScheduleButton = true,
   examListHref = "/student/upcoming-exams",
   scheduleLabel = "Schedule New Exam",
-  listMaxHeightClass = "max-h-[220px]",
+  fillHeight = false,
+  listMaxHeightClass,
 }: UpcomingExamsProps) {
   const getUrgencyClasses = (urgency: Urgency) => {
     switch (urgency) {
@@ -67,29 +70,41 @@ export default function UpcomingExams({
   return (
     <Card
       className={cn(
-        "flex flex-col border border-white/20 bg-white/70 shadow-xl backdrop-blur-sm",
+        "border border-white/20 bg-white/70 shadow-xl backdrop-blur-sm",
+        fillHeight && "flex h-full min-h-0 flex-col",
         className
       )}
     >
-      <CardHeader className="shrink-0 px-4 pb-2 pt-4 sm:px-5">
+      <CardHeader className="shrink-0 space-y-0 px-4 pb-2 pt-4 sm:px-5">
         <div className="flex items-center gap-2.5">
           <div className="rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 p-2 shadow-md">
             <ClipboardList className="h-4 w-4 text-white" />
           </div>
-          <CardTitle className="bg-gradient-to-br from-gray-900 to-gray-700 bg-clip-text font-heading text-base font-semibold text-transparent">
+          <CardTitle className="bg-gradient-to-br from-gray-900 to-gray-700 bg-clip-text text-base font-semibold text-transparent">
             Upcoming Exams
           </CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col px-4 pb-3 pt-1 sm:px-5">
+      <CardContent
+        className={cn(
+          "flex flex-col px-4 pb-4 pt-1 sm:px-5",
+          fillHeight && "min-h-0 flex-1"
+        )}
+      >
         {exams.length === 0 ? (
-          <p className="py-6 text-center text-sm text-gray-500">
+          <p
+            className={cn(
+              "py-4 text-center text-sm text-gray-500",
+              fillHeight && "flex-1"
+            )}
+          >
             No exams yet for your assigned courses.
           </p>
         ) : (
           <div
             className={cn(
-              "min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1",
+              "space-y-2",
+              fillHeight && "min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1",
               listMaxHeightClass
             )}
           >
@@ -99,7 +114,7 @@ export default function UpcomingExams({
                 <button
                   key={exam.id}
                   type="button"
-                  className="w-full rounded-xl border border-gray-200/60 bg-white/60 p-3 text-left transition hover:border-gray-300 hover:shadow-sm"
+                  className="w-full rounded-xl border border-gray-200/60 bg-white/60 p-2.5 text-left transition hover:border-gray-300 hover:shadow-sm"
                   onClick={() => {
                     window.location.href = examListHref;
                   }}
@@ -110,7 +125,9 @@ export default function UpcomingExams({
                         {iconCfg.icon}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-gray-900">{exam.title}</p>
+                        <p className="truncate text-sm font-semibold text-gray-900">
+                          {exam.title}
+                        </p>
                         <p className="truncate text-xs text-gray-600">{exam.subtitle}</p>
                       </div>
                     </div>
@@ -132,19 +149,30 @@ export default function UpcomingExams({
             })}
           </div>
         )}
-      </CardContent>
-      {showScheduleButton && (
-        <CardFooter className="shrink-0 px-4 pb-4 pt-0 sm:px-5">
+
+        {showScheduleButton ? (
           <Button
             size="sm"
-            className="group w-full rounded-xl border-0 bg-accent-brand text-sm font-bold text-white hover:opacity-95"
+            className="group mt-auto w-full rounded-xl border-0 bg-accent-brand text-sm font-bold text-white hover:opacity-95"
             onClick={onScheduleExam}
           >
             <Plus className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
             {scheduleLabel}
           </Button>
-        </CardFooter>
-      )}
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-auto h-8 w-full rounded-lg text-xs font-medium"
+            asChild
+          >
+            <a href={examListHref}>
+              View All Exams
+              <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+            </a>
+          </Button>
+        )}
+      </CardContent>
     </Card>
   );
 }

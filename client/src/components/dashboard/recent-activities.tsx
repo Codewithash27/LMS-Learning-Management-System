@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -28,6 +28,8 @@ type RecentActivitiesProps = {
   activities: ActivityItem[];
   className?: string;
   viewAllHref?: string;
+  /** Stretch to parent height (admin equal-height rows). Default: hug content. */
+  fillHeight?: boolean;
   listMaxHeightClass?: string;
 };
 
@@ -58,7 +60,8 @@ export default function RecentActivities({
   activities,
   className,
   viewAllHref = "/student/my-courses",
-  listMaxHeightClass = "max-h-[280px]",
+  fillHeight = false,
+  listMaxHeightClass,
 }: RecentActivitiesProps) {
   const getActivityConfig = (type: ActivityType, colorIndex = 0) => {
     switch (type) {
@@ -92,68 +95,80 @@ export default function RecentActivities({
   return (
     <Card
       className={cn(
-        "flex flex-col border border-white/20 bg-white/70 shadow-xl backdrop-blur-sm",
+        "border border-white/20 bg-white/70 shadow-xl backdrop-blur-sm",
+        fillHeight && "flex h-full min-h-0 flex-col",
         className
       )}
     >
-      <CardHeader className="shrink-0 px-4 pb-2 pt-4 sm:px-5">
+      <CardHeader className="shrink-0 space-y-0 px-4 pb-2 pt-4 sm:px-5">
         <div className="flex items-center gap-2.5">
           <div className="rounded-xl bg-gradient-to-br from-[#0F766E] to-[#0E7490] p-2 shadow-md">
             <Activity className="h-4 w-4 text-white" />
           </div>
-          <CardTitle className="bg-gradient-to-br from-gray-900 to-gray-700 bg-clip-text font-heading text-base font-semibold text-transparent">
+          <CardTitle className="bg-gradient-to-br from-gray-900 to-gray-700 bg-clip-text text-base font-semibold text-transparent">
             Recent Activities
           </CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col px-4 pb-3 pt-1 sm:px-5">
+      <CardContent
+        className={cn(
+          "px-4 pb-4 pt-1 sm:px-5",
+          fillHeight && "flex min-h-0 flex-1 flex-col"
+        )}
+      >
         {activities.length === 0 ? (
-          <p className="py-6 text-center text-sm text-gray-500">
+          <p className="py-4 text-center text-sm text-gray-500">
             No recent activity yet. Assigned courses and exam updates will appear here.
           </p>
         ) : (
-          <div
-            className={cn(
-              "min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto overscroll-contain pr-1",
-              listMaxHeightClass
-            )}
-          >
-            {activities.map((activity, index) => {
-              const { bg, icon } = getActivityConfig(activity.type, activity.colorIndex ?? index);
-              return (
-                <div
-                  key={activity.id}
-                  className="flex min-w-0 items-start gap-2.5 py-2.5 first:pt-0 last:pb-0"
-                >
-                  <div className={cn("mt-0.5 shrink-0 rounded-lg p-2 shadow-sm", bg)}>{icon}</div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-gray-900">{activity.title}</p>
-                    <p className="truncate text-xs text-gray-600">{activity.description}</p>
+          <>
+            <div
+              className={cn(
+                "divide-y divide-gray-100",
+                fillHeight && "min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1",
+                listMaxHeightClass
+              )}
+            >
+              {activities.map((activity, index) => {
+                const { bg, icon } = getActivityConfig(
+                  activity.type,
+                  activity.colorIndex ?? index
+                );
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex min-w-0 items-start gap-2.5 py-2 first:pt-0 last:pb-0"
+                  >
+                    <div className={cn("mt-0.5 shrink-0 rounded-lg p-1.5 shadow-sm", bg)}>
+                      {icon}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-gray-900">
+                        {activity.title}
+                      </p>
+                      <p className="truncate text-xs text-gray-600">{activity.description}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                      {activity.time}
+                    </span>
                   </div>
-                  <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
-                    {activity.time}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="group mt-2 w-full justify-between rounded-xl text-sm font-medium text-gray-700 hover:bg-white/50"
+              asChild
+            >
+              <a href={viewAllHref}>
+                View All Activities
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </a>
+            </Button>
+          </>
         )}
       </CardContent>
-      {activities.length > 0 ? (
-        <CardFooter className="shrink-0 px-4 pb-4 pt-0 sm:px-5">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="group w-full justify-between rounded-xl text-sm font-medium text-gray-700 hover:bg-white/50"
-            asChild
-          >
-            <a href={viewAllHref}>
-              View All Activities
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </a>
-          </Button>
-        </CardFooter>
-      ) : null}
     </Card>
   );
 }

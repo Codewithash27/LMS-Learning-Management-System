@@ -150,7 +150,7 @@ export default function AdminDashboard() {
             <PerformanceMetrics
               courses={courses}
               reportHref="/admin/reports"
-              listMaxHeightClass=""
+              fillHeight
               className="h-full"
             />
           </div>
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
             <RecentActivities
               activities={activities}
               viewAllHref="/admin/reports"
-              listMaxHeightClass=""
+              fillHeight
               className="h-full"
             />
           </div>
@@ -170,7 +170,7 @@ export default function AdminDashboard() {
               exams={exams}
               examListHref="/admin/exams"
               scheduleLabel="Manage Exams"
-              listMaxHeightClass=""
+              fillHeight
               className="h-full"
               onScheduleExam={() => {
                 window.location.href = "/admin/exams";
