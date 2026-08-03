@@ -7,6 +7,7 @@ export const typographyTokens = {
   /** Font families */
   fontFamily: {
     primary: [
+      "Poppins",
       "-apple-system",
       "BlinkMacSystemFont",
       '"Segoe UI"',

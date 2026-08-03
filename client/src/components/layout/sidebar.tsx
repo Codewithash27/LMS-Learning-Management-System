@@ -252,7 +252,12 @@ export default function Sidebar({
       </span>
       {!collapsed && (
         <>
-          <span className={cn("flex-1 truncate text-[15px]", isActive ? "font-extrabold" : "font-semibold")}>
+          <span
+            className={cn(
+              "flex-1 truncate text-sm tracking-tight",
+              isActive ? "font-semibold" : "font-medium"
+            )}
+          >
             {item.label}
           </span>
           {hasChildren && (
@@ -269,11 +274,11 @@ export default function Sidebar({
     </>
   );
 
-  const itemClass = (active: boolean, color: string) =>
+  const itemClass = (active: boolean, _color: string) =>
     cn(
-      "group relative flex w-full items-center gap-2 rounded-[20px] mx-1 my-0.5 text-left transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:translate-x-1",
-      collapsed ? "justify-center px-1 py-2.5" : "px-2.5 py-2.5",
-      active ? "font-extrabold" : "font-semibold"
+      "group relative flex w-full items-center gap-3 rounded-2xl mx-1 my-0.5 text-left transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:translate-x-0.5",
+      collapsed ? "justify-center px-1 py-2.5" : "px-3 py-2.5",
+      active ? "font-semibold" : "font-medium"
     );
 
   const itemStyle = (active: boolean, color: string): React.CSSProperties => ({
@@ -300,8 +305,12 @@ export default function Sidebar({
               <BookOpen className="h-5 w-5 text-brand-turquoise" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-base font-black text-white">Edu Transform</p>
-              <p className="truncate text-xs font-medium text-white/80">Ash</p>
+              <p className="truncate text-[15px] font-semibold leading-snug tracking-tight text-white">
+                Edu Transform
+              </p>
+              <p className="truncate text-[11px] font-medium tracking-wide text-white/75">
+                Learning Platform
+              </p>
             </div>
           </div>
         )}
@@ -346,7 +355,7 @@ export default function Sidebar({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Quick Search..."
-              className="w-full bg-transparent text-[15px] font-medium outline-none placeholder:text-muted-foreground"
+              className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground/70"
               style={{ color: colorTokens.sidebar.text.primary }}
             />
           </div>
@@ -411,10 +420,10 @@ export default function Sidebar({
                         <Link key={child.id} href={child.href} onClick={handleNavigate}>
                           <div
                             className={cn(
-                              "mx-4 ml-[58px] my-0.5 cursor-pointer rounded-[15px] px-4 py-2.5 text-[14px] transition-all duration-200",
+                              "mx-4 ml-14 my-0.5 cursor-pointer rounded-xl px-3 py-2 text-[13px] leading-snug tracking-tight transition-all duration-200",
                               childIsActive
-                                ? "bg-brand-blue/10 font-bold text-brand-blue"
-                                : "font-medium text-[color:#718096] hover:bg-brand-blue/5 hover:text-[color:#2D3748]"
+                                ? "bg-brand-blue/10 font-semibold text-brand-blue"
+                                : "font-medium text-[color:#64748B] hover:bg-brand-blue/5 hover:text-[color:#334155]"
                             )}
                           >
                             {child.label}
@@ -445,20 +454,20 @@ export default function Sidebar({
             )}
           >
             {user.profilePhoto ? <AvatarImage src={user.profilePhoto} alt="" /> : null}
-            <AvatarFallback className="bg-brand-turquoise text-base font-black text-white">
+            <AvatarFallback className="bg-brand-turquoise text-sm font-semibold text-white">
               {initials}
             </AvatarFallback>
           </Avatar>
           {!collapsed && (
             <div className="min-w-0 flex-1">
               <p
-                className="truncate text-[15px] font-black leading-tight"
+                className="truncate text-sm font-semibold leading-snug tracking-tight"
                 style={{ color: colorTokens.sidebar.text.primary }}
               >
                 {user.firstName} {user.lastName}
               </p>
               <p
-                className="mt-0.5 text-xs font-bold uppercase tracking-wide"
+                className="mt-0.5 text-[11px] font-medium uppercase tracking-wider"
                 style={{ color: colorTokens.sidebar.text.secondary }}
               >
                 {user.role}
