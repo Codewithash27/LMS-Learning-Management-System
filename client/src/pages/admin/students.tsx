@@ -37,7 +37,8 @@ import DataTable from "@/components/primitives/DataTable";
 import { useClientPagination } from "@/hooks/use-client-pagination";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getProfilePhotoSrc } from "@/lib/profile-photo";
 import {
   Dialog,
   DialogContent,
@@ -413,6 +414,12 @@ export default function AdminStudents() {
                 <TableCell className="py-3.5 pl-5">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+                      {student.profilePhoto ? (
+                        <AvatarImage
+                          src={getProfilePhotoSrc(student.profilePhoto) || undefined}
+                          alt={`${student.firstName} ${student.lastName}`}
+                        />
+                      ) : null}
                       <AvatarFallback className="bg-accent-brand text-sm font-bold text-white">
                         {getInitials(student.firstName, student.lastName)}
                       </AvatarFallback>
