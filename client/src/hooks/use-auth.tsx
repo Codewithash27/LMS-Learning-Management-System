@@ -26,6 +26,7 @@ type AuthContextType = {
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, RegistrationData>;
   updateProfileMutation: UseMutationResult<SelectUser, Error, Partial<SelectUser> & { password?: string }>;
+  updateProfilePhotoMutation: UseMutationResult<SelectUser, Error, File>;
   isLoggingOut: boolean;
 };
 
@@ -191,6 +192,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const updateProfilePhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!user) throw new Error("You must be logged in to update your profile photo");
+      const formData = new FormData();
+      formData.append("profilePhoto", file);
+      const res = await fetch(`/api/users/${user.id}/profile-photo`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Failed to update profile photo");
+      }
+      return await res.json();
+    },
+    onSuccess: (updatedUser: SelectUser) => {
+      queryClient.setQueryData(["/api/user"], updatedUser);
+      toast({
+        title: "Photo updated",
+        description: "Your profile photo has been updated.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Photo update failed",
+        description: error.message || "Failed to update profile photo.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const isLoggingOut = logoutMutation.isPending;
 
   return (
@@ -203,6 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logoutMutation,
         registerMutation,
         updateProfileMutation,
+        updateProfilePhotoMutation,
         isLoggingOut,
       }}
     >

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { TableHeader, TableRow, TableHead, TableBody, TableCell, Table } from "@/components/ui/table";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CheckCircle2, Clock, Users, BookOpen, ChevronLeft, AlertTriangle, BarChart, Award } from "lucide-react";
+import { getProfilePhotoSrc } from "@/lib/profile-photo";
 
 export default function AdminCourseProgress() {
   const [location] = useLocation();
@@ -240,7 +241,10 @@ export default function AdminCourseProgress() {
                           <div className="flex items-center gap-3">
                             <Avatar>
                               {student.user.profilePhoto ? (
-                                <AvatarImage src={student.user.profilePhoto} alt={student.user.firstName} />
+                                <AvatarImage
+                                  src={getProfilePhotoSrc(student.user.profilePhoto) || undefined}
+                                  alt={student.user.firstName}
+                                />
                               ) : null}
                               <AvatarFallback>
                                 {getInitials(student.user.firstName, student.user.lastName)}

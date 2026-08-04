@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { colorTokens } from "@/tokens/colors";
+import { getProfilePhotoSrc } from "@/lib/profile-photo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Tooltip,
@@ -453,7 +454,12 @@ export default function Sidebar({
               collapsed ? "h-11 w-11" : "h-[46px] w-[46px]"
             )}
           >
-            {user.profilePhoto ? <AvatarImage src={user.profilePhoto} alt="" /> : null}
+            {user.profilePhoto ? (
+              <AvatarImage
+                src={getProfilePhotoSrc(user.profilePhoto) || undefined}
+                alt=""
+              />
+            ) : null}
             <AvatarFallback className="bg-brand-turquoise text-sm font-semibold text-white">
               {initials}
             </AvatarFallback>

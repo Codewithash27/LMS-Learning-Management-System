@@ -216,6 +216,60 @@ export function setupAuth(app: Express) {
     const { password, plainPassword, ...userWithoutPassword } = req.user as SelectUser;
     res.json(userWithoutPassword);
   });
+
+  // Update profile photo (self or admin)
+  app.post("/api/users/:id/profile-photo", upload.single("profilePhoto"), async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(userId)) {
+        return res.status(400).json({ message: "Invalid user id" });
+      }
+
+      const actor = req.user as SelectUser;
+      if (
+        userId !== actor.id &&
+        actor.role !== "admin" &&
+        actor.role !== "superadmin"
+      ) {
+        return res.status(403).json({ message: "You can only update your own profile photo" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No photo uploaded. Use JPG or PNG under 2MB." });
+      }
+
+      const profilePhotoPath = `profiles/${req.file.filename}`;
+      const updatedUser = await storage.updateUser(userId, {
+        profilePhoto: profilePhotoPath,
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password: _, plainPassword: __, ...safeUser } = updatedUser;
+
+      // Keep session user in sync when updating own photo
+      if (userId === actor.id) {
+        req.login(updatedUser, (err) => {
+          if (err) {
+            return res.status(500).json({ message: "Photo saved but session refresh failed" });
+          }
+          return res.json(safeUser);
+        });
+        return;
+      }
+
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Failed to update profile photo:", error);
+      res.status(500).json({ message: "Failed to update profile photo" });
+    }
+  });
   
   // Serve profile photos
   app.get("/uploads/:folder/:filename", (req, res) => {

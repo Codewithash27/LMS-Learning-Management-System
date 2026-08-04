@@ -54,6 +54,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { getProfilePhotoSrc } from "@/lib/profile-photo";
 
 export default function StudentDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -309,7 +310,10 @@ export default function StudentDetailsPage() {
                   >
                     <Avatar className="h-28 w-28 border-4 border-white shadow-2xl">
                       {student.profilePhoto ? (
-                        <AvatarImage src={student.profilePhoto} alt={`${student.firstName} ${student.lastName}`} />
+                        <AvatarImage
+                          src={getProfilePhotoSrc(student.profilePhoto) || undefined}
+                          alt={`${student.firstName} ${student.lastName}`}
+                        />
                       ) : (
                         <AvatarFallback className="text-2xl bg-accent-brand text-white font-bold">
                           {student.firstName.charAt(0)}{student.lastName.charAt(0)}

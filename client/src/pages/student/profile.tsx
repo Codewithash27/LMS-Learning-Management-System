@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,16 +11,16 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import Header from "@/components/layout/header";
-import { 
-  User, 
-  Mail, 
-  BookOpen, 
-  GraduationCap, 
+import {
+  User,
+  Mail,
+  BookOpen,
+  GraduationCap,
   Loader2,
   Edit2,
   AtSign,
   Shield,
-  CheckCircle2,
+  Camera,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
+import { getProfilePhotoSrc } from "@/lib/profile-photo";
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -43,18 +44,19 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function StudentProfile() {
-  const { user, updateProfileMutation } = useAuth();
+  const { user, updateProfileMutation, updateProfilePhotoMutation } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
   const { data: enrollments = [] } = useQuery<any[]>({
     queryKey: ["/api/enrollments/user"],
   });
-  
+
   const { data: examAttempts = [] } = useQuery<any[]>({
     queryKey: ["/api/exam-attempts/user"],
   });
-  
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -75,13 +77,13 @@ export default function StudentProfile() {
       });
     }
   }, [user, isEditing, form]);
-  
+
   const onSubmit = (data: ProfileFormValues) => {
     const updateData = { ...data };
     if (!updateData.password || updateData.password.trim() === "") {
       delete updateData.password;
     }
-    
+
     updateProfileMutation.mutate(updateData, {
       onSuccess: (updatedUser) => {
         setIsEditing(false);
@@ -116,7 +118,30 @@ export default function StudentProfile() {
       password: "",
     });
   };
-  
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/jpeg", "image/jpg", "image/png"].includes(file.type)) {
+      toast({
+        title: "Invalid file",
+        description: "Please choose a JPG or PNG image.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Maximum photo size is 2MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateProfilePhotoMutation.mutate(file);
+    e.target.value = "";
+  };
+
   if (!user) {
     return (
       <DashboardLayout>
@@ -126,12 +151,12 @@ export default function StudentProfile() {
       </DashboardLayout>
     );
   }
-  
+
+  const photoSrc = getProfilePhotoSrc(user.profilePhoto);
+
   return (
     <DashboardLayout>
-      <Header 
-        title="My Profile"
-      />
+      <Header title="My Profile" />
 
       <div className="space-y-8">
         <motion.div
@@ -144,16 +169,38 @@ export default function StudentProfile() {
               <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
                 <div className="relative">
                   <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                    <AvatarImage src={(user as any).profileImage} alt={`${user.firstName} ${user.lastName}`} />
+                    {photoSrc ? (
+                      <AvatarImage src={photoSrc} alt={`${user.firstName} ${user.lastName}`} />
+                    ) : null}
                     <AvatarFallback className="bg-accent-brand text-white text-2xl font-bold">
-                      {user.firstName?.[0]?.toUpperCase()}{user.lastName?.[0]?.toUpperCase()}
+                      {user.firstName?.[0]?.toUpperCase()}
+                      {user.lastName?.[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="absolute -bottom-1 -right-1 h-7 w-7 bg-green-500 rounded-full border-4 border-background flex items-center justify-center">
-                    <CheckCircle2 className="h-4 w-4 text-white" />
-                  </div>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept=".jpg,.jpeg,.png"
+                    className="hidden"
+                    onChange={handlePhotoChange}
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full border-2 border-background shadow"
+                    disabled={updateProfilePhotoMutation.isPending}
+                    onClick={() => photoInputRef.current?.click()}
+                    aria-label="Change profile photo"
+                  >
+                    {updateProfilePhotoMutation.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Camera className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
                 </div>
-                
+
                 <div className="flex-1 space-y-2">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
@@ -169,6 +216,9 @@ export default function StudentProfile() {
                           {user.username}
                         </span>
                       </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Click the camera icon to change your profile photo
+                      </p>
                     </div>
                     {!isEditing && (
                       <Button onClick={() => setIsEditing(true)} className="gap-2">
@@ -177,9 +227,9 @@ export default function StudentProfile() {
                       </Button>
                     )}
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                     <div className="flex items-center gap-3 text-sm">
                       <div className="p-2 rounded-xl bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10">
@@ -190,7 +240,7 @@ export default function StudentProfile() {
                         <p className="font-medium">{user.email}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-3 text-sm">
                       <div className="p-2 rounded-xl bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10">
                         <BookOpen className="h-4 w-4 text-blue-600" />
@@ -200,7 +250,7 @@ export default function StudentProfile() {
                         <p className="font-medium">{(enrollments as any[]).length}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-3 text-sm">
                       <div className="p-2 rounded-xl bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10">
                         <GraduationCap className="h-4 w-4 text-blue-600" />
@@ -229,7 +279,7 @@ export default function StudentProfile() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
@@ -241,11 +291,11 @@ export default function StudentProfile() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground">Status</p>
+                <p className="text-xs text-muted-foreground">Status</p>
                 <h3 className="text-2xl font-semibold text-green-600">Active</h3>
               </div>
               <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
@@ -271,7 +321,7 @@ export default function StudentProfile() {
                 Security & Password
               </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="personal" className="space-y-6">
               <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                 <CardHeader>
@@ -288,8 +338,8 @@ export default function StudentProfile() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">First Name</Label>
-                        <Input 
-                          id="firstName" 
+                        <Input
+                          id="firstName"
                           {...form.register("firstName")}
                           disabled={!isEditing}
                           className="h-11"
@@ -300,11 +350,11 @@ export default function StudentProfile() {
                           </p>
                         )}
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="lastName">Last Name</Label>
-                        <Input 
-                          id="lastName" 
+                        <Input
+                          id="lastName"
                           {...form.register("lastName")}
                           disabled={!isEditing}
                           className="h-11"
@@ -316,12 +366,12 @@ export default function StudentProfile() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
+                      <Input
+                        id="email"
+                        type="email"
                         {...form.register("email")}
                         disabled={!isEditing}
                         className="h-11"
@@ -332,7 +382,7 @@ export default function StudentProfile() {
                         </p>
                       )}
                     </div>
-                    
+
                     {isEditing && (
                       <div className="flex justify-end gap-2 pt-2">
                         <Button type="button" variant="outline" onClick={handleCancel}>
@@ -354,7 +404,7 @@ export default function StudentProfile() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="security" className="space-y-6">
               <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
                 <CardHeader>
@@ -370,10 +420,12 @@ export default function StudentProfile() {
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="space-y-2">
                       <Label htmlFor="password">New Password</Label>
-                      <Input 
-                        id="password" 
-                        type="password" 
-                        placeholder={isEditing ? "Leave blank to keep current password" : "••••••••"}
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder={
+                          isEditing ? "Leave blank to keep current password" : "••••••••"
+                        }
                         {...form.register("password")}
                         disabled={!isEditing}
                         className="h-11"
@@ -384,7 +436,7 @@ export default function StudentProfile() {
                         </p>
                       )}
                     </div>
-                    
+
                     {isEditing ? (
                       <div className="flex justify-end gap-2">
                         <Button type="button" variant="outline" onClick={handleCancel}>

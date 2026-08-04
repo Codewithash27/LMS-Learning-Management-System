@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { colorTokens } from "@/tokens/colors";
+import { getProfilePhotoSrc } from "@/lib/profile-photo";
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -133,7 +134,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       </div>
                       <Avatar className="h-9 w-9 border-2 border-white shadow-[0_4px_12px_rgba(15,118,110,0.25)] sm:h-[42px] sm:w-[42px]">
                         {user.profilePhoto ? (
-                          <AvatarImage src={user.profilePhoto} alt="" />
+                          <AvatarImage src={getProfilePhotoSrc(user.profilePhoto) || undefined} alt="" />
                         ) : null}
                         <AvatarFallback className="bg-accent-brand text-sm font-bold text-white">
                           {initials}

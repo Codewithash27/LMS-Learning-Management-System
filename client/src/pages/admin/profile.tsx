@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
+import { getProfilePhotoSrc } from "@/lib/profile-photo";
 
 // Profile update schema
 const profileSchema = z.object({
@@ -138,7 +139,10 @@ export default function AdminProfile() {
               <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
                 <div className="relative">
                   <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                    <AvatarImage src={user.profileImage} alt={`${user.firstName} ${user.lastName}`} />
+                    <AvatarImage
+                      src={getProfilePhotoSrc(user.profilePhoto) || undefined}
+                      alt={`${user.firstName} ${user.lastName}`}
+                    />
                     <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
                       {user.firstName?.[0]?.toUpperCase()}{user.lastName?.[0]?.toUpperCase()}
                     </AvatarFallback>

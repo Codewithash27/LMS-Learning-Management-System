@@ -21,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { getCourseThumbnailSrc } from "@/lib/course-thumbnail";
+import { getProfilePhotoSrc } from "@/lib/profile-photo";
 
 type ActivityType = "new-course" | "exam-results" | "deadline" | "new-students" | "progress";
 
@@ -388,7 +389,10 @@ export default function StudentDashboard() {
               <div className="flex items-center gap-3">
                 <Avatar className="h-11 w-11 border-2 border-white shadow-sm">
                   {user?.profilePhoto ? (
-                    <AvatarImage src={user.profilePhoto} alt="" />
+                    <AvatarImage
+                      src={getProfilePhotoSrc(user.profilePhoto) || undefined}
+                      alt=""
+                    />
                   ) : null}
                   <AvatarFallback className="bg-brand-turquoise text-sm font-semibold text-white">
                     {profileInitials}
