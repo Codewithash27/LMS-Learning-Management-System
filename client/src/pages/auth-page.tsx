@@ -714,7 +714,7 @@ export default function AuthPage() {
       </motion.div>
       </div>
       
-      <div className="w-full md:w-1/2 bg-gradient-to-br from-[#0F766E] via-[#0E7490] to-[#155E75] text-white p-6 md:p-8 lg:p-12 flex items-center justify-center relative z-10 overflow-hidden">
+      <div className="w-full md:w-1/2 bg-gradient-to-br from-primary via-brand-blue to-primary text-white p-6 md:p-8 lg:p-12 flex items-center justify-center relative z-10 overflow-hidden">
         {/* Animated background pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>

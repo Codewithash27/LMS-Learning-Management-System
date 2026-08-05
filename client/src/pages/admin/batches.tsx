@@ -224,7 +224,7 @@ export default function BatchesPage() {
             searchPlaceholder="Search batches..."
             filters={
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-10 w-[140px] rounded-xl border-warm-border bg-white shadow-sm">
+                <SelectTrigger className="h-10 w-[140px] rounded-xl border-border bg-card shadow-sm">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -297,15 +297,15 @@ export default function BatchesPage() {
             const progress = getRandomProgress(batch.id);
 
             return (
-              <TableRow key={batch.id} className="hover:bg-[#EEF3F5]/70">
+              <TableRow key={batch.id} className="hover:bg-muted/70">
                 <TableCell className="py-3.5 pl-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0F766E]/15">
-                      <Users className="h-5 w-5 text-[#0F766E]" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                      <Users className="h-5 w-5 text-primary" />
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-[15px] font-semibold text-[#2D3748]">{batch.name}</p>
-                      <p className="text-xs text-[#718096]">{batch.batchCode}</p>
+                      <p className="text-xs text-muted-foreground">{batch.batchCode}</p>
                     </div>
                   </div>
                 </TableCell>
@@ -333,7 +333,7 @@ export default function BatchesPage() {
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Progress value={progress} className="h-2 w-16" />
-                    <span className="text-sm text-[#718096]">{progress}%</span>
+                    <span className="text-sm text-muted-foreground">{progress}%</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -355,7 +355,7 @@ export default function BatchesPage() {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="h-9 w-9 p-0 text-[#0E7490] hover:bg-[#0E7490]/10"
+                        className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
                         aria-label="View"
                       >
                         <Eye className="h-4 w-4" />
@@ -365,7 +365,7 @@ export default function BatchesPage() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 w-9 p-0 text-[#0F766E] hover:bg-[#0F766E]/10"
+                      className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
                       aria-label="Enroll students"
                       onClick={() => {
                         setSelectedBatchId(batch.id);
@@ -609,7 +609,7 @@ export default function BatchesPage() {
                   control={form.control}
                   name="isActive"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-[#D4DEE3] bg-white p-4 sm:col-span-2">
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-border bg-white p-4 sm:col-span-2">
                       <FormControl>
                         <Checkbox
                           checked={field.value}

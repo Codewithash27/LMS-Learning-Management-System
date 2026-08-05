@@ -186,17 +186,17 @@ export default function GradingPage() {
         {pageItems.map((attempt: ExamAttempt) => {
           const status = getStatusMeta(attempt);
           return (
-            <TableRow key={attempt.id} className="hover:bg-[#EEF3F5]/70">
+            <TableRow key={attempt.id} className="hover:bg-muted/70">
               <TableCell className="py-3.5 pl-5">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0F766E]/15">
-                    <FileText className="h-5 w-5 text-[#0F766E]" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                    <FileText className="h-5 w-5 text-primary" />
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-semibold text-[#2D3748]">
                       {attempt.exam.title}
                     </p>
-                    <p className="line-clamp-1 text-xs text-[#718096]">
+                    <p className="line-clamp-1 text-xs text-muted-foreground">
                       {attempt.exam.description || "No description"}
                     </p>
                   </div>
@@ -231,7 +231,7 @@ export default function GradingPage() {
                     type="button"
                     size="sm"
                     variant="ghost"
-                    className="h-9 gap-1.5 px-3 text-[#0E7490] hover:bg-[#0E7490]/10"
+                    className="h-9 gap-1.5 px-3 text-primary hover:bg-primary/10"
                     onClick={() => openGrading(attempt)}
                   >
                     <Eye className="h-4 w-4" />
@@ -265,19 +265,19 @@ export default function GradingPage() {
           <div className="space-y-6">
             <div>
               <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-                <Award className="h-5 w-5 text-[#0E7490]" />
+                <Award className="h-5 w-5 text-primary" />
                 Student Answers
               </h3>
               <div className="space-y-4">
                 {questions?.map((question: Question, index: number) => (
                   <div
                     key={question.id}
-                    className="rounded-2xl border border-[#D4DEE3] bg-white p-4 shadow-sm"
+                    className="rounded-2xl border border-border bg-white p-4 shadow-sm"
                   >
                     <h4 className="mb-2 font-semibold">Question {index + 1}</h4>
                     <p className="mb-3 leading-relaxed text-[#2D3748]">{question.text}</p>
-                    <div className="rounded-xl border border-[#D4DEE3] bg-[#EEF3F5]/50 p-4">
-                      <Label className="text-sm font-semibold text-[#718096]">
+                    <div className="rounded-xl border border-border bg-[#EEF3F5]/50 p-4">
+                      <Label className="text-sm font-semibold text-muted-foreground">
                         Student Answer:
                       </Label>
                       <p className="mt-2 leading-relaxed text-[#2D3748]">
@@ -296,7 +296,7 @@ export default function GradingPage() {
                 htmlFor="feedback"
                 className="mb-2 flex items-center gap-2 text-lg font-semibold"
               >
-                <FileText className="h-5 w-5 text-[#0F766E]" />
+                <FileText className="h-5 w-5 text-primary" />
                 Instructor Feedback
               </Label>
               <Textarea

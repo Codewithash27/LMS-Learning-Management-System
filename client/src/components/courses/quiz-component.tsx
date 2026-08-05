@@ -271,7 +271,7 @@ export default function QuizComponent({
         <aside
           className={cn(
             "relative overflow-hidden text-white",
-            "bg-gradient-to-br from-[#0F766E] via-[#14B8A6] to-[#0E7490]",
+            "bg-gradient-to-br from-primary via-[#14B8A6] to-brand-blue",
             "px-4 py-4 md:py-6 flex flex-col gap-4 md:gap-6"
           )}
         >
@@ -361,7 +361,7 @@ export default function QuizComponent({
                     }}
                     className={cn(
                       "h-8 w-8 rounded-lg text-xs font-bold transition-all",
-                      active && "bg-white text-[#0E7490] shadow-md scale-105",
+                      active && "bg-white text-primary shadow-md scale-105",
                       !active && answered && "bg-white/25 text-white ring-1 ring-white/40",
                       !active && !answered && "bg-black/15 text-white/80 hover:bg-white/20"
                     )}

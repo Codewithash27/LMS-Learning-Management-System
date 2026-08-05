@@ -43,7 +43,7 @@ export default function ListToolbar({
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={searchPlaceholder}
-          className="h-10 rounded-full border-warm-border bg-white pl-10 text-[15px] shadow-sm"
+          className="h-10 rounded-full border-border bg-card pl-10 text-[15px] shadow-sm"
         />
       </div>
       {extras}

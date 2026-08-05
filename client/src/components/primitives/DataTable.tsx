@@ -68,15 +68,15 @@ export default function DataTable({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-card border border-[#D4DEE3] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.03)]",
+        "overflow-hidden rounded-[var(--radius)] border border-border bg-card shadow-card-soft",
         className
       )}
     >
       <div className="flex items-center justify-between gap-3 px-5 py-3">
-        <p className="text-xs font-bold uppercase tracking-wider text-[#718096]">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           {title}
         </p>
-        <p className="text-xs font-medium text-[#718096]">
+        <p className="text-xs font-medium text-muted-foreground">
           {total === 0
             ? "Showing 0 of 0"
             : `Showing ${rangeStart}-${rangeEnd} of ${total}`}
@@ -95,37 +95,32 @@ export default function DataTable({
                     <TableHead
                       key={col.key}
                       className={cn(
-                        "h-12 border-0 px-4 text-[11px] font-bold uppercase tracking-wider text-white first:pl-5 last:pr-5",
+                        "h-11 border-0 bg-primary px-4 text-[11px] font-bold uppercase tracking-wider text-primary-foreground first:pl-5 last:pr-5",
                         col.align === "right" && "text-right",
                         col.align === "center" && "text-center",
                         col.className
                       )}
-                      style={{
-                        background:
-                          "linear-gradient(90deg, #0F766E 0%, #0E7490 100%)",
-                        color: "#ffffff",
-                      }}
                     >
                       {col.label}
                     </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
-              <TableBody className="[&_tr]:border-[#D4DEE3]/60">
+              <TableBody className="[&_tr]:border-border/60">
                 {children}
               </TableBody>
             </Table>
           </div>
 
           {showPagination ? (
-            <div className="flex flex-col gap-3 border-t border-[#D4DEE3] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 text-sm text-[#718096]">
+            <div className="flex flex-col gap-3 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>Rows per page</span>
                 <Select
                   value={String(pageSize)}
                   onValueChange={(v) => onPageSizeChange?.(Number(v))}
                 >
-                  <SelectTrigger className="h-8 w-[72px] rounded-lg border-[#D4DEE3] bg-white text-sm">
+                  <SelectTrigger className="h-8 w-[72px] rounded-lg border-border bg-card text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -139,7 +134,7 @@ export default function DataTable({
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-sm text-[#718096]">
+                <span className="text-sm text-muted-foreground">
                   {total === 0
                     ? "0-0 of 0"
                     : `${rangeStart}-${rangeEnd} of ${total}`}
@@ -148,7 +143,7 @@ export default function DataTable({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 rounded-full p-0 text-[#718096] hover:bg-[#EEF3F5]"
+                  className="h-8 w-8 rounded-full p-0 text-muted-foreground hover:bg-muted"
                   disabled={page <= 1}
                   onClick={() => onPageChange?.(page - 1)}
                   aria-label="Previous page"
@@ -159,7 +154,7 @@ export default function DataTable({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 rounded-full p-0 text-[#718096] hover:bg-[#EEF3F5]"
+                  className="h-8 w-8 rounded-full p-0 text-muted-foreground hover:bg-muted"
                   disabled={page >= pageCount}
                   onClick={() => onPageChange?.(page + 1)}
                   aria-label="Next page"

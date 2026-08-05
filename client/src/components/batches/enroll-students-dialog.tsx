@@ -127,10 +127,10 @@ export default function EnrollStudentsDialog({
           {students.length === 0 ? (
             <div className="py-8 text-center">
               <Users className="mx-auto mb-3 h-10 w-10 text-[#A0AEC0]" />
-              <p className="text-sm text-[#718096]">No students available for enrollment</p>
+              <p className="text-sm text-muted-foreground">No students available for enrollment</p>
             </div>
           ) : (
-            <div className="divide-y divide-[#D4DEE3] overflow-hidden rounded-xl border border-[#D4DEE3] bg-white">
+            <div className="divide-y divide-[#D4DEE3] overflow-hidden rounded-xl border border-border bg-white">
               {students.map((student) => (
                 <div
                   key={student.id}
@@ -145,8 +145,8 @@ export default function EnrollStudentsDialog({
                     htmlFor={`enroll-student-${student.id}`}
                     className="flex flex-1 cursor-pointer items-center gap-3"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0F766E]/15">
-                      <span className="text-sm font-semibold text-[#0F766E]">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                      <span className="text-sm font-semibold text-primary">
                         {student.firstName[0]}
                         {student.lastName[0]}
                       </span>
@@ -155,7 +155,7 @@ export default function EnrollStudentsDialog({
                       <p className="truncate text-[15px] font-semibold text-[#2D3748]">
                         {student.firstName} {student.lastName}
                       </p>
-                      <p className="truncate text-sm text-[#718096]">{student.email}</p>
+                      <p className="truncate text-sm text-muted-foreground">{student.email}</p>
                     </div>
                   </label>
                 </div>

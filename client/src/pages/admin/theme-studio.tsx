@@ -202,57 +202,131 @@ export default function AdminThemeStudio() {
                       )}
                     </CardHeader>
 
-                    {/* Mini Dashboard Preview Screen */}
+                    {/* Mini Dashboard Preview Screen — Untitled-4 rail layout */}
                     <CardContent className="p-3 pt-0">
                       <div
-                        className="rounded-xl border p-3 text-xs flex flex-col gap-2 min-h-[190px] shadow-inner"
+                        className="overflow-hidden border text-xs shadow-inner"
                         style={{
                           backgroundColor: bgColor,
                           borderRadius: radius,
                           fontFamily: `'${fontFamily}', sans-serif`,
+                          borderColor: preset.tokenOverrides.border?.default || "#E5E7EB",
                         }}
                       >
-                        {/* Mini Topbar */}
-                        <div className="flex items-center justify-between pb-2 border-b border-black/10">
-                          <span className="font-bold text-[11px]" style={{ color: pColor }}>Edu Transform</span>
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-4 h-4 rounded-full bg-black/5 flex items-center justify-center text-[9px]">🔍</span>
-                            <span className="w-4 h-4 rounded-full text-white font-bold flex items-center justify-center text-[8px]" style={{ backgroundColor: pColor }}>A</span>
-                          </div>
-                        </div>
-
-                        {/* Mini Greeting & Stats */}
-                        <div className="grid grid-cols-3 gap-1.5 my-1">
-                          <div className="p-1.5 rounded-lg border border-black/5 flex flex-col" style={{ backgroundColor: pLight }}>
-                            <span className="text-[11px] font-extrabold" style={{ color: pColor }}>12</span>
-                            <span className="text-[8px] opacity-70">Courses</span>
-                          </div>
-                          <div className="p-1.5 rounded-lg border border-black/5 flex flex-col" style={{ backgroundColor: pLight }}>
-                            <span className="text-[11px] font-extrabold" style={{ color: pColor }}>78%</span>
-                            <span className="text-[8px] opacity-70">Progress</span>
-                          </div>
-                          <div className="p-1.5 rounded-lg border border-black/5 flex flex-col" style={{ backgroundColor: pLight }}>
-                            <span className="text-[11px] font-extrabold" style={{ color: pColor }}>24</span>
-                            <span className="text-[8px] opacity-70">Exams</span>
-                          </div>
-                        </div>
-
-                        {/* Mini Progress bars */}
-                        <div className="space-y-1.5 mt-1">
-                          <div className="flex items-center justify-between text-[9px]">
-                            <span className="font-medium opacity-80">React Basics</span>
-                            <span className="font-bold" style={{ color: pColor }}>82%</span>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full bg-black/10 overflow-hidden">
-                            <div className="h-full rounded-full" style={{ width: "82%", backgroundColor: pColor }} />
+                        <div className="flex h-[200px]">
+                          {/* Icon rail */}
+                          <div
+                            className="flex w-[42px] shrink-0 flex-col items-center gap-1.5 border-r py-2"
+                            style={{
+                              backgroundColor: preset.tokenOverrides.background?.paper || "#fff",
+                              borderColor: preset.tokenOverrides.border?.default || "#E5E7EB",
+                            }}
+                          >
+                            <div
+                              className="mb-0.5 flex h-5 w-5 items-center justify-center rounded-md text-white"
+                              style={{ backgroundColor: pColor }}
+                            >
+                              <span className="text-[8px]">📚</span>
+                            </div>
+                            {[0, 1, 2, 3, 4].map((i) => (
+                              <div
+                                key={i}
+                                className="flex h-6 w-6 items-center justify-center rounded-[7px]"
+                                style={
+                                  i === 0
+                                    ? { backgroundColor: pLight, color: pColor }
+                                    : { color: preset.tokenOverrides.text?.muted || "#6B7280" }
+                                }
+                              >
+                                <span className="text-[9px] opacity-70">●</span>
+                              </div>
+                            ))}
                           </div>
 
-                          <div className="flex items-center justify-between text-[9px] pt-1">
-                            <span className="font-medium opacity-80">SQL Analytics</span>
-                            <span className="font-bold" style={{ color: pColor }}>65%</span>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full bg-black/10 overflow-hidden">
-                            <div className="h-full rounded-full" style={{ width: "65%", backgroundColor: pColor }} />
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <div
+                              className="flex h-8 shrink-0 items-center justify-between border-b px-2"
+                              style={{
+                                backgroundColor: preset.tokenOverrides.background?.paper || "#fff",
+                                borderColor: preset.tokenOverrides.border?.default || "#E5E7EB",
+                              }}
+                            >
+                              <span className="text-[10px] font-bold" style={{ color: pColor }}>
+                                Edu Transform
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <span
+                                  className="rounded-full border px-1.5 py-0.5 text-[7px]"
+                                  style={{
+                                    borderColor: preset.tokenOverrides.border?.default,
+                                    color: preset.tokenOverrides.text?.muted,
+                                  }}
+                                >
+                                  Search
+                                </span>
+                                <span
+                                  className="flex h-4 w-4 items-center justify-center rounded-full text-[7px] font-bold text-white"
+                                  style={{ backgroundColor: pColor }}
+                                >
+                                  A
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-1 flex-col gap-1.5 p-2">
+                              <div
+                                className="text-[8px]"
+                                style={{ color: preset.tokenOverrides.text?.muted }}
+                              >
+                                Welcome back, Aman
+                              </div>
+                              <div className="grid grid-cols-4 gap-1">
+                                {["12", "78%", "24", "15"].map((n, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex flex-col gap-0.5 p-1"
+                                    style={{
+                                      backgroundColor: pLight,
+                                      borderRadius: `calc(${radius} - 4px)`,
+                                    }}
+                                  >
+                                    <div
+                                      className="flex h-3 w-3 items-center justify-center rounded-[3px] bg-white"
+                                      style={{ color: pColor }}
+                                    >
+                                      <span className="text-[6px]">◆</span>
+                                    </div>
+                                    <span className="text-[9px] font-bold" style={{ color: preset.tokenOverrides.text?.primary }}>
+                                      {n}
+                                    </span>
+                                    <span className="text-[6px]" style={{ color: preset.tokenOverrides.text?.muted }}>
+                                      {["Courses", "Done", "Certs", "Users"][i]}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="mt-0.5 space-y-1">
+                                <div className="text-[8px] font-bold" style={{ color: preset.tokenOverrides.text?.primary }}>
+                                  Course Progress
+                                </div>
+                                {[82, 65, 45].map((pct, i) => (
+                                  <div key={i} className="flex items-center gap-1">
+                                    <span className="w-12 truncate text-[7px]" style={{ color: preset.tokenOverrides.text?.primary }}>
+                                      {["React", "SQL", "UI/UX"][i]}
+                                    </span>
+                                    <div
+                                      className="h-1 flex-1 overflow-hidden rounded-full"
+                                      style={{ backgroundColor: preset.tokenOverrides.border?.default }}
+                                    >
+                                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pColor }} />
+                                    </div>
+                                    <span className="w-5 text-right text-[7px]" style={{ color: preset.tokenOverrides.text?.muted }}>
+                                      {pct}%
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>

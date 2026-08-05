@@ -331,28 +331,28 @@ export default function AdminReports() {
         <TabsList className="mb-6 bg-white/50 backdrop-blur-sm border border-white/20 rounded-2xl p-1">
           <TabsTrigger 
             value="overview" 
-            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#0F766E] data-[state=active]:to-[#0E7490] data-[state=active]:text-white"
+            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-brand-blue data-[state=active]:text-white"
           >
             <BarChart3 className="h-4 w-4 mr-2" />
             Overview
           </TabsTrigger>
           <TabsTrigger 
             value="courses"
-            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#0F766E] data-[state=active]:to-[#0E7490] data-[state=active]:text-white"
+            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-brand-blue data-[state=active]:text-white"
           >
             <BookOpen className="h-4 w-4 mr-2" />
             Courses
           </TabsTrigger>
           <TabsTrigger 
             value="students"
-            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#0F766E] data-[state=active]:to-[#0E7490] data-[state=active]:text-white"
+            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-brand-blue data-[state=active]:text-white"
           >
             <Users className="h-4 w-4 mr-2" />
             Students
           </TabsTrigger>
           <TabsTrigger 
             value="activity"
-            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#0F766E] data-[state=active]:to-[#0E7490] data-[state=active]:text-white"
+            className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-brand-blue data-[state=active]:text-white"
           >
             <Activity className="h-4 w-4 mr-2" />
             Activity
@@ -598,7 +598,7 @@ export default function AdminReports() {
                           <span className="text-gray-600">Average Score</span>
                           <span className="font-medium text-gray-900">{course.avgScore}%</span>
                         </div>
-                        <Progress value={course.avgScore} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-[#14B8A6] [&>div]:to-[#0E7490]" />
+                        <Progress value={course.avgScore} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-brand-blue" />
                       </div>
                     </motion.div>
                   ))}
@@ -736,7 +736,7 @@ export default function AdminReports() {
                     <span className="text-sm font-medium text-gray-700">Average Score</span>
                     <span className="text-2xl font-bold text-gray-900">87%</span>
                   </div>
-                  <Progress value={87} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-[#14B8A6] [&>div]:to-[#0E7490]" />
+                  <Progress value={87} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-brand-blue" />
                 </div>
                 <div className="p-4 rounded-xl bg-gradient-to-r from-green-50/50 to-emerald-50/50 border border-white/20">
                   <div className="flex items-center justify-between mb-2">

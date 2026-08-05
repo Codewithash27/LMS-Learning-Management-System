@@ -76,7 +76,7 @@ export default function StudentMyCourses() {
   };
 
   const viewToggle = (
-    <div className="inline-flex rounded-xl border border-warm-border bg-white p-0.5 shadow-sm">
+    <div className="inline-flex rounded-xl border border-border bg-card p-0.5 shadow-sm">
       <Button
         type="button"
         size="sm"
@@ -252,10 +252,10 @@ export default function StudentMyCourses() {
             const progress = enrollment?.progress || 0;
             const thumb = getCourseThumbnailSrc(course.thumbnail);
             return (
-              <TableRow key={course.id} className="hover:bg-[#EEF3F5]/70">
+              <TableRow key={course.id} className="hover:bg-muted/70">
                 <TableCell className="py-3.5 pl-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0F766E]/15">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/15">
                       {thumb ? (
                         <img
                           src={thumb}
@@ -263,14 +263,14 @@ export default function StudentMyCourses() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <BookOpen className="h-5 w-5 text-[#0F766E]" />
+                        <BookOpen className="h-5 w-5 text-primary" />
                       )}
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-[15px] font-semibold text-[#2D3748]">
                         {course.title}
                       </p>
-                      <p className="line-clamp-1 text-xs text-[#718096]">
+                      <p className="line-clamp-1 text-xs text-muted-foreground">
                         {course.description || "No description"}
                       </p>
                     </div>
@@ -289,7 +289,7 @@ export default function StudentMyCourses() {
                 <TableCell>
                   <div className="flex min-w-[120px] items-center gap-2">
                     <Progress value={progress} className="h-2 w-16" />
-                    <span className="text-sm text-[#718096]">{progress}%</span>
+                    <span className="text-sm text-muted-foreground">{progress}%</span>
                   </div>
                 </TableCell>
                 <TableCell className="text-[15px] text-[#2D3748]/90">
@@ -301,7 +301,7 @@ export default function StudentMyCourses() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 gap-1.5 px-3 text-[#0E7490] hover:bg-[#0E7490]/10"
+                      className="h-9 gap-1.5 px-3 text-primary hover:bg-primary/10"
                     >
                       {progress > 0 ? (
                         <>

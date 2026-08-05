@@ -400,7 +400,7 @@ export default function StudentDetailsPage() {
                       icon: Award,
                       value: completedCourses,
                       label: "Completed",
-                      color: "from-[#0E7490] to-[#0F766E]",
+                      color: "from-brand-blue to-primary",
                     },
                     {
                       icon: GraduationCap,
@@ -412,19 +412,19 @@ export default function StudentDetailsPage() {
                       icon: Clock,
                       value: studentExamAttempts.length,
                       label: "Attempts",
-                      color: "from-[#155E75] to-[#0E7490]",
+                      color: "from-primary to-brand-blue",
                     },
                     {
                       icon: Users,
                       value:
                         averageScore !== null ? `${Math.round(averageScore)}%` : "N/A",
                       label: "Avg Score",
-                      color: "from-[#0D9488] to-[#0E7490]",
+                      color: "from-[#0D9488] to-brand-blue",
                     },
                   ].map((stat) => (
                     <div
                       key={stat.label}
-                      className="rounded-xl border border-warm-border/60 bg-white/90 p-2.5 text-center"
+                      className="rounded-xl border border-border/60 bg-white/90 p-2.5 text-center"
                     >
                       <div
                         className={cn(
@@ -509,7 +509,7 @@ export default function StudentDetailsPage() {
                         return (
                           <Card
                             key={course.id}
-                            className="border border-warm-border/70 bg-white/90 shadow-sm"
+                            className="border border-border/70 bg-white/90 shadow-sm"
                           >
                             <CardContent className="space-y-2 p-3">
                               <div className="flex items-start justify-between gap-2">

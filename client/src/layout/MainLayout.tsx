@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
+  Bell,
   BookOpen,
   ChevronDown,
   LogOut,
   Lock,
   Menu,
+  Search,
   User as UserIcon,
 } from "lucide-react";
 import Sidebar from "@/components/layout/sidebar";
@@ -40,8 +42,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
   const [location, setLocation] = useLocation();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Close user menu + mobile drawer on route change. Never touch desktop collapse.
   useEffect(() => {
     setUserMenuOpen(false);
     closeMobile();
@@ -67,7 +69,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     "U";
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar
         mobileOpen={isMobile && mobileOpen}
         onMobileClose={closeMobile}
@@ -76,14 +78,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
       />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-app-main transition-[width,margin] duration-300 ease-out">
-        <header className="sticky top-0 z-30 border-b border-[var(--color-border-subtle)] glass-appbar">
-          <div className="flex h-12 items-center justify-between gap-2 px-3 sm:h-12 sm:px-4 md:px-5">
+        <header className="sticky top-0 z-30 shrink-0 border-b border-border bg-card">
+          <div className="flex h-11 items-center justify-between gap-3 px-3 sm:px-4 md:px-5">
             <div className="flex min-w-0 items-center gap-2">
               {isMobile && (
                 <button
                   type="button"
                   onClick={() => setMobileOpen(true)}
-                  className="rounded-lg p-1.5 text-foreground hover:bg-black/5"
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                   aria-label="Open menu"
                 >
                   <Menu className="h-5 w-5" />
@@ -91,63 +93,63 @@ export default function MainLayout({ children }: MainLayoutProps) {
               )}
 
               <Link href={homePath}>
-                <div className="flex min-w-0 cursor-pointer items-center gap-2">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-brand shadow-sm md:hidden">
-                    <BookOpen className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="truncate text-sm font-bold text-foreground md:hidden">
-                    Edu Transform
-                  </span>
-                </div>
+                <span className="font-display cursor-pointer truncate text-[13px] font-bold tracking-tight text-foreground">
+                  Edu Transform
+                </span>
               </Link>
             </div>
 
             {user && (
               <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
-                <p className="hidden max-w-[140px] truncate text-right text-[0.82rem] font-extrabold tracking-tight text-foreground sm:block sm:max-w-[260px] sm:text-[0.92rem] md:max-w-[320px] md:text-base">
-                  {greeting.text},{" "}
-                  <span className="text-primary">{firstName}</span>{" "}
-                  <span className="animate-wave-hand text-base">👋</span>
+                <p className="hidden truncate text-[11px] text-muted-foreground md:block">
+                  {greeting.text}, <span className="font-semibold text-foreground">{firstName}</span>
                 </p>
+
+                <div className="hidden items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground sm:flex">
+                  <Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search"
+                    className="w-24 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground md:w-36"
+                    aria-label="Search"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  aria-label="Notifications"
+                >
+                  <Bell className="h-4 w-4" strokeWidth={1.8} />
+                </button>
 
                 <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="flex items-center gap-2 rounded-[14px] border border-transparent px-1.5 py-1 transition-all duration-200 hover:border-black/[0.04] hover:bg-white/80 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] sm:gap-3 sm:px-3"
+                      className="flex items-center gap-1.5 rounded-full outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <div className="hidden flex-col items-end lg:flex">
-                        <span className="text-sm font-bold leading-tight text-foreground">
-                          {user.firstName} {user.lastName}
-                        </span>
-                        <span
-                          className={cn(
-                            "mt-0.5 inline-block rounded px-1.5 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-wide",
-                            user.role === "superadmin"
-                              ? "bg-brand-lavender/10 text-brand-lavender"
-                              : "bg-black/[0.04] text-muted-foreground"
-                          )}
-                        >
-                          {user.role}
-                        </span>
-                      </div>
-                      <Avatar className="h-9 w-9 border-2 border-white shadow-[0_4px_12px_rgba(15,118,110,0.25)] sm:h-[42px] sm:w-[42px]">
+                      <Avatar className="h-[22px] w-[22px] sm:h-7 sm:w-7">
                         {user.profilePhoto ? (
-                          <AvatarImage src={getProfilePhotoSrc(user.profilePhoto) || undefined} alt="" />
+                          <AvatarImage
+                            src={getProfilePhotoSrc(user.profilePhoto) || undefined}
+                            alt=""
+                          />
                         ) : null}
-                        <AvatarFallback className="bg-accent-brand text-sm font-bold text-white">
+                        <AvatarFallback className="bg-primary text-[9px] font-bold text-primary-foreground sm:text-[10px]">
                           {initials}
                         </AvatarFallback>
                       </Avatar>
-                      <ChevronDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
+                      <ChevronDown className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
-                    className="w-[260px] rounded-[20px] border border-black/[0.06] p-2 shadow-[0_12px_32px_rgba(0,0,0,0.1)]"
+                    className="w-[240px] rounded-2xl border-border p-2 shadow-card-soft"
                   >
-                    <div className="mb-1 rounded-[14px] bg-black/[0.02] px-3 py-3">
-                      <p className="text-sm font-extrabold text-foreground">
+                    <div className="mb-1 rounded-xl bg-muted/60 px-3 py-2.5">
+                      <p className="text-sm font-bold text-foreground">
                         {user.firstName} {user.lastName}
                       </p>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -155,27 +157,27 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       </p>
                     </div>
                     <DropdownMenuItem
-                      className="cursor-pointer gap-3 rounded-xl py-3 font-semibold"
+                      className="cursor-pointer gap-3 rounded-xl py-2.5 font-medium"
                       onClick={() => setLocation(profilePath)}
                     >
                       <UserIcon className="h-4 w-4 text-muted-foreground" />
                       Account Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      className="cursor-pointer gap-3 rounded-xl py-3 font-semibold"
+                      className="cursor-pointer gap-3 rounded-xl py-2.5 font-medium"
                       onClick={() => setLocation(profilePath)}
                     >
                       <Lock className="h-4 w-4 text-muted-foreground" />
                       Security Settings
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="my-1 opacity-50" />
+                    <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem
-                      className="cursor-pointer gap-3 rounded-xl py-3 font-bold text-destructive focus:text-destructive"
+                      className="cursor-pointer gap-3 rounded-xl py-2.5 font-semibold text-destructive focus:text-destructive"
                       onClick={handleLogout}
                       disabled={logoutMutation.isPending}
                     >
                       <LogOut className="h-4 w-4" />
-                      Logout Session
+                      Logout
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -185,22 +187,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </header>
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto">
-          <div className="w-full min-w-0 px-3 py-2 sm:px-4 md:px-5">
+          <div className="w-full min-w-0 px-3 py-3 sm:px-4 md:px-5 md:py-4">
             {children}
           </div>
         </main>
 
-        <footer className="sticky bottom-0 z-20 flex h-10 shrink-0 items-center justify-between border-t border-[var(--color-border-subtle)] bg-white px-3 sm:px-4">
+        <footer className="sticky bottom-0 z-20 flex h-9 shrink-0 items-center justify-between border-t border-border bg-card px-3 sm:px-4">
           <div className="flex items-center gap-1.5">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent-brand">
-              <BookOpen className="h-3 w-3 text-white" />
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary">
+              <BookOpen className="h-2.5 w-2.5 text-primary-foreground" />
             </div>
-            <span className="hidden text-[11px] font-semibold text-foreground sm:inline">
+            <span className="hidden text-[10px] font-semibold text-foreground sm:inline">
               Edu Transform
             </span>
           </div>
-          <p className="min-w-0 truncate text-center text-[10px] font-medium text-muted-foreground">
-            © {new Date().getFullYear()} Edu Transform. All rights reserved to Aman Hukkerikar
+          <p className={cn("min-w-0 truncate text-center text-[10px] text-muted-foreground")}>
+            © {new Date().getFullYear()} Edu Transform
           </p>
           <div className="hidden w-14 shrink-0 sm:block" />
         </footer>

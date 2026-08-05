@@ -332,7 +332,7 @@ export default function AdminStudents() {
             searchPlaceholder="Search students..."
             filters={
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-10 w-[140px] rounded-xl border-warm-border bg-white shadow-sm">
+                <SelectTrigger className="h-10 w-[140px] rounded-xl border-border bg-white shadow-sm">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -410,7 +410,7 @@ export default function AdminStudents() {
           {pageItems.map((student: any) => {
             const isActive = student.status === "active" || !student.status;
             return (
-              <TableRow key={student.id} className="hover:bg-[#EEF3F5]/70">
+              <TableRow key={student.id} className="hover:bg-muted/70">
                 <TableCell className="py-3.5 pl-5">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
@@ -428,7 +428,7 @@ export default function AdminStudents() {
                       <p className="truncate text-[15px] font-semibold text-[#2D3748]">
                         {student.firstName} {student.lastName}
                       </p>
-                      <p className="text-xs text-[#718096]">ID: {student.id}</p>
+                      <p className="text-xs text-muted-foreground">ID: {student.id}</p>
                     </div>
                   </div>
                 </TableCell>
@@ -462,7 +462,7 @@ export default function AdminStudents() {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="h-9 w-9 p-0 text-[#0E7490] hover:bg-[#0E7490]/10"
+                        className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
                         aria-label="View"
                       >
                         <Eye className="h-4 w-4" />
@@ -472,7 +472,7 @@ export default function AdminStudents() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 w-9 p-0 text-[#0F766E] hover:bg-[#0F766E]/10"
+                      className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
                       aria-label="Assign course"
                       onClick={() => openAssignDialog(student)}
                     >
@@ -776,7 +776,7 @@ export default function AdminStudents() {
                           />
                           <button
                             type="button"
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#718096] hover:text-[#2D3748]"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-[#2D3748]"
                             onClick={() => setShowPassword((prev) => !prev)}
                             aria-label={showPassword ? "Hide password" : "Show password"}
                           >
@@ -815,24 +815,24 @@ export default function AdminStudents() {
           </DialogHeader>
 
           <div className="space-y-3 py-1">
-            <div className="flex items-center justify-between text-sm text-[#718096]">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
                 {selectedCourseIds.length} of {courses.length} selected
               </span>
               <span>{initialEnrolledIds.length} currently enrolled</span>
             </div>
 
-            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-[#D4DEE3] bg-white">
+            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border bg-white">
               {isLoadingEnrollments ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 </div>
               ) : courses.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-[#718096]">
+                <p className="px-4 py-8 text-center text-sm text-muted-foreground">
                   No courses available
                 </p>
               ) : (
-                <ul className="divide-y divide-[#D4DEE3]/80">
+                <ul className="divide-y divide-border/80">
                   {courses.map((course) => {
                     const checked = selectedCourseIds.includes(course.id);
                     const wasEnrolled = initialEnrolledIds.includes(course.id);
@@ -840,8 +840,8 @@ export default function AdminStudents() {
                       <li key={course.id}>
                         <label
                           className={cn(
-                            "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-[#EEF3F5]/70",
-                            checked && "bg-[#0F766E]/5"
+                            "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/70",
+                            checked && "bg-primary/5"
                           )}
                         >
                           <Checkbox
@@ -855,7 +855,7 @@ export default function AdminStudents() {
                               {course.title}
                             </p>
                             {course.level ? (
-                              <p className="truncate text-xs text-[#718096] capitalize">
+                              <p className="truncate text-xs text-muted-foreground capitalize">
                                 {course.level}
                               </p>
                             ) : null}
