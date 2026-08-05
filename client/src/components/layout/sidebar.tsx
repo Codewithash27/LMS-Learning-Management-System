@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   BarChart3,
@@ -9,7 +9,6 @@ import {
   GraduationCap,
   LayoutDashboard,
   Menu,
-  Palette,
   Search,
   UserRound,
   Users,
@@ -18,6 +17,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { colorTokens } from "@/tokens/colors";
 import { getProfilePhotoSrc } from "@/lib/profile-photo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -29,16 +29,6 @@ import {
 
 const DRAWER_WIDTH = 280;
 const COLLAPSED_DRAWER_WIDTH = 88;
-
-/** Live theme colors via CSS vars (updated by Theme Studio) */
-const themeColor = {
-  primary: "var(--color-primary-main)",
-  secondary: "var(--color-secondary-main, var(--color-brand-blue))",
-  accent: "var(--color-brand-blue)",
-  text: "var(--color-text-primary)",
-  textMuted: "var(--color-text-muted)",
-  border: "var(--color-border-subtle)",
-};
 
 type NavChild = { id: string; label: string; href: string };
 type NavItem = {
@@ -94,7 +84,7 @@ export default function Sidebar({
               <LayoutDashboard strokeWidth={2} />
             </NavIcon>
           ),
-          color: themeColor.primary,
+          color: colorTokens.menuColors.dashboard,
         },
         {
           id: "academics",
@@ -104,7 +94,7 @@ export default function Sidebar({
               <GraduationCap strokeWidth={2} />
             </NavIcon>
           ),
-          color: themeColor.primary,
+          color: colorTokens.menuColors.academics,
           children: [
             { id: "courses", label: "Courses", href: "/admin/courses" },
             { id: "exams", label: "Exams", href: "/admin/exams" },
@@ -119,7 +109,7 @@ export default function Sidebar({
               <Users strokeWidth={2} />
             </NavIcon>
           ),
-          color: themeColor.primary,
+          color: colorTokens.menuColors.students,
           children: [
             { id: "students-list", label: "All Students", href: "/admin/students" },
             { id: "batches", label: "Batches", href: "/admin/batches" },
@@ -134,18 +124,7 @@ export default function Sidebar({
               <BarChart3 strokeWidth={2} />
             </NavIcon>
           ),
-          color: themeColor.primary,
-        },
-        {
-          id: "theme-studio",
-          label: "Theme Studio",
-          href: "/admin/theme-studio",
-          icon: (
-            <NavIcon>
-              <Palette strokeWidth={2} />
-            </NavIcon>
-          ),
-          color: themeColor.primary,
+          color: colorTokens.menuColors.finance,
         },
         {
           id: "profile",
@@ -156,7 +135,7 @@ export default function Sidebar({
               <UserRound strokeWidth={2} />
             </NavIcon>
           ),
-          color: themeColor.primary,
+          color: colorTokens.menuColors.settings,
         },
       ];
     }
@@ -171,7 +150,7 @@ export default function Sidebar({
             <LayoutDashboard strokeWidth={2} />
           </NavIcon>
         ),
-        color: themeColor.primary,
+        color: colorTokens.menuColors.dashboard,
       },
       {
         id: "learning",
@@ -181,7 +160,7 @@ export default function Sidebar({
             <GraduationCap strokeWidth={2} />
           </NavIcon>
         ),
-        color: themeColor.primary,
+        color: colorTokens.menuColors.academics,
         children: [
           { id: "my-courses", label: "My Courses", href: "/student/my-courses" },
           { id: "upcoming", label: "Upcoming Exams", href: "/student/upcoming-exams" },
@@ -197,7 +176,7 @@ export default function Sidebar({
             <Bot strokeWidth={2} />
           </NavIcon>
         ),
-        color: themeColor.primary,
+        color: colorTokens.menuColors.staff,
       },
       {
         id: "profile",
@@ -208,7 +187,7 @@ export default function Sidebar({
             <UserRound strokeWidth={2} />
           </NavIcon>
         ),
-        color: themeColor.primary,
+        color: colorTokens.menuColors.settings,
       },
     ];
   }, [isAdmin]);
@@ -268,7 +247,7 @@ export default function Sidebar({
             ? "opacity-100"
             : "opacity-70 group-hover:opacity-100 group-hover:scale-110"
         )}
-        style={{ color: isActive ? item.color : themeColor.textMuted }}
+        style={{ color: isActive ? item.color : colorTokens.sidebar.text.secondary }}
       >
         {item.icon}
       </span>
@@ -288,7 +267,7 @@ export default function Sidebar({
                 "h-4 w-4 shrink-0 transition-transform duration-300",
                 isExpanded ? "rotate-0" : "-rotate-90"
               )}
-              style={{ color: themeColor.textMuted, opacity: 0.55 }}
+              style={{ color: `${colorTokens.sidebar.text.secondary}8C` }}
             />
           )}
         </>
@@ -303,30 +282,28 @@ export default function Sidebar({
       active ? "font-semibold" : "font-medium"
     );
 
-  const itemStyle = (active: boolean, _color: string): CSSProperties => ({
-    backgroundColor: active
-      ? "color-mix(in srgb, var(--color-primary-main) 12%, transparent)"
-      : "transparent",
-    color: active ? themeColor.primary : themeColor.textMuted,
-    borderLeft: active ? `6px solid ${themeColor.primary}` : "6px solid transparent",
+  const itemStyle = (active: boolean, color: string): React.CSSProperties => ({
+    backgroundColor: active ? `${color}1F` : "transparent",
+    color: active ? color : colorTokens.sidebar.text.secondary,
+    borderLeft: active ? `6px solid ${color}` : "6px solid transparent",
   });
 
   const navContent = (
     <div
       className="flex h-full flex-col overflow-hidden border-r shadow-[4px_0_24px_rgba(0,0,0,0.04)] bg-sidebar-warm"
-      style={{ borderColor: themeColor.border, color: themeColor.text }}
+      style={{ borderColor: colorTokens.sidebar.border, color: colorTokens.sidebar.text.primary }}
     >
       <div
-        className="mb-2 flex items-center justify-between px-4 py-5 text-white shadow-[0_8px_20px_rgba(15,23,42,0.18)]"
+        className="mb-2 flex items-center justify-between px-4 py-5 text-white shadow-[0_8px_20px_rgba(15,118,110,0.28)]"
         style={{
-          background: `linear-gradient(135deg, ${themeColor.primary} 0%, ${themeColor.accent} 100%)`,
+          background: `linear-gradient(135deg, ${colorTokens.primary.main} 0%, ${colorTokens.info.main} 100%)`,
           borderRadius: "0 0 40px 40px",
         }}
       >
         {!collapsed && (
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white p-1.5 shadow-md">
-              <BookOpen className="h-5 w-5 text-primary" />
+              <BookOpen className="h-5 w-5 text-brand-turquoise" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-[15px] font-semibold leading-snug tracking-tight text-white">
@@ -368,19 +345,19 @@ export default function Sidebar({
       {!collapsed && (
         <div className="px-4 pb-3">
           <div
-            className="flex items-center gap-2 rounded-[15px] border bg-white/80 px-3 py-1.5 transition-all focus-within:bg-white focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-primary-main)_12%,transparent)]"
-            style={{ borderColor: "color-mix(in srgb, var(--color-primary-main) 20%, transparent)" }}
+            className="flex items-center gap-2 rounded-[15px] border bg-white/80 px-3 py-1.5 transition-all focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(15,118,110,0.1)]"
+            style={{ borderColor: `${colorTokens.primary.main}33` }}
           >
             <Search
               className="h-4 w-4 shrink-0"
-              style={{ color: themeColor.primary, opacity: 0.6 }}
+              style={{ color: `${colorTokens.primary.main}99` }}
             />
             <input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Quick Search..."
               className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground/70"
-              style={{ color: themeColor.text }}
+              style={{ color: colorTokens.sidebar.text.primary }}
             />
           </div>
         </div>
@@ -446,8 +423,8 @@ export default function Sidebar({
                             className={cn(
                               "mx-4 ml-14 my-0.5 cursor-pointer rounded-xl px-3 py-2 text-[13px] leading-snug tracking-tight transition-all duration-200",
                               childIsActive
-                                ? "bg-primary/10 font-semibold text-primary"
-                                : "font-medium text-muted-foreground hover:bg-primary/5 hover:text-foreground"
+                                ? "bg-brand-blue/10 font-semibold text-brand-blue"
+                                : "font-medium text-[color:#64748B] hover:bg-brand-blue/5 hover:text-[color:#334155]"
                             )}
                           >
                             {child.label}
@@ -468,12 +445,12 @@ export default function Sidebar({
           "mx-4 mb-6 mt-auto rounded-[24px] border bg-white shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_15px_35px_rgba(0,0,0,0.08)]",
           collapsed ? "p-2" : "px-4 py-3"
         )}
-        style={{ borderColor: "color-mix(in srgb, var(--color-text-muted) 10%, transparent)" }}
+        style={{ borderColor: `${colorTokens.sidebar.text.muted}1A` }}
       >
         <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
           <Avatar
             className={cn(
-              "border-[3px] border-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-primary-main)_15%,transparent)]",
+              "border-[3px] border-white shadow-[0_8px_20px_rgba(15,118,110,0.15)]",
               collapsed ? "h-11 w-11" : "h-[46px] w-[46px]"
             )}
           >
@@ -483,7 +460,7 @@ export default function Sidebar({
                 alt=""
               />
             ) : null}
-            <AvatarFallback className="bg-primary text-sm font-semibold text-primary-foreground">
+            <AvatarFallback className="bg-brand-turquoise text-sm font-semibold text-white">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -491,13 +468,13 @@ export default function Sidebar({
             <div className="min-w-0 flex-1">
               <p
                 className="truncate text-sm font-semibold leading-snug tracking-tight"
-                style={{ color: themeColor.text }}
+                style={{ color: colorTokens.sidebar.text.primary }}
               >
                 {user.firstName} {user.lastName}
               </p>
               <p
                 className="mt-0.5 text-[11px] font-medium uppercase tracking-wider"
-                style={{ color: themeColor.textMuted }}
+                style={{ color: colorTokens.sidebar.text.secondary }}
               >
                 {user.role}
               </p>
