@@ -7,6 +7,7 @@ export default {
     extend: {
       fontFamily: {
         sans: [
+          "var(--font-body)",
           "Poppins",
           "-apple-system",
           "BlinkMacSystemFont",
@@ -14,6 +15,12 @@ export default {
           "Roboto",
           '"Helvetica Neue"',
           "Arial",
+          "sans-serif",
+        ],
+        display: [
+          "var(--font-display)",
+          "var(--font-body)",
+          "Poppins",
           "sans-serif",
         ],
       },
@@ -62,23 +69,23 @@ export default {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         brand: {
-          blue: "#0E7490",
-          turquoise: "#0F766E",
-          coral: "#5B7C8D",
-          lavender: "#475569",
-          peach: "#0E7490",
-          mint: "#0D9488",
-          sunshine: "#94A3B8",
+          blue: "hsl(var(--brand-blue) / <alpha-value>)",
+          turquoise: "hsl(var(--primary) / <alpha-value>)",
+          coral: "hsl(var(--brand-coral) / <alpha-value>)",
+          lavender: "hsl(var(--brand-lavender) / <alpha-value>)",
+          peach: "hsl(var(--brand-blue) / <alpha-value>)",
+          mint: "hsl(var(--brand-mint) / <alpha-value>)",
+          sunshine: "hsl(var(--brand-sunshine) / <alpha-value>)",
         },
         cream: {
-          DEFAULT: "#F4F8F9",
-          subtle: "#EEF3F5",
-          muted: "#E4EBEE",
+          DEFAULT: "hsl(var(--background) / <alpha-value>)",
+          subtle: "hsl(var(--muted) / <alpha-value>)",
+          muted: "hsl(var(--secondary) / <alpha-value>)",
         },
         warm: {
-          border: "#D4DEE3",
-          "border-subtle": "#E8EEF2",
-          "border-strong": "#C5D0D6",
+          border: "hsl(var(--border) / <alpha-value>)",
+          "border-subtle": "var(--color-border-subtle)",
+          "border-strong": "hsl(var(--border) / <alpha-value>)",
         },
         chart: {
           "1": "hsl(var(--chart-1))",

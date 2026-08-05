@@ -35,6 +35,30 @@ async function main() {
           id SERIAL PRIMARY KEY,
           name TEXT NOT NULL,
           subdomain TEXT NOT NULL UNIQUE,
+          theme_config JSONB,
+          logo_url TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      ELSE
+        -- Ensure columns exist on existing table
+        IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name='tenants' AND column_name='theme_config') THEN
+          ALTER TABLE tenants ADD COLUMN theme_config JSONB;
+        END IF;
+        IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name='tenants' AND column_name='logo_url') THEN
+          ALTER TABLE tenants ADD COLUMN logo_url TEXT;
+        END IF;
+      END IF;
+
+      -- theme_templates table
+      IF NOT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'theme_templates') THEN
+        CREATE TABLE theme_templates (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          tag TEXT,
+          token_overrides JSONB NOT NULL,
+          is_preset BOOLEAN DEFAULT FALSE,
+          tenant_id INTEGER,
+          created_by INTEGER,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       END IF;

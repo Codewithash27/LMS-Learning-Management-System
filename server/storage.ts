@@ -11,7 +11,8 @@ import {
   activityLogs, type ActivityLog, type InsertActivityLog,
   batches, type Batch, type InsertBatch,
   batchEnrollments, type BatchEnrollment, type InsertBatchEnrollment,
-  lessonProgress, type LessonProgress, type InsertLessonProgress
+  lessonProgress, type LessonProgress, type InsertLessonProgress,
+  themeTemplates, type ThemeTemplate, type InsertThemeTemplate
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, asc, desc, sql, and } from "drizzle-orm";
@@ -126,6 +127,14 @@ export interface IStorage {
   createBatchEnrollmentsBulk(enrollments: InsertBatchEnrollment[]): Promise<BatchEnrollment[]>;
   updateBatchEnrollment(id: number, enrollment: Partial<BatchEnrollment>): Promise<BatchEnrollment | undefined>;
   deleteBatchEnrollment(id: number): Promise<boolean>;
+
+  // Theme operations
+  getTenantTheme(tenantId: number): Promise<Record<string, unknown> | null>;
+  updateTenantTheme(tenantId: number, tokenOverrides: Record<string, unknown>): Promise<Tenant | undefined>;
+  resetTenantTheme(tenantId: number): Promise<Tenant | undefined>;
+  getThemeTemplates(tenantId: number): Promise<ThemeTemplate[]>;
+  createThemeTemplate(template: InsertThemeTemplate): Promise<ThemeTemplate>;
+  deleteThemeTemplate(id: number, tenantId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -225,6 +234,62 @@ export class DatabaseStorage implements IStorage {
   async createTenant(insertTenant: InsertTenant): Promise<Tenant> {
     const [tenant] = await db.insert(tenants).values(insertTenant).returning();
     return tenant;
+  }
+
+  // Theme operations
+  async getTenantTheme(tenantId: number): Promise<Record<string, unknown> | null> {
+    const [tenant] = await db.select({ themeConfig: tenants.themeConfig }).from(tenants).where(eq(tenants.id, tenantId));
+    return (tenant?.themeConfig as Record<string, unknown>) ?? null;
+  }
+
+  async updateTenantTheme(tenantId: number, tokenOverrides: Record<string, unknown>): Promise<Tenant | undefined> {
+    const [updated] = await db
+      .update(tenants)
+      .set({ themeConfig: tokenOverrides })
+      .where(eq(tenants.id, tenantId))
+      .returning();
+    return updated;
+  }
+
+  async resetTenantTheme(tenantId: number): Promise<Tenant | undefined> {
+    const [updated] = await db
+      .update(tenants)
+      .set({ themeConfig: null })
+      .where(eq(tenants.id, tenantId))
+      .returning();
+    return updated;
+  }
+
+  async getThemeTemplates(tenantId: number): Promise<ThemeTemplate[]> {
+    // Return global presets (tenantId IS NULL) + this tenant's custom templates
+    return await db
+      .select()
+      .from(themeTemplates)
+      .where(
+        sql`(${themeTemplates.tenantId} IS NULL OR ${themeTemplates.tenantId} = ${tenantId})`
+      )
+      .orderBy(asc(themeTemplates.isPreset), asc(themeTemplates.name));
+  }
+
+  async createThemeTemplate(template: InsertThemeTemplate): Promise<ThemeTemplate> {
+    const [created] = await db.insert(themeTemplates).values({
+      ...template,
+      isPreset: false,
+    }).returning();
+    return created;
+  }
+
+  async deleteThemeTemplate(id: number, tenantId: number): Promise<boolean> {
+    // Only allow deletion of tenant-owned custom templates (not global presets)
+    const result = await db
+      .delete(themeTemplates)
+      .where(
+        and(
+          eq(themeTemplates.id, id),
+          eq(themeTemplates.tenantId, tenantId)
+        )
+      );
+    return result.rowCount ? result.rowCount > 0 : false;
   }
   
   // Course operations
@@ -1216,6 +1281,26 @@ export class MemStorage implements IStorage {
   }
   
   async deleteBatchEnrollment(id: number): Promise<boolean> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+
+  // Theme operations
+  async getTenantTheme(tenantId: number): Promise<Record<string, unknown> | null> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+  async updateTenantTheme(tenantId: number, tokenOverrides: Record<string, unknown>): Promise<Tenant | undefined> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+  async resetTenantTheme(tenantId: number): Promise<Tenant | undefined> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+  async getThemeTemplates(tenantId: number): Promise<ThemeTemplate[]> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+  async createThemeTemplate(template: InsertThemeTemplate): Promise<ThemeTemplate> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+  async deleteThemeTemplate(id: number, tenantId: number): Promise<boolean> {
     throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
   }
 }
