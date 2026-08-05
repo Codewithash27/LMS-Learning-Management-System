@@ -9,12 +9,12 @@ export type AppCardProps = React.HTMLAttributes<HTMLDivElement> & {
 };
 
 const paddingMap = {
-  normal: "p-6",
+  normal: "p-5",
   dense: "p-4",
   none: "",
 } as const;
 
-/** Soft SaaS card: 24px radius, warm border, light shadow. */
+/** Soft SaaS card matching Untitled-4 gallery shapes. */
 export default function AppCard({
   children,
   paddingSize = "normal",
@@ -22,7 +22,10 @@ export default function AppCard({
   ...props
 }: AppCardProps) {
   return (
-    <Card className={cn("overflow-hidden", className)} {...props}>
+    <Card
+      className={cn("overflow-hidden rounded-[var(--radius)] border-border shadow-card-soft", className)}
+      {...props}
+    >
       {paddingSize === "none" ? (
         children
       ) : (

@@ -1111,7 +1111,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                 control={form.control}
                 name="isEnrollmentRequired"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-[#D4DEE3] bg-white p-4 sm:col-span-2">
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-border bg-white p-4 sm:col-span-2">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
@@ -1123,7 +1123,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                       <FormLabel className={createFormLabelClass}>
                         Enrollment Required
                       </FormLabel>
-                      <p className="text-xs text-[#718096]">
+                      <p className="text-xs text-muted-foreground">
                         Uncheck for free access without enrollment
                       </p>
                     </div>
@@ -1447,7 +1447,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                   <img
                     src={formatThumbnailUrl(thumbnailPreview)}
                     alt="Course thumbnail preview"
-                    className="h-48 w-full rounded-xl border border-[#D4DEE3] object-cover"
+                    className="h-48 w-full rounded-xl border border-border object-cover"
                   />
                   <Button
                     type="button"
@@ -1461,7 +1461,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                 </div>
               ) : (
                 <div
-                  className="cursor-pointer rounded-xl border-2 border-dashed border-[#D4DEE3] bg-white p-8 text-center transition-colors hover:border-[#0F766E]"
+                  className="cursor-pointer rounded-xl border-2 border-dashed border-border bg-white p-8 text-center transition-colors hover:border-[#0F766E]"
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
@@ -1470,7 +1470,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                   <p className="mb-2 text-lg font-medium text-[#2D3748]">
                     Drag & drop your course image here
                   </p>
-                  <p className="mb-4 text-sm text-[#718096]">
+                  <p className="mb-4 text-sm text-muted-foreground">
                     Recommended size: 800x450 pixels • Max 5MB
                   </p>
                   <Button type="button" variant="outline" className="gap-2 rounded-xl">
@@ -1488,7 +1488,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                 className="hidden"
               />
               
-              <p className="mt-2 text-xs text-[#718096]">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Supported formats: JPEG, PNG, GIF, WebP • Max file size: 5MB
               </p>
           </FormSection>

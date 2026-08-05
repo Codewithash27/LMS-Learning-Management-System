@@ -22,7 +22,7 @@ export type CreateFormDialogMaxWidth = keyof typeof maxWidthClass;
 
 /** Shared control look for create/add forms */
 export const createFormControlClass =
-  "h-11 rounded-xl border-[#D4DEE3] bg-white shadow-sm transition-all placeholder:text-[#A0AEC0] focus-visible:border-[#0F766E] focus-visible:ring-2 focus-visible:ring-[#0F766E]/25";
+  "h-11 rounded-xl border-border bg-white shadow-sm transition-all placeholder:text-[#A0AEC0] focus-visible:border-[#0F766E] focus-visible:ring-2 focus-visible:ring-[#0F766E]/25";
 
 export const createFormLabelClass = "text-[13px] font-semibold text-[#2D3748]";
 
@@ -53,7 +53,7 @@ export function CreateFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "flex max-h-[92vh] flex-col gap-0 overflow-hidden border-[#D4DEE3] bg-white p-0 shadow-[0_25px_60px_rgba(45,55,72,0.18)] sm:rounded-2xl",
+          "flex max-h-[92vh] flex-col gap-0 overflow-hidden border-border bg-white p-0 shadow-[0_25px_60px_rgba(45,55,72,0.18)] sm:rounded-2xl",
           maxWidthClass[maxWidth],
           className
         )}
@@ -66,7 +66,7 @@ export function CreateFormDialog({
             {title}
           </DialogTitle>
           {description ? (
-            <DialogDescription className="mx-auto mt-1.5 max-w-md text-center text-sm leading-relaxed text-[#718096]">
+            <DialogDescription className="mx-auto mt-1.5 max-w-md text-center text-sm leading-relaxed text-muted-foreground">
               {description}
             </DialogDescription>
           ) : null}
@@ -100,7 +100,7 @@ export function FormSection({
   return (
     <section
       className={cn(
-        "rounded-2xl border border-[#D4DEE3] bg-[#FFFBF5]/60 p-4 sm:p-5",
+        "rounded-2xl border border-border bg-[#FFFBF5]/60 p-4 sm:p-5",
         className
       )}
     >
@@ -109,7 +109,7 @@ export function FormSection({
           {title}
         </h3>
         {description ? (
-          <p className="mt-1 text-xs leading-relaxed text-[#718096]">{description}</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {children}
@@ -151,7 +151,7 @@ export function CreateFormFooter({
         variant="outline"
         onClick={onCancel}
         disabled={isPending}
-        className="h-11 flex-1 rounded-xl border-[#D4DEE3] bg-white font-semibold text-[#4A5568] hover:bg-white hover:text-[#2D3748]"
+        className="h-11 flex-1 rounded-xl border-border bg-white font-semibold text-[#4A5568] hover:bg-white hover:text-[#2D3748]"
       >
         {cancelLabel}
       </Button>

@@ -342,7 +342,7 @@ export default function AdminCourses() {
             filters={
               <>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="h-10 w-[130px] rounded-xl border-warm-border bg-white shadow-sm">
+                  <SelectTrigger className="h-10 w-[130px] rounded-xl border-border bg-white shadow-sm">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -354,7 +354,7 @@ export default function AdminCourses() {
                   </SelectContent>
                 </Select>
                 <Select value={levelFilter} onValueChange={setLevelFilter}>
-                  <SelectTrigger className="h-10 w-[130px] rounded-xl border-warm-border bg-white shadow-sm">
+                  <SelectTrigger className="h-10 w-[130px] rounded-xl border-border bg-white shadow-sm">
                     <SelectValue placeholder="Level" />
                   </SelectTrigger>
                   <SelectContent>
@@ -368,7 +368,7 @@ export default function AdminCourses() {
               </>
             }
             extras={
-              <div className="inline-flex rounded-xl border border-warm-border bg-white p-0.5 shadow-sm">
+              <div className="inline-flex rounded-xl border border-border bg-white p-0.5 shadow-sm">
                 <Button
                   type="button"
                   size="sm"
@@ -568,21 +568,21 @@ export default function AdminCourses() {
             const src = thumbSrc(course);
             const enrollmentCount = getEnrollmentCount(course);
             return (
-              <TableRow key={course.id} className="hover:bg-[#EEF3F5]/70">
+              <TableRow key={course.id} className="hover:bg-muted/70">
                 <TableCell className="py-3.5 pl-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0F766E]/15">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/15">
                       {src ? (
                         <img src={src} alt="" className="h-full w-full object-cover" />
                       ) : (
-                        <BookOpen className="h-5 w-5 text-[#0F766E]" />
+                        <BookOpen className="h-5 w-5 text-primary" />
                       )}
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-[15px] font-semibold text-[#2D3748]">
                         {course.title}
                       </p>
-                      <p className="line-clamp-1 text-xs text-[#718096]">
+                      <p className="line-clamp-1 text-xs text-muted-foreground">
                         {course.description || "No description"}
                       </p>
                     </div>
@@ -618,7 +618,7 @@ export default function AdminCourses() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 w-9 p-0 text-[#0E7490] hover:bg-[#0E7490]/10"
+                      className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
                       aria-label="Edit"
                       onClick={() => handleEditCourse(course)}
                     >
@@ -628,7 +628,7 @@ export default function AdminCourses() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 w-9 p-0 text-[#0F766E] hover:bg-[#0F766E]/10"
+                      className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
                       aria-label="Assign to student"
                       onClick={() => openAssignDialog(course)}
                     >
@@ -638,7 +638,7 @@ export default function AdminCourses() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-9 w-9 p-0 text-[#0E7490]/80 hover:bg-[#0E7490]/10"
+                      className="h-9 w-9 p-0 text-primary/80 hover:bg-primary/10"
                       aria-label="Progress"
                       onClick={() => {
                         window.location.href = `/admin/courses/${course.id}/progress`;
@@ -688,24 +688,24 @@ export default function AdminCourses() {
           </DialogHeader>
 
           <div className="space-y-3 py-1">
-            <div className="flex items-center justify-between text-sm text-[#718096]">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
                 {selectedStudentIds.length} of {students.length} selected
               </span>
               <span>{initialEnrolledIds.length} currently enrolled</span>
             </div>
 
-            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-[#D4DEE3] bg-white">
+            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border bg-white">
               {isLoadingEnrollments ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 </div>
               ) : students.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-[#718096]">
+                <p className="px-4 py-8 text-center text-sm text-muted-foreground">
                   No students available
                 </p>
               ) : (
-                <ul className="divide-y divide-[#D4DEE3]/80">
+                <ul className="divide-y divide-border/80">
                   {students.map((student) => {
                     const checked = selectedStudentIds.includes(student.id);
                     const wasEnrolled = initialEnrolledIds.includes(student.id);
@@ -713,8 +713,8 @@ export default function AdminCourses() {
                       <li key={student.id}>
                         <label
                           className={cn(
-                            "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-[#EEF3F5]/70",
-                            checked && "bg-[#0F766E]/5"
+                            "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/70",
+                            checked && "bg-primary/5"
                           )}
                         >
                           <Checkbox
@@ -727,7 +727,7 @@ export default function AdminCourses() {
                             <p className="truncate text-[15px] font-medium text-[#2D3748]">
                               {student.firstName} {student.lastName}
                             </p>
-                            <p className="truncate text-xs text-[#718096]">
+                            <p className="truncate text-xs text-muted-foreground">
                               {student.username}
                               {student.email ? ` · ${student.email}` : ""}
                             </p>

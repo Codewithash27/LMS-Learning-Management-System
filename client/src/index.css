@@ -152,11 +152,7 @@
 
 @layer utilities {
   .bg-app-main {
-    background: linear-gradient(
-      135deg,
-      var(--color-bg-default, #F4F8F9) 0%,
-      var(--color-bg-sidebar, #E8EEF1) 100%
-    );
+    background: var(--color-bg-default, #F4F8F9);
   }
 
   .bg-accent-brand {
@@ -168,11 +164,30 @@
   }
 
   .bg-sidebar-warm {
-    background: linear-gradient(
-      180deg,
-      var(--color-bg-sidebar, #E8EEF1) 0%,
-      var(--color-bg-default, #F4F8F9) 100%
-    );
+    background: var(--color-bg-sidebar, #E8EEF1);
+  }
+
+  .icon-rail-active {
+    background: var(--color-primary-subtle, #CCFBF1);
+    color: var(--color-primary-main, #0F766E);
+  }
+
+  .stat-tile {
+    background: var(--color-primary-subtle, #CCFBF1);
+    border-radius: calc(var(--radius) - 2px);
+  }
+
+  .progress-track {
+    height: 5px;
+    border-radius: 999px;
+    background: hsl(var(--border));
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: hsl(var(--primary));
   }
 
   .shadow-card-soft {

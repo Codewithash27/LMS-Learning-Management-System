@@ -164,7 +164,7 @@ export default function StudentProfile() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
+          <Card className="backdrop-blur-sm bg-white/70 border-border shadow-card-soft">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
                 <div className="relative">
@@ -232,7 +232,7 @@ export default function StudentProfile() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                     <div className="flex items-center gap-3 text-sm">
-                      <div className="p-2 rounded-xl bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-primary/10 to-brand-blue/10">
                         <Mail className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
@@ -242,7 +242,7 @@ export default function StudentProfile() {
                     </div>
 
                     <div className="flex items-center gap-3 text-sm">
-                      <div className="p-2 rounded-xl bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-primary/10 to-brand-blue/10">
                         <BookOpen className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
@@ -252,7 +252,7 @@ export default function StudentProfile() {
                     </div>
 
                     <div className="flex items-center gap-3 text-sm">
-                      <div className="p-2 rounded-xl bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-primary/10 to-brand-blue/10">
                         <GraduationCap className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
@@ -268,7 +268,7 @@ export default function StudentProfile() {
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10 backdrop-blur-sm border border-white/20 shadow-lg">
+          <Card className="bg-gradient-to-br from-primary/10 to-brand-blue/10 backdrop-blur-sm border-border shadow-card-soft">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
                 <p className="text-sm text-muted-foreground">Courses</p>
@@ -280,7 +280,7 @@ export default function StudentProfile() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
+          <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm border-border shadow-card-soft">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
                 <p className="text-sm text-muted-foreground">Exams</p>
@@ -292,7 +292,7 @@ export default function StudentProfile() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-sm border border-white/20 shadow-lg">
+          <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-sm border-border shadow-card-soft">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
                 <p className="text-xs text-muted-foreground">Status</p>
@@ -323,7 +323,7 @@ export default function StudentProfile() {
             </TabsList>
 
             <TabsContent value="personal" className="space-y-6">
-              <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
+              <Card className="backdrop-blur-sm bg-white/70 border-border shadow-card-soft">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <User className="h-5 w-5" />
@@ -406,7 +406,7 @@ export default function StudentProfile() {
             </TabsContent>
 
             <TabsContent value="security" className="space-y-6">
-              <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
+              <Card className="backdrop-blur-sm bg-white/70 border-border shadow-card-soft">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Shield className="h-5 w-5" />

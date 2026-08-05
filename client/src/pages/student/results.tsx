@@ -213,8 +213,8 @@ export default function StudentResults() {
   const scoreDistribution = [
     { name: "0–49%", value: 0, color: "#ef4444" },
     { name: "50–69%", value: 0, color: "#f59e0b" },
-    { name: "70–89%", value: 0, color: "#0F766E" },
-    { name: "90–100%", value: 0, color: "#0E7490" },
+    { name: "70–89%", value: 0, color: "var(--color-primary-main)" },
+    { name: "90–100%", value: 0, color: "var(--color-brand-blue)" },
   ];
   mcqScores.forEach((r) => {
     if (r.percent < 50) scoreDistribution[0].value++;
@@ -251,7 +251,7 @@ export default function StudentResults() {
       <div className="space-y-6">
         {/* Summary */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Card className="border-warm-border bg-gradient-to-br from-brand-turquoise/15 to-brand-blue/10 shadow-sm">
+          <Card className="border-border bg-gradient-to-br from-brand-turquoise/15 to-brand-blue/10 shadow-sm">
             <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground">Avg MCQ Score</p>
@@ -263,7 +263,7 @@ export default function StudentResults() {
             </CardContent>
           </Card>
 
-          <Card className="border-warm-border bg-gradient-to-br from-emerald-500/10 to-teal-500/10 shadow-sm">
+          <Card className="border-border bg-gradient-to-br from-emerald-500/10 to-teal-500/10 shadow-sm">
             <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground">MCQ Attempts</p>
@@ -278,7 +278,7 @@ export default function StudentResults() {
             </CardContent>
           </Card>
 
-          <Card className="border-warm-border bg-gradient-to-br from-amber-500/10 to-orange-500/10 shadow-sm">
+          <Card className="border-border bg-gradient-to-br from-amber-500/10 to-orange-500/10 shadow-sm">
             <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground">Courses Enrolled</p>
@@ -292,7 +292,7 @@ export default function StudentResults() {
             </CardContent>
           </Card>
 
-          <Card className="border-warm-border bg-gradient-to-br from-sky-500/10 to-brand-blue/10 shadow-sm">
+          <Card className="border-border bg-gradient-to-br from-sky-500/10 to-brand-blue/10 shadow-sm">
             <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground">Best Score</p>
@@ -310,7 +310,7 @@ export default function StudentResults() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Search tests or courses..."
-              className="pl-9 bg-white border-warm-border"
+              className="pl-9 bg-white border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -318,7 +318,7 @@ export default function StudentResults() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-5 h-auto flex-wrap gap-1 bg-white/80 border border-warm-border p-1">
+          <TabsList className="mb-5 h-auto flex-wrap gap-1 bg-white/80 border border-border p-1">
             <TabsTrigger value="mcq" className="gap-1.5">
               <Target className="h-3.5 w-3.5" />
               MCQ Scores
@@ -331,7 +331,7 @@ export default function StudentResults() {
           {/* ——— MCQ Scores ——— */}
           <TabsContent value="mcq" className="space-y-4">
             {filteredMcqGroups.length === 0 ? (
-              <Card className="border-warm-border bg-white/80">
+              <Card className="border-border bg-white/80">
                 <CardContent className="py-14 text-center">
                   <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-turquoise/15">
                     <Target className="h-7 w-7 text-brand-turquoise" />
@@ -355,9 +355,9 @@ export default function StudentResults() {
                 {filteredMcqGroups.map((group) => (
                   <Card
                     key={group.key}
-                    className="border-warm-border bg-white/80 shadow-sm overflow-hidden"
+                    className="border-border bg-white/80 shadow-sm overflow-hidden"
                   >
-                    <CardHeader className="pb-3 border-b border-warm-border/60 bg-cream-subtle/40">
+                    <CardHeader className="pb-3 border-b border-border/60 bg-cream-subtle/40">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                         <ScoreRing percent={group.latest.percent} />
                         <div className="flex-1 min-w-0">
@@ -370,7 +370,7 @@ export default function StudentResults() {
                           <div className="flex flex-wrap gap-2 mt-2">
                             <Badge
                               variant="outline"
-                              className="border-warm-border font-normal"
+                              className="border-border font-normal"
                             >
                               {group.attempts.length} attempt
                               {group.attempts.length === 1 ? "" : "s"}
@@ -398,10 +398,10 @@ export default function StudentResults() {
                     </CardHeader>
 
                     <CardContent className="p-0">
-                      <div className="px-4 sm:px-5 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-warm-border/40">
+                      <div className="px-4 sm:px-5 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border/40">
                         Attempt history
                       </div>
-                      <ul className="divide-y divide-warm-border/50">
+                      <ul className="divide-y divide-border/50">
                         {/* Newest first so latest is on top; still lists every attempt */}
                         {[...group.attempts].reverse().map((record) => {
                           const tone = scoreTone(record.percent);
@@ -446,7 +446,7 @@ export default function StudentResults() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="gap-1 border-warm-border shrink-0 self-start sm:self-center"
+                                className="gap-1 border-border shrink-0 self-start sm:self-center"
                                 onClick={() => openMcqDetail(record)}
                               >
                                 <Eye className="h-3.5 w-3.5" />
@@ -468,7 +468,7 @@ export default function StudentResults() {
             {isLoadingAttempts ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <Card key={i} className="animate-pulse border-warm-border">
+                  <Card key={i} className="animate-pulse border-border">
                     <CardContent className="p-5 space-y-3">
                       <div className="h-5 bg-muted rounded w-2/3" />
                       <div className="h-4 bg-muted rounded w-1/3" />
@@ -477,7 +477,7 @@ export default function StudentResults() {
                 ))}
               </div>
             ) : sortedAttempts.length === 0 ? (
-              <Card className="border-warm-border bg-white/80">
+              <Card className="border-border bg-white/80">
                 <CardContent className="py-14 text-center">
                   <Award className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-1">No written exams yet</h3>
@@ -498,7 +498,7 @@ export default function StudentResults() {
                   return (
                     <Card
                       key={attempt.id}
-                      className="border-warm-border bg-white/80 shadow-sm hover:shadow-md transition-shadow"
+                      className="border-border bg-white/80 shadow-sm hover:shadow-md transition-shadow"
                     >
                       <CardHeader className="pb-2">
                         <div className="flex justify-between gap-3 items-start">
@@ -541,7 +541,7 @@ export default function StudentResults() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="gap-1 border-warm-border"
+                          className="gap-1 border-border"
                           disabled={!isCompleted}
                           onClick={() => openExamDetail(attempt)}
                         >
@@ -558,7 +558,7 @@ export default function StudentResults() {
 
           <TabsContent value="progress">
             {courseProgressData.length === 0 ? (
-              <Card className="border-warm-border bg-white/80">
+              <Card className="border-border bg-white/80">
                 <CardContent className="py-14 text-center">
                   <Calendar className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-1">No courses enrolled</h3>
@@ -570,7 +570,7 @@ export default function StudentResults() {
             ) : (
               <div className="space-y-3">
                 {courseProgressData.map((course, index) => (
-                  <Card key={index} className="border-warm-border bg-white/80 shadow-sm">
+                  <Card key={index} className="border-border bg-white/80 shadow-sm">
                     <CardHeader className="pb-2">
                       <div className="flex justify-between gap-3">
                         <CardTitle className="text-lg">{course.name}</CardTitle>
@@ -602,7 +602,7 @@ export default function StudentResults() {
 
           <TabsContent value="analytics" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="border-warm-border bg-white/80 shadow-sm">
+              <Card className="border-border bg-white/80 shadow-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center text-base">
                     <BarChart2 className="h-5 w-5 mr-2 text-brand-turquoise" />
@@ -641,7 +641,7 @@ export default function StudentResults() {
                 </CardContent>
               </Card>
 
-              <Card className="border-warm-border bg-white/80 shadow-sm">
+              <Card className="border-border bg-white/80 shadow-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center text-base">
                     <BarChart2 className="h-5 w-5 mr-2 text-brand-blue" />
@@ -661,7 +661,7 @@ export default function StudentResults() {
                             type="monotone"
                             dataKey="score"
                             name="Score (%)"
-                            stroke="#0F766E"
+                            stroke="hsl(var(--primary))"
                             strokeWidth={2}
                             activeDot={{ r: 6 }}
                           />
@@ -677,7 +677,7 @@ export default function StudentResults() {
               </Card>
             </div>
 
-            <Card className="border-warm-border bg-white/80 shadow-sm">
+            <Card className="border-border bg-white/80 shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center text-base">
                   <BarChart2 className="h-5 w-5 mr-2 text-amber-600" />
@@ -697,7 +697,7 @@ export default function StudentResults() {
                         <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
                         <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
                         <Tooltip />
-                        <Bar dataKey="progress" name="Completion (%)" fill="#0E7490" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="progress" name="Completion (%)" fill="hsl(var(--brand-blue))" radius={[0, 4, 4, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -729,7 +729,7 @@ export default function StudentResults() {
                     <Badge variant="outline">Attempt {selectedMcq.attemptNumber}</Badge>
                   )}
                 </div>
-                <div className="rounded-xl border border-warm-border bg-cream-subtle/50 px-4 py-3 text-sm space-y-1">
+                <div className="rounded-xl border border-border bg-cream-subtle/50 px-4 py-3 text-sm space-y-1">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Submitted</span>
                     <span className="font-medium">{formatDate(selectedMcq.completedAt)}</span>
@@ -790,7 +790,7 @@ export default function StudentResults() {
                     <h3 className="text-base font-medium mb-3">Your Answers</h3>
                     <div className="space-y-3">
                       {questions?.map((question: Question, index: number) => (
-                        <div key={question.id} className="border border-warm-border rounded-lg p-3">
+                        <div key={question.id} className="border border-border rounded-lg p-3">
                           <h4 className="font-medium mb-1 text-sm">Question {index + 1}</h4>
                           <p className="text-gray-700 mb-2 text-sm">{question.text}</p>
                           <div className="bg-sky-50 rounded p-2.5">

@@ -312,7 +312,7 @@ export default function StudentTakeQuiz() {
   if (!lesson || lesson.contentType !== "quiz") {
     return (
       <div className="min-h-screen bg-app-main flex items-center justify-center p-4 sm:p-6">
-        <Card className="max-w-md w-full border-warm-border">
+        <Card className="max-w-md w-full border-border">
           <CardHeader>
             <CardTitle>Quiz not found</CardTitle>
             <CardDescription>
@@ -401,7 +401,7 @@ export default function StudentTakeQuiz() {
         {!started ? (
           <div className="flex-1 min-h-0 w-full grid grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[300px_1fr] overflow-hidden rounded-2xl border border-white/40 shadow-xl">
             {/* Left: same gradient arena panel */}
-            <aside className="relative overflow-hidden text-white bg-gradient-to-br from-[#0F766E] via-[#14B8A6] to-[#0E7490] px-5 py-6 flex flex-col gap-5">
+            <aside className="relative overflow-hidden text-white bg-gradient-to-br from-primary via-primary to-brand-blue px-5 py-6 flex flex-col gap-5">
               <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
               <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-black/10 blur-2xl pointer-events-none" />
 
@@ -488,7 +488,7 @@ export default function StudentTakeQuiz() {
             {/* Right: rules + CTA */}
             <section className="bg-[#F4F8F9] flex flex-col min-h-0 min-w-0">
               <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 sm:py-8">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white border border-warm-border px-3 py-1 text-[11px] font-medium text-muted-foreground mb-4 shadow-sm">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white border border-border px-3 py-1 text-[11px] font-medium text-muted-foreground mb-4 shadow-sm">
                   <span
                     className={cn(
                       "h-1.5 w-1.5 rounded-full",
@@ -530,7 +530,7 @@ export default function StudentTakeQuiz() {
                   ].map((rule) => (
                     <div
                       key={rule}
-                      className="flex items-start gap-2.5 rounded-2xl bg-white/90 border border-warm-border px-3.5 py-3 shadow-sm"
+                      className="flex items-start gap-2.5 rounded-2xl bg-white/90 border border-border px-3.5 py-3 shadow-sm"
                     >
                       <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-accent-brand text-white">
                         <Shield className="h-3 w-3" />
@@ -541,11 +541,11 @@ export default function StudentTakeQuiz() {
                 </div>
               </div>
 
-              <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-5 sm:px-8 py-4 border-t border-warm-border bg-white/70 backdrop-blur-sm">
+              <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-5 sm:px-8 py-4 border-t border-border bg-white/70 backdrop-blur-sm">
                 <Link href={`/student/my-courses/${courseId}`} className="sm:w-auto w-full">
                   <Button
                     variant="outline"
-                    className="h-11 w-full sm:w-auto px-5 rounded-xl border-warm-border"
+                    className="h-11 w-full sm:w-auto px-5 rounded-xl border-border"
                   >
                     Back to course
                   </Button>

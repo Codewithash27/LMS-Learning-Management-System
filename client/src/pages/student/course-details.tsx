@@ -239,7 +239,7 @@ export default function StudentCourseDetails() {
           </Link>
 
           {thumb ? (
-            <div className="mb-4 overflow-hidden rounded-2xl border border-warm-border bg-muted">
+            <div className="mb-4 overflow-hidden rounded-2xl border border-border bg-muted">
               <img
                 src={thumb}
                 alt=""
@@ -436,7 +436,7 @@ export default function StudentCourseDetails() {
                         </CardHeader>
                         <CardContent>
                           {activeLesson.contentType === 'quiz' ? (
-                            <div className="rounded-2xl border border-warm-border bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10 p-6 space-y-4">
+                            <div className="rounded-2xl border border-border bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10 p-6 space-y-4">
                               {(() => {
                                 const hasDraft =
                                   !!activeModuleId &&
@@ -536,7 +536,7 @@ export default function StudentCourseDetails() {
                               </div>
                             </>
                           ) : documentUrl ? (
-                            <div className="rounded-2xl border border-warm-border bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10 p-6 space-y-4">
+                            <div className="rounded-2xl border border-border bg-gradient-to-br from-brand-turquoise/10 to-brand-blue/10 p-6 space-y-4">
                               <div className="flex items-start justify-between gap-4">
                                 <div>
                                   <h3 className="text-lg font-semibold">{activeLesson.title}</h3>

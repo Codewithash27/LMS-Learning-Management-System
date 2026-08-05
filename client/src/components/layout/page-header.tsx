@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { ChevronRight, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { colorTokens } from "@/tokens/colors";
 import { useAuth } from "@/hooks/use-auth";
 
 export type NavLink = {
@@ -17,9 +16,6 @@ export type PageHeaderProps = {
   className?: string;
 };
 
-/**
- * PageHeader — Home button + breadcrumb trail + optional actions.
- */
 export default function PageHeader({
   links,
   homePath,
@@ -45,12 +41,9 @@ export default function PageHeader({
           <button
             type="button"
             aria-label="Home"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-[0_4px_12px_rgba(15,118,110,0.2)] transition-all duration-200 hover:scale-110 hover:shadow-[0_6px_16px_rgba(15,118,110,0.3)]"
-            style={{
-              background: `linear-gradient(135deg, ${colorTokens.primary.main} 0%, ${colorTokens.info.main} 100%)`,
-            }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition hover:opacity-90"
           >
-            <Home className="h-5 w-5" />
+            <Home className="h-4 w-4" />
           </button>
         </Link>
 
@@ -59,7 +52,7 @@ export default function PageHeader({
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
             <button
               type="button"
-              className="whitespace-nowrap text-sm font-medium text-foreground hover:font-bold sm:text-[15px]"
+              className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
               onClick={() => setLocation(link.path)}
             >
               {link.title}
@@ -70,7 +63,7 @@ export default function PageHeader({
         {links.length > 0 && (
           <>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="whitespace-nowrap text-base font-bold text-foreground sm:text-lg">
+            <span className="font-display whitespace-nowrap text-base font-bold text-foreground sm:text-lg">
               {links[links.length - 1].title}
             </span>
           </>
