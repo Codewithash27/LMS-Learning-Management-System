@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Users, Clock, Plus, Eye, GraduationCap } from "lucide-react";
+import { Calendar as CalendarIcon, Users, Clock, Plus, Eye, GraduationCap, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { batchFormSchema, type BatchFormValues } from "@/lib/form-schemas";
 import DashboardLayout from "@/components/layout/dashboard-layout";
@@ -47,6 +47,14 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   CreateFormDialog,
   CreateFormFooter,
   FormSection,
@@ -56,50 +64,51 @@ import {
 
 const CREATE_BATCH_FORM_ID = "create-batch-form";
 
+interface User {
+  id: number;
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  tenantId: number;
+}
+
+interface Course {
+  id: number;
+  title: string;
+  description: string;
+  tenantId: number;
+  createdBy: number;
+  isEnrollmentRequired: boolean;
+}
+
+interface Batch {
+  id: number;
+  name: string;
+  courseId: number;
+  batchCode: string;
+  trainerId: number;
+  startDate: string;
+  batchTime: string;
+  tenantId: number;
+  createdBy: number;
+  description: string | null;
+  maxStudents: number | null;
+  isActive: boolean;
+}
+
 export default function BatchesPage() {
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openEnrollDialog, setOpenEnrollDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
+  const [batchToDelete, setBatchToDelete] = useState<Batch | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const queryClient = useQueryClient();
 
-  // Define interface types for API responses
-  interface User {
-    id: number;
-    username: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    role: string;
-    tenantId: number;
-  }
-
-  interface Course {
-    id: number;
-    title: string;
-    description: string;
-    tenantId: number;
-    createdBy: number;
-    isEnrollmentRequired: boolean;
-  }
-
-  interface Batch {
-    id: number;
-    name: string;
-    courseId: number;
-    batchCode: string;
-    trainerId: number;
-    startDate: string;
-    batchTime: string;
-    tenantId: number;
-    createdBy: number;
-    description: string | null;
-    maxStudents: number | null;
-    isActive: boolean;
-  }
-  
   // Fetch batches
   const { data: batches, isLoading: isLoadingBatches } = useQuery<Batch[]>({
     queryKey: ['/api/batches'],
@@ -171,9 +180,42 @@ export default function BatchesPage() {
     },
   });
 
+  const deleteBatchMutation = useMutation({
+    mutationFn: async (batchId: number) => {
+      await apiRequest("DELETE", `/api/batches/${batchId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Batch deleted",
+        description: `${batchToDelete?.name || "Batch"} has been deleted.`,
+      });
+      setOpenDeleteDialog(false);
+      setBatchToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/batches"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to delete batch",
+        description: error.message || "Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Handle form submission
   function onSubmit(values: BatchFormValues) {
     createBatchMutation.mutate(values);
+  }
+
+  function handleDeleteBatch(batch: Batch) {
+    setBatchToDelete(batch);
+    setOpenDeleteDialog(true);
+  }
+
+  function confirmDeleteBatch() {
+    if (batchToDelete?.id) {
+      deleteBatchMutation.mutate(batchToDelete.id);
+    }
   }
 
   const selectedBatch = batches?.find((b) => b.id === selectedBatchId);
@@ -373,6 +415,16 @@ export default function BatchesPage() {
                       }}
                     >
                       <Users className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 p-0 text-[#d32f2f] hover:bg-[#d32f2f]/10"
+                      aria-label="Delete batch"
+                      onClick={() => handleDeleteBatch(batch)}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>
@@ -637,6 +689,44 @@ export default function BatchesPage() {
         courseTitle={selectedBatchCourse?.title}
         students={students}
       />
+
+      <Dialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100">
+              <Trash2 className="h-6 w-6 text-red-600" />
+            </div>
+            <DialogTitle className="text-center text-lg">Delete Batch</DialogTitle>
+            <DialogDescription className="text-center text-[15px]">
+              {batchToDelete &&
+                `Are you sure you want to delete "${batchToDelete.name}"? This cannot be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <div className="flex gap-2">
+              <Users className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>Batch enrollments and related student assignments for this batch will be removed.</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpenDeleteDialog(false)}
+              disabled={deleteBatchMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteBatch}
+              disabled={deleteBatchMutation.isPending}
+            >
+              {deleteBatchMutation.isPending ? "Deleting..." : "Delete Batch"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
