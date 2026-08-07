@@ -2005,6 +2005,16 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         }
         await storage.setBatchCourses(batchId, rawCourseIds);
         req.body.courseId = rawCourseIds[0];
+
+        // Ensure existing batch members get enrollments for newly linked courses
+        const members = await storage.getBatchEnrollmentsByBatch(batchId);
+        await Promise.all(
+          members.flatMap((member) =>
+            rawCourseIds.map((courseId) =>
+              storage.createEnrollment({ userId: member.userId, courseId })
+            )
+          )
+        );
       }
 
       const { courseIds: _ignored, ...batchFields } = req.body;

@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Users, Clock, Plus, Eye, GraduationCap, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Users, Clock, Plus, Eye, GraduationCap, Pencil, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { batchFormSchema, type BatchFormValues } from "@/lib/form-schemas";
 import DashboardLayout from "@/components/layout/dashboard-layout";
@@ -61,7 +61,13 @@ import {
   createFormLabelClass,
 } from "@/components/ui/create-form-dialog";
 
-const CREATE_BATCH_FORM_ID = "create-batch-form";
+const BATCH_FORM_ID = "batch-form";
+
+function parseBatchDate(value: string | Date | null | undefined): Date | undefined {
+  if (!value) return undefined;
+  const d = typeof value === "string" ? new Date(value) : value;
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
 
 interface User {
   id: number;
@@ -101,13 +107,15 @@ interface Batch {
 }
 
 export default function BatchesPage() {
-  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [openBatchDialog, setOpenBatchDialog] = useState(false);
+  const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [openEnrollDialog, setOpenEnrollDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
   const [batchToDelete, setBatchToDelete] = useState<Batch | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const isEditing = Boolean(editingBatch);
 
   const queryClient = useQueryClient();
 
@@ -148,9 +156,41 @@ export default function BatchesPage() {
     },
   });
 
-  // Reset form when dialog is opened/closed
+  // Reset / prefill form when dialog opens or closes
   useEffect(() => {
-    if (!openCreateDialog) {
+    if (!openBatchDialog) {
+      setEditingBatch(null);
+      form.reset({
+        name: "",
+        batchCode: "",
+        courseIds: [],
+        batchTime: "09:00 AM",
+        description: "",
+        isActive: true,
+      });
+      return;
+    }
+
+    if (editingBatch) {
+      const startDate = parseBatchDate(editingBatch.startDate) || new Date();
+      const endDate = parseBatchDate(editingBatch.endDate) || startDate;
+      const courseIds =
+        editingBatch.courseIds && editingBatch.courseIds.length > 0
+          ? editingBatch.courseIds
+          : [editingBatch.courseId];
+
+      form.reset({
+        name: editingBatch.name,
+        batchCode: editingBatch.batchCode,
+        courseIds,
+        trainerId: editingBatch.trainerId,
+        startDate,
+        endDate,
+        batchTime: editingBatch.batchTime || "09:00 AM",
+        description: editingBatch.description || "",
+        isActive: editingBatch.isActive,
+      });
+    } else {
       form.reset({
         name: "",
         batchCode: "",
@@ -160,7 +200,7 @@ export default function BatchesPage() {
         isActive: true,
       });
     }
-  }, [openCreateDialog, form]);
+  }, [openBatchDialog, editingBatch, form]);
 
   // Mutation for creating a batch
   const createBatchMutation = useMutation({
@@ -185,12 +225,46 @@ export default function BatchesPage() {
         title: "🎉 Batch created successfully",
         description: "The batch has been created successfully.",
       });
-      setOpenCreateDialog(false);
+      setOpenBatchDialog(false);
       queryClient.invalidateQueries({ queryKey: ["/api/batches"] });
     },
     onError: (error: any) => {
       toast({
         title: "Failed to create batch",
+        description: error.message || "Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateBatchMutation = useMutation({
+    mutationFn: async ({ id, values }: { id: number; values: BatchFormValues }) => {
+      const formattedValues = {
+        name: values.name,
+        batchCode: values.batchCode,
+        courseIds: values.courseIds,
+        courseId: values.courseIds[0],
+        trainerId: values.trainerId,
+        startDate: format(values.startDate, "yyyy-MM-dd"),
+        endDate: format(values.endDate, "yyyy-MM-dd"),
+        batchTime: values.batchTime,
+        description: values.description || null,
+        isActive: values.isActive,
+      };
+
+      return await apiRequest("PUT", `/api/batches/${id}`, formattedValues);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Batch updated",
+        description: "The batch has been updated successfully.",
+      });
+      setOpenBatchDialog(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/batches"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update batch",
         description: error.message || "Please try again later.",
         variant: "destructive",
       });
@@ -221,7 +295,21 @@ export default function BatchesPage() {
 
   // Handle form submission
   function onSubmit(values: BatchFormValues) {
-    createBatchMutation.mutate(values);
+    if (editingBatch) {
+      updateBatchMutation.mutate({ id: editingBatch.id, values });
+    } else {
+      createBatchMutation.mutate(values);
+    }
+  }
+
+  function openCreateBatch() {
+    setEditingBatch(null);
+    setOpenBatchDialog(true);
+  }
+
+  function handleEditBatch(batch: Batch) {
+    setEditingBatch(batch);
+    setOpenBatchDialog(true);
   }
 
   function handleDeleteBatch(batch: Batch) {
@@ -293,7 +381,7 @@ export default function BatchesPage() {
             action={
               <Button
                 type="button"
-                onClick={() => setOpenCreateDialog(true)}
+                onClick={openCreateBatch}
                 className="h-11 w-11 shrink-0 rounded-xl p-0"
                 aria-label="Create batch"
               >
@@ -332,7 +420,7 @@ export default function BatchesPage() {
                   : "Create your first batch to get started."}
               </p>
               {!searchTerm && (
-                <Button type="button" onClick={() => setOpenCreateDialog(true)} className="gap-2 rounded-xl">
+                <Button type="button" onClick={openCreateBatch} className="gap-2 rounded-xl">
                   <Plus className="h-4 w-4" />
                   Create Batch
                 </Button>
@@ -434,6 +522,16 @@ export default function BatchesPage() {
                       size="sm"
                       variant="ghost"
                       className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
+                      aria-label="Edit batch"
+                      onClick={() => handleEditBatch(batch)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
                       aria-label="Enroll students"
                       onClick={() => {
                         setSelectedBatchId(batch.id);
@@ -461,25 +559,29 @@ export default function BatchesPage() {
       )}
 
       <CreateFormDialog
-        open={openCreateDialog}
-        onOpenChange={setOpenCreateDialog}
-        title="Create Batch"
-        description="Fill in the details to create a new batch. Students in a batch will be enrolled in all selected courses."
+        open={openBatchDialog}
+        onOpenChange={setOpenBatchDialog}
+        title={isEditing ? "Edit Batch" : "Create Batch"}
+        description={
+          isEditing
+            ? "Update batch details, courses, schedule, and trainer."
+            : "Fill in the details to create a new batch. Students in a batch will be enrolled in all selected courses."
+        }
         icon={<Users className="h-7 w-7 text-white" />}
         maxWidth="max-w-2xl"
         footer={
           <CreateFormFooter
-            formId={CREATE_BATCH_FORM_ID}
-            onCancel={() => setOpenCreateDialog(false)}
-            submitLabel="Create Batch"
-            pendingLabel="Creating..."
-            isPending={createBatchMutation.isPending}
+            formId={BATCH_FORM_ID}
+            onCancel={() => setOpenBatchDialog(false)}
+            submitLabel={isEditing ? "Save Changes" : "Create Batch"}
+            pendingLabel={isEditing ? "Saving..." : "Creating..."}
+            isPending={createBatchMutation.isPending || updateBatchMutation.isPending}
           />
         }
       >
         <Form {...form}>
           <form
-            id={CREATE_BATCH_FORM_ID}
+            id={BATCH_FORM_ID}
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4"
           >
