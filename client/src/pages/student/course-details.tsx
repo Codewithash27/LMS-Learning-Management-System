@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   Clock,
+  ClipboardList,
   ExternalLink,
   FileText,
   Play,
@@ -78,6 +79,20 @@ export default function StudentCourseDetails() {
     queryKey: [`/api/course-progress/${courseId}`],
     enabled: !!courseId && !!enrollment,
   });
+
+  const { data: allExams = [] } = useQuery<any[]>({
+    queryKey: ["/api/exams"],
+    enabled: !!courseId,
+  });
+
+  const { data: examAttempts = [] } = useQuery<any[]>({
+    queryKey: ["/api/exam-attempts/user"],
+    enabled: !!courseId,
+  });
+
+  const courseExams = (allExams as any[])
+    .filter((e) => Number(e.courseId) === Number(courseId))
+    .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
   
   // Update progress mutation
   const updateProgressMutation = useMutation({
@@ -278,6 +293,7 @@ export default function StudentCourseDetails() {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="content">Course Content</TabsTrigger>
+            <TabsTrigger value="exams">Exams</TabsTrigger>
           </TabsList>
           
           <TabsContent value="overview" className="space-y-6">
@@ -638,6 +654,112 @@ export default function StudentCourseDetails() {
                 )}
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="exams" className="space-y-4">
+            <Card className="backdrop-blur-sm bg-white/70 border border-white/20 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5 text-primary" />
+                  Course Exams
+                </CardTitle>
+                <CardDescription>
+                  Written exams for this course open in a new tab. Each exam can be submitted only once.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {courseExams.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    No exams published for this course yet.
+                  </p>
+                ) : (
+                  courseExams.map((exam) => {
+                    const attempted = (examAttempts as any[]).some(
+                      (a) => Number(a.examId) === Number(exam.id) && a.completedAt
+                    );
+                    const inProgress = (examAttempts as any[]).some(
+                      (a) => Number(a.examId) === Number(exam.id) && !a.completedAt
+                    );
+                    const closed = exam.acceptingResponses === false;
+                    const canStart = !attempted && !closed;
+                    const label = attempted
+                      ? "Attempted"
+                      : closed
+                        ? "Unavailable"
+                        : inProgress
+                          ? "Continue Exam"
+                          : "Start Exam";
+
+                    return (
+                      <div
+                        key={exam.id}
+                        className="flex flex-col gap-3 rounded-xl border border-border bg-white/80 p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 shrink-0 text-primary" />
+                            <p className="truncate font-semibold text-foreground">{exam.title}</p>
+                          </div>
+                          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                            {exam.description || "No description"}
+                            {exam.duration ? ` · ${exam.duration} min` : ""}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Opens in a new tab · one attempt only
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {attempted ? (
+                            <Badge className="rounded-full border-slate-200 bg-slate-100 text-slate-800">
+                              Attempted
+                            </Badge>
+                          ) : closed ? (
+                            <Badge className="rounded-full border-red-200 bg-red-100 text-red-800">
+                              Closed
+                            </Badge>
+                          ) : inProgress ? (
+                            <Badge className="rounded-full border-amber-200 bg-amber-100 text-amber-800">
+                              In progress
+                            </Badge>
+                          ) : (
+                            <Badge className="rounded-full border-green-200 bg-green-100 text-green-800">
+                              Available
+                            </Badge>
+                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="gap-1.5 rounded-xl"
+                            variant={canStart ? "default" : "outline"}
+                            disabled={!canStart}
+                            onClick={() => {
+                              if (!canStart) {
+                                toast({
+                                  title: attempted ? "Already attempted" : "Cannot start exam",
+                                  description: attempted
+                                    ? "You already submitted this exam. Only one attempt is allowed."
+                                    : "This exam is not available.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              window.open(
+                                `/student/take-exam/${exam.id}`,
+                                "_blank",
+                                "noopener,noreferrer"
+                              );
+                            }}
+                          >
+                            {label}
+                            {canStart ? <ExternalLink className="h-3.5 w-3.5" /> : null}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

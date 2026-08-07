@@ -166,7 +166,7 @@ export default function StudentDashboard() {
 
         if (isCompleted) {
           urgency = "low";
-          urgencyLabel = "Completed";
+          urgencyLabel = "Attempted";
         } else if (isStarted) {
           urgency = "medium";
           urgencyLabel = "In progress";
@@ -184,13 +184,18 @@ export default function StudentDashboard() {
           subtitle: course?.title || exam.description || "Assigned course exam",
           urgency,
           urgencyLabel,
-          time: isOpen ? "Accepting responses" : "Not accepting responses",
+          time: isCompleted
+            ? "Submitted · one attempt used"
+            : isOpen
+              ? "Accepting responses"
+              : "Not accepting responses",
           _sort: isCompleted ? 2 : isStarted ? 1 : 0,
+          _id: Number(exam.id),
         };
       })
-      .sort((a, b) => a._sort - b._sort)
+      .sort((a, b) => a._sort - b._sort || b._id - a._id)
       .slice(0, 5)
-      .map(({ _sort, ...exam }) => exam);
+      .map(({ _sort, _id, ...exam }) => exam);
   }, [exams, enrolledCourseIds, courseById, examAttempts]);
 
   // Recent activities — name first (lesson/exam/course), action as subtitle

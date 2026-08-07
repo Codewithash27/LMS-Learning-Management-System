@@ -33,6 +33,7 @@ import StudentResults from "@/pages/student/results";
 import StudentProfile from "@/pages/student/profile";
 import StudentAIAssistant from "@/pages/student/ai-assistant";
 import StudentTakeQuiz from "@/pages/student/take-quiz";
+import StudentTakeExam from "@/pages/student/take-exam";
 
 function Router() {
   return (
@@ -59,6 +60,7 @@ function Router() {
       <ProtectedRoute path="/student/dashboard" component={StudentDashboard} roles={["student"]} />
       <ProtectedRoute path="/student/my-courses" component={StudentMyCourses} roles={["student"]} />
       <ProtectedRoute path="/student/quiz/:courseId/:moduleId/:lessonId" component={StudentTakeQuiz} roles={["student"]} />
+      <ProtectedRoute path="/student/take-exam/:examId" component={StudentTakeExam} roles={["student"]} />
       <ProtectedRoute path="/student/my-courses/:id" component={StudentCourseDetails} roles={["student"]} />
       <ProtectedRoute path="/student/upcoming-exams" component={StudentUpcomingExams} roles={["student"]} />
       <ProtectedRoute path="/student/results" component={StudentResults} roles={["student"]} />
