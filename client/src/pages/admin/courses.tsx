@@ -18,7 +18,6 @@ import {
   List,
   Clock,
   UserPlus,
-  CheckCircle2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,6 +37,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  CreateFormDialog,
+  CreateFormFooter,
+} from "@/components/ui/create-form-dialog";
 import {
   Select,
   SelectContent,
@@ -671,108 +674,88 @@ export default function AdminCourses() {
         course={selectedCourse}
       />
 
-      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-brand">
-              <UserPlus className="h-6 w-6 text-white" />
-            </div>
-            <DialogTitle className="text-center text-xl font-bold">
-              Assign to Student
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              {selectedCourse
-                ? `Select students for "${selectedCourse.title}". Checked = enrolled.`
-                : "Select students to enroll"}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 py-1">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>
-                {selectedStudentIds.length} of {students.length} selected
-              </span>
-              <span>{initialEnrolledIds.length} currently enrolled</span>
-            </div>
-
-            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border bg-white">
-              {isLoadingEnrollments ? (
-                <div className="flex items-center justify-center py-10">
-                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                </div>
-              ) : students.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  No students available
-                </p>
-              ) : (
-                <ul className="divide-y divide-border/80">
-                  {students.map((student) => {
-                    const checked = selectedStudentIds.includes(student.id);
-                    const wasEnrolled = initialEnrolledIds.includes(student.id);
-                    return (
-                      <li key={student.id}>
-                        <label
-                          className={cn(
-                            "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/70",
-                            checked && "bg-primary/5"
-                          )}
-                        >
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(value) =>
-                              toggleStudent(student.id, value === true)
-                            }
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-[15px] font-medium text-[#2D3748]">
-                              {student.firstName} {student.lastName}
-                            </p>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {student.username}
-                              {student.email ? ` · ${student.email}` : ""}
-                            </p>
-                          </div>
-                          {wasEnrolled ? (
-                            <Badge className="shrink-0 rounded-full border border-green-200 bg-green-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-800">
-                              Enrolled
-                            </Badge>
-                          ) : null}
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
+      <CreateFormDialog
+        open={isAssignDialogOpen}
+        onOpenChange={setIsAssignDialogOpen}
+        title="Assign to Student"
+        description={
+          selectedCourse
+            ? `Select students for "${selectedCourse.title}". Checked = enrolled.`
+            : "Select students to enroll"
+        }
+        icon={<UserPlus className="h-7 w-7 text-white" />}
+        maxWidth="max-w-lg"
+        footer={
+          <CreateFormFooter
+            onCancel={() => setIsAssignDialogOpen(false)}
+            submitLabel="Save Enrollments"
+            pendingLabel="Saving..."
+            isPending={assignMutation.isPending}
+            submitDisabled={isLoadingEnrollments}
+            submitType="button"
+            onSubmit={handleAssignStudent}
+          />
+        }
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>
+              {selectedStudentIds.length} of {students.length} selected
+            </span>
+            <span>{initialEnrolledIds.length} currently enrolled</span>
           </div>
 
-          <DialogFooter className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsAssignDialogOpen(false)}
-              disabled={assignMutation.isPending}
-              className="flex-1 rounded-xl"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAssignStudent}
-              disabled={assignMutation.isPending || isLoadingEnrollments}
-              className="flex-1 gap-2 rounded-xl"
-            >
-              {assignMutation.isPending ? (
-                "Saving..."
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Save Enrollments
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div className="max-h-[min(320px,40vh)] overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-white">
+            {isLoadingEnrollments ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            ) : students.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                No students available
+              </p>
+            ) : (
+              <ul className="divide-y divide-border/80">
+                {students.map((student) => {
+                  const checked = selectedStudentIds.includes(student.id);
+                  const wasEnrolled = initialEnrolledIds.includes(student.id);
+                  return (
+                    <li key={student.id}>
+                      <label
+                        className={cn(
+                          "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/70",
+                          checked && "bg-primary/5"
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(value) =>
+                            toggleStudent(student.id, value === true)
+                          }
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-medium text-[#2D3748]">
+                            {student.firstName} {student.lastName}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {student.username}
+                            {student.email ? ` · ${student.email}` : ""}
+                          </p>
+                        </div>
+                        {wasEnrolled ? (
+                          <Badge className="shrink-0 rounded-full border border-green-200 bg-green-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-800">
+                            Enrolled
+                          </Badge>
+                        ) : null}
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      </CreateFormDialog>
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="max-w-md">
