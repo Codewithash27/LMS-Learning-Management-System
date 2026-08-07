@@ -335,8 +335,10 @@ export default function AdminStudents() {
     setIsDeleteDialogOpen(true);
   };
   
-  // Filter only students
-  const students = (allUsers as any[]).filter((user) => user.role === "student");
+  // Filter only students — newest enrolled first (higher id = more recent)
+  const students = (allUsers as any[])
+    .filter((user) => user.role === "student")
+    .sort((a, b) => b.id - a.id);
   
   // Filter students based on search term and status
   const filteredStudents = students.filter((student: any) => {
