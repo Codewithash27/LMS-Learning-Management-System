@@ -95,6 +95,7 @@ export default function AdminStudents() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
   const [initialEnrolledIds, setInitialEnrolledIds] = useState<number[]>([]);
+  const [batchLockedCourseIds, setBatchLockedCourseIds] = useState<number[]>([]);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -127,6 +128,27 @@ export default function AdminStudents() {
     },
     enabled: isAssignDialogOpen && !!selectedStudent?.id,
   });
+
+  const { data: batchLockedData, isLoading: isLoadingBatchLocks } = useQuery<{
+    courseIds: number[];
+  }>({
+    queryKey: ["/api/enrollments/user", selectedStudent?.id, "batch-locked-courses"],
+    queryFn: async () => {
+      if (!selectedStudent?.id) return { courseIds: [] };
+      const res = await apiRequest(
+        "GET",
+        `/api/enrollments/user/${selectedStudent.id}/batch-locked-courses`
+      );
+      return res.json();
+    },
+    enabled: isAssignDialogOpen && !!selectedStudent?.id,
+  });
+
+  useEffect(() => {
+    setBatchLockedCourseIds(
+      (batchLockedData?.courseIds || []).map((id) => Number(id))
+    );
+  }, [batchLockedData]);
 
   const createStudentMutation = useMutation({
     mutationFn: async (payload: CreateStudentFormValues) => {
@@ -204,10 +226,18 @@ export default function AdminStudents() {
     }
     if (isLoadingEnrollments || assignSelectionReady.current) return;
     const enrolledIds = studentEnrollments.map((e: any) => Number(e.courseId));
-    setInitialEnrolledIds(enrolledIds);
-    setSelectedCourseIds(enrolledIds);
+    const locked = (batchLockedData?.courseIds || []).map((id) => Number(id));
+    const merged = Array.from(new Set([...enrolledIds, ...locked]));
+    setInitialEnrolledIds(merged);
+    setSelectedCourseIds(merged);
     assignSelectionReady.current = true;
-  }, [isAssignDialogOpen, isLoadingEnrollments, studentEnrollments]);
+  }, [
+    isAssignDialogOpen,
+    isLoadingEnrollments,
+    isLoadingBatchLocks,
+    studentEnrollments,
+    batchLockedData,
+  ]);
 
   // Delete student mutation
   const deleteStudentMutation = useMutation({
@@ -233,6 +263,15 @@ export default function AdminStudents() {
   });
   
   const toggleCourse = (courseId: number, checked: boolean) => {
+    if (!checked && batchLockedCourseIds.includes(courseId)) {
+      toast({
+        title: "Course locked by batch",
+        description:
+          "This course comes from a batch. Remove the student from that batch first.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedCourseIds((prev) =>
       checked ? [...prev, courseId] : prev.filter((id) => id !== courseId)
     );
@@ -243,8 +282,12 @@ export default function AdminStudents() {
     if (!selectedStudent?.id) return;
     const selected = selectedCourseIds.map(Number);
     const initial = initialEnrolledIds.map(Number);
+    const locked = new Set(batchLockedCourseIds.map(Number));
     const toAdd = selected.filter((id) => !initial.includes(id));
-    const toRemove = initial.filter((id) => !selected.includes(id));
+    // Never attempt to remove batch-locked courses
+    const toRemove = initial.filter(
+      (id) => !selected.includes(id) && !locked.has(id)
+    );
     if (toAdd.length === 0 && toRemove.length === 0) {
       toast({
         title: "No changes",
@@ -271,6 +314,7 @@ export default function AdminStudents() {
     setSelectedStudent(student);
     setSelectedCourseIds([]);
     setInitialEnrolledIds([]);
+    setBatchLockedCourseIds([]);
     assignSelectionReady.current = false;
     setIsAssignDialogOpen(true);
   };
@@ -809,7 +853,7 @@ export default function AdminStudents() {
             </DialogTitle>
             <DialogDescription className="text-center">
               {selectedStudent
-                ? `Select courses for ${selectedStudent.firstName} ${selectedStudent.lastName}. Checked = enrolled.`
+                ? `Select courses for ${selectedStudent.firstName} ${selectedStudent.lastName}. Batch courses stay locked.`
                 : "Select courses to enroll"}
             </DialogDescription>
           </DialogHeader>
@@ -819,11 +863,14 @@ export default function AdminStudents() {
               <span>
                 {selectedCourseIds.length} of {courses.length} selected
               </span>
-              <span>{initialEnrolledIds.length} currently enrolled</span>
+              <span>
+                {batchLockedCourseIds.length} from batch
+                {batchLockedCourseIds.length === 1 ? "" : "es"}
+              </span>
             </div>
 
             <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border bg-white">
-              {isLoadingEnrollments ? (
+              {isLoadingEnrollments || isLoadingBatchLocks ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 </div>
@@ -836,16 +883,19 @@ export default function AdminStudents() {
                   {courses.map((course) => {
                     const checked = selectedCourseIds.includes(course.id);
                     const wasEnrolled = initialEnrolledIds.includes(course.id);
+                    const lockedByBatch = batchLockedCourseIds.includes(course.id);
                     return (
                       <li key={course.id}>
                         <label
                           className={cn(
                             "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/70",
-                            checked && "bg-primary/5"
+                            checked && "bg-primary/5",
+                            lockedByBatch && "cursor-not-allowed bg-muted/40"
                           )}
                         >
                           <Checkbox
-                            checked={checked}
+                            checked={checked || lockedByBatch}
+                            disabled={lockedByBatch}
                             onCheckedChange={(value) =>
                               toggleCourse(course.id, value === true)
                             }
@@ -860,7 +910,11 @@ export default function AdminStudents() {
                               </p>
                             ) : null}
                           </div>
-                          {wasEnrolled ? (
+                          {lockedByBatch ? (
+                            <Badge className="shrink-0 rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">
+                              Via batch
+                            </Badge>
+                          ) : wasEnrolled ? (
                             <Badge className="shrink-0 rounded-full border border-green-200 bg-green-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-800">
                               Enrolled
                             </Badge>

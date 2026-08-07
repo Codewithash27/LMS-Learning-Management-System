@@ -45,7 +45,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -87,9 +86,12 @@ interface Batch {
   id: number;
   name: string;
   courseId: number;
+  courseIds?: number[];
+  studentCount?: number;
   batchCode: string;
   trainerId: number;
   startDate: string;
+  endDate?: string | null;
   batchTime: string;
   tenantId: number;
   createdBy: number;
@@ -139,28 +141,43 @@ export default function BatchesPage() {
     defaultValues: {
       name: "",
       batchCode: "",
+      courseIds: [],
       batchTime: "09:00 AM",
       description: "",
-      isActive: true
+      isActive: true,
     },
   });
 
   // Reset form when dialog is opened/closed
   useEffect(() => {
     if (!openCreateDialog) {
-      form.reset();
+      form.reset({
+        name: "",
+        batchCode: "",
+        courseIds: [],
+        batchTime: "09:00 AM",
+        description: "",
+        isActive: true,
+      });
     }
   }, [openCreateDialog, form]);
 
   // Mutation for creating a batch
   const createBatchMutation = useMutation({
     mutationFn: async (values: BatchFormValues) => {
-      // Format the date for API
       const formattedValues = {
-        ...values,
-        startDate: format(values.startDate, "yyyy-MM-dd")
+        name: values.name,
+        batchCode: values.batchCode,
+        courseIds: values.courseIds,
+        courseId: values.courseIds[0],
+        trainerId: values.trainerId,
+        startDate: format(values.startDate, "yyyy-MM-dd"),
+        endDate: format(values.endDate, "yyyy-MM-dd"),
+        batchTime: values.batchTime,
+        description: values.description || null,
+        isActive: values.isActive,
       };
-      
+
       return await apiRequest("POST", "/api/batches", formattedValues);
     },
     onSuccess: () => {
@@ -169,7 +186,7 @@ export default function BatchesPage() {
         description: "The batch has been created successfully.",
       });
       setOpenCreateDialog(false);
-      queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/batches"] });
     },
     onError: (error: any) => {
       toast({
@@ -219,7 +236,16 @@ export default function BatchesPage() {
   }
 
   const selectedBatch = batches?.find((b) => b.id === selectedBatchId);
-  const selectedBatchCourse = courses?.find((c) => c.id === selectedBatch?.courseId);
+  const selectedBatchCourseIds =
+    selectedBatch?.courseIds && selectedBatch.courseIds.length > 0
+      ? selectedBatch.courseIds
+      : selectedBatch
+        ? [selectedBatch.courseId]
+        : [];
+  const selectedBatchCourseTitles = selectedBatchCourseIds
+    .map((id) => courses?.find((c) => c.id === id)?.title)
+    .filter(Boolean)
+    .join(", ");
 
   // Filter batches based on search term and filters
   const filteredBatches = batches?.filter((batch) => {
@@ -242,18 +268,6 @@ export default function BatchesPage() {
     setPage,
     setPageSize,
   } = useClientPagination(filteredBatches, 10);
-
-  // Calculate random student count for demo
-  const getRandomStudents = (batchId: number) => {
-    const students = [12, 18, 24, 15, 20, 16, 22, 19];
-    return students[batchId % students.length];
-  };
-
-  // Calculate random progress for demo
-  const getRandomProgress = (batchId: number) => {
-    const progress = [65, 78, 92, 45, 87, 72, 83, 68];
-    return progress[batchId % progress.length];
-  };
 
   return (
     <DashboardLayout>
@@ -304,7 +318,6 @@ export default function BatchesPage() {
             { key: "start", label: "Start Date" },
             { key: "time", label: "Time" },
             { key: "students", label: "Students" },
-            { key: "progress", label: "Progress" },
             { key: "status", label: "Status" },
             { key: "actions", label: "Actions", align: "right" },
           ]}
@@ -333,10 +346,15 @@ export default function BatchesPage() {
           onPageSizeChange={setPageSize}
         >
           {pageItems.map((batch) => {
-            const course = courses?.find(c => c.id === batch.courseId);
+            const courseIds =
+              batch.courseIds && batch.courseIds.length > 0
+                ? batch.courseIds
+                : [batch.courseId];
+            const courseTitles = courseIds
+              .map((id) => courses?.find((c) => c.id === id)?.title)
+              .filter(Boolean) as string[];
             const trainer = trainers?.find(t => t.id === batch.trainerId);
-            const studentCount = getRandomStudents(batch.id);
-            const progress = getRandomProgress(batch.id);
+            const studentCount = batch.studentCount ?? 0;
 
             return (
               <TableRow key={batch.id} className="hover:bg-muted/70">
@@ -352,13 +370,27 @@ export default function BatchesPage() {
                   </div>
                 </TableCell>
                 <TableCell className="text-[15px] text-[#2D3748]/90">
-                  {course?.title || "Unknown Course"}
+                  <div className="min-w-0">
+                    <p className="truncate">{courseTitles[0] || "Unknown Course"}</p>
+                    {courseTitles.length > 1 ? (
+                      <p className="text-xs text-muted-foreground">
+                        +{courseTitles.length - 1} more
+                      </p>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className="text-[15px] text-[#2D3748]/90">
                   {trainer ? `${trainer.firstName} ${trainer.lastName}` : "Unknown Trainer"}
                 </TableCell>
                 <TableCell className="text-[15px] text-[#2D3748]/90">
-                  {new Date(batch.startDate).toLocaleDateString()}
+                  <div>
+                    <p>{new Date(batch.startDate).toLocaleDateString()}</p>
+                    {batch.endDate ? (
+                      <p className="text-xs text-muted-foreground">
+                        to {new Date(batch.endDate).toLocaleDateString()}
+                      </p>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5 text-[15px] text-[#2D3748]/90">
@@ -370,12 +402,6 @@ export default function BatchesPage() {
                   <div className="flex items-center gap-1.5 text-[15px] text-[#2D3748]/90">
                     <GraduationCap className="h-3.5 w-3.5 text-[#A0AEC0]" />
                     <span>{studentCount}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Progress value={progress} className="h-2 w-16" />
-                    <span className="text-sm text-muted-foreground">{progress}%</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -438,7 +464,7 @@ export default function BatchesPage() {
         open={openCreateDialog}
         onOpenChange={setOpenCreateDialog}
         title="Create Batch"
-        description="Fill in the details to create a new batch. Students in a batch will be enrolled in the associated course."
+        description="Fill in the details to create a new batch. Students in a batch will be enrolled in all selected courses."
         icon={<Users className="h-7 w-7 text-white" />}
         maxWidth="max-w-2xl"
         footer={
@@ -459,7 +485,7 @@ export default function BatchesPage() {
           >
             <FormSection
               title="Batch details"
-              description="Name, code, course, and description"
+              description="Name, code, courses, and description"
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
@@ -502,36 +528,63 @@ export default function BatchesPage() {
 
                 <FormField
                   control={form.control}
-                  name="courseId"
+                  name="courseIds"
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
-                      <FormLabel className={createFormLabelClass}>Course</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value?.toString()}
-                      >
-                        <FormControl>
-                          <SelectTrigger className={createFormControlClass}>
-                            <SelectValue placeholder="Select a course" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {isLoadingCourses ? (
-                            <SelectItem value="loading" disabled>
-                              Loading courses...
-                            </SelectItem>
-                          ) : (
-                            courses?.map((course) => (
-                              <SelectItem key={course.id} value={course.id.toString()}>
-                                {course.title}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Course that will be taught in this batch
+                      <FormLabel className={createFormLabelClass}>Courses</FormLabel>
+                      <FormDescription className="mb-2">
+                        Select one or more courses for this batch. Checked = included.
                       </FormDescription>
+                      <div className="max-h-[220px] overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-white">
+                        {isLoadingCourses ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                          </div>
+                        ) : !courses?.length ? (
+                          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                            No courses available
+                          </p>
+                        ) : (
+                          <ul className="divide-y divide-border/80">
+                            {courses.map((course) => {
+                              const checked = field.value?.includes(course.id);
+                              return (
+                                <li key={course.id}>
+                                  <label
+                                    className={cn(
+                                      "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/70",
+                                      checked && "bg-primary/5"
+                                    )}
+                                  >
+                                    <Checkbox
+                                      checked={checked}
+                                      onCheckedChange={(value) => {
+                                        const next = value === true
+                                          ? [...(field.value || []), course.id]
+                                          : (field.value || []).filter((id) => id !== course.id);
+                                        field.onChange(next);
+                                      }}
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-[15px] font-medium text-[#2D3748]">
+                                        {course.title}
+                                      </p>
+                                    </div>
+                                    {checked ? (
+                                      <Badge className="shrink-0 rounded-full border border-green-200 bg-green-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-800">
+                                        Selected
+                                      </Badge>
+                                    ) : null}
+                                  </label>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {(field.value?.length || 0)} of {courses?.length || 0} selected
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -559,7 +612,7 @@ export default function BatchesPage() {
 
             <FormSection
               title="Schedule & trainer"
-              description="When the batch runs and who leads it"
+              description="When the batch runs and who leads it. Past start dates are allowed."
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
@@ -570,7 +623,7 @@ export default function BatchesPage() {
                       <FormLabel className={createFormLabelClass}>Trainer</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value?.toString()}
+                        value={field.value?.toString()}
                       >
                         <FormControl>
                           <SelectTrigger className={createFormControlClass}>
@@ -645,13 +698,64 @@ export default function BatchesPage() {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date(new Date().setHours(0, 0, 0, 0))
-                            }
+                            captionLayout="dropdown-buttons"
+                            fromYear={2018}
+                            toYear={new Date().getFullYear() + 8}
+                            defaultMonth={field.value}
                             initialFocus
                           />
                         </PopoverContent>
                       </Popover>
+                      <FormDescription>Past dates are allowed</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel className={createFormLabelClass}>End Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn(
+                                createFormControlClass,
+                                "w-full justify-start pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            captionLayout="dropdown-buttons"
+                            fromYear={2018}
+                            toYear={new Date().getFullYear() + 8}
+                            defaultMonth={field.value || form.getValues("startDate")}
+                            disabled={(date) => {
+                              const start = form.getValues("startDate");
+                              if (!start) return false;
+                              const startDay = new Date(start);
+                              startDay.setHours(0, 0, 0, 0);
+                              return date < startDay;
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormDescription>Must be on or after start date</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -686,7 +790,7 @@ export default function BatchesPage() {
         onOpenChange={setOpenEnrollDialog}
         batchId={selectedBatchId}
         batchName={selectedBatch?.name}
-        courseTitle={selectedBatchCourse?.title}
+        courseTitle={selectedBatchCourseTitles || undefined}
         students={students}
       />
 

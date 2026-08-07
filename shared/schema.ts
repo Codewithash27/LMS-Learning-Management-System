@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, time, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, time, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -158,14 +158,23 @@ export type InsertLesson = z.infer<typeof insertLessonSchema>;
 export type Lesson = typeof lessons.$inferSelect;
 
 // Enrollment model
-export const enrollments = pgTable("enrollments", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  courseId: integer("course_id").notNull(),
-  enrolledAt: timestamp("enrolled_at").notNull().defaultNow(),
-  completedAt: timestamp("completed_at"),
-  progress: integer("progress").notNull().default(0),
-});
+export const enrollments = pgTable(
+  "enrollments",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull(),
+    courseId: integer("course_id").notNull(),
+    enrolledAt: timestamp("enrolled_at").notNull().defaultNow(),
+    completedAt: timestamp("completed_at"),
+    progress: integer("progress").notNull().default(0),
+  },
+  (table) => ({
+    userCourseUnique: uniqueIndex("enrollments_user_course_uidx").on(
+      table.userId,
+      table.courseId
+    ),
+  })
+);
 
 export const insertEnrollmentSchema = createInsertSchema(enrollments).pick({
   userId: true,
@@ -184,6 +193,10 @@ export const exams = pgTable("exams", {
   tenantId: integer("tenant_id").notNull(),
   createdBy: integer("created_by").notNull(),
   acceptingResponses: boolean("accepting_responses").default(true), // Toggle for accepting responses
+  /** Exam time limit in minutes (used by student timer). */
+  duration: integer("duration").notNull().default(60),
+  /** Optional batch tag for admin targeting; student access is by course enrollment. */
+  batchId: integer("batch_id"),
 });
 
 export const insertExamSchema = createInsertSchema(exams)
@@ -193,6 +206,14 @@ export const insertExamSchema = createInsertSchema(exams)
     courseId: true,
     tenantId: true,
     createdBy: true,
+    acceptingResponses: true,
+    duration: true,
+    batchId: true,
+  })
+  .extend({
+    acceptingResponses: z.boolean().optional().default(true),
+    duration: z.coerce.number().int().min(1).max(600).optional().default(60),
+    batchId: z.number().int().positive().nullable().optional(),
   });
 
 export type InsertExam = z.infer<typeof insertExamSchema>;
@@ -204,12 +225,17 @@ export const questions = pgTable("questions", {
   examId: integer("exam_id").notNull(),
   text: text("text").notNull(), // Question text
   order: integer("order").notNull(),
+  /** Optional model / expected answer from question-bank PDF (for instructor reference). */
+  modelAnswer: text("model_answer"),
 });
 
 export const insertQuestionSchema = createInsertSchema(questions).pick({
   examId: true,
   text: true,
   order: true,
+  modelAnswer: true,
+}).extend({
+  modelAnswer: z.string().nullable().optional(),
 });
 
 export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
@@ -284,9 +310,11 @@ export const batches = pgTable("batches", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   batchCode: text("batch_code").notNull().unique(),
+  /** Primary course (first selected) — kept for backward compatibility. */
   courseId: integer("course_id").notNull(),
   trainerId: integer("trainer_id").notNull(),
   startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
   batchTime: text("batch_time").notNull(),
   tenantId: integer("tenant_id").notNull(),
   createdBy: integer("created_by").notNull(),
@@ -302,6 +330,7 @@ export const insertBatchSchema = createInsertSchema(batches).pick({
   courseId: true,
   trainerId: true,
   startDate: true,
+  endDate: true,
   batchTime: true,
   tenantId: true,
   createdBy: true,
@@ -311,21 +340,53 @@ export const insertBatchSchema = createInsertSchema(batches).pick({
 }).extend({
   description: z.string().nullable().optional(),
   maxStudents: z.number().nullable().optional(),
-  startDate: z.string().transform(str => new Date(str)),
+  startDate: z.string().transform((str) => new Date(str)),
+  endDate: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((str) => (str ? new Date(str) : null)),
+  isActive: z.boolean().optional().default(true),
+  /** All selected course ids (single or multiple). Primary courseId should be courseIds[0]. */
+  courseIds: z.array(z.number().int().positive()).min(1).optional(),
 });
 
 export type InsertBatch = z.infer<typeof insertBatchSchema>;
 export type Batch = typeof batches.$inferSelect;
 
-// BatchEnrollment model for connecting students to batches
-export const batchEnrollments = pgTable("batch_enrollments", {
+/** Many-to-many: a batch can teach one or more courses. */
+export const batchCourses = pgTable("batch_courses", {
   id: serial("id").primaryKey(),
   batchId: integer("batch_id").notNull(),
-  userId: integer("user_id").notNull(),
-  enrolledAt: timestamp("enrolled_at").notNull().defaultNow(),
-  enrolledBy: integer("enrolled_by").notNull(),
-  status: text("status").notNull().default("active"), // active, completed, dropped
+  courseId: integer("course_id").notNull(),
 });
+
+export const insertBatchCourseSchema = createInsertSchema(batchCourses).pick({
+  batchId: true,
+  courseId: true,
+});
+
+export type InsertBatchCourse = z.infer<typeof insertBatchCourseSchema>;
+export type BatchCourse = typeof batchCourses.$inferSelect;
+
+// BatchEnrollment model for connecting students to batches
+export const batchEnrollments = pgTable(
+  "batch_enrollments",
+  {
+    id: serial("id").primaryKey(),
+    batchId: integer("batch_id").notNull(),
+    userId: integer("user_id").notNull(),
+    enrolledAt: timestamp("enrolled_at").notNull().defaultNow(),
+    enrolledBy: integer("enrolled_by").notNull(),
+    status: text("status").notNull().default("active"), // active, completed, dropped
+  },
+  (table) => ({
+    batchUserUnique: uniqueIndex("batch_enrollments_batch_user_uidx").on(
+      table.batchId,
+      table.userId
+    ),
+  })
+);
 
 export const insertBatchEnrollmentSchema = createInsertSchema(batchEnrollments).pick({
   batchId: true,

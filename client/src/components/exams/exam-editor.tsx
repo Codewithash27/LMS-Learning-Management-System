@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Trash, Plus, ClipboardList } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Trash,
+  Plus,
+  ClipboardList,
+  Upload,
+  Shuffle,
+  FileText,
+  Clock,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +33,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   CreateFormDialog,
@@ -39,24 +49,57 @@ type QuestionType = {
   id: number;
   text: string;
   order: number;
+  modelAnswer?: string | null;
+};
+
+type ParsedPdfQuestion = {
+  text: string;
+  modelAnswer?: string | null;
 };
 
 type ExamEditorProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   courses: { id: number; title: string }[];
+  batches?: {
+    id: number;
+    name: string;
+    courseId: number;
+    batchCode?: string;
+  }[];
   exam?: {
     id: number;
     title?: string;
     description?: string;
     courseId?: number;
+    batchId?: number | null;
+    duration?: number;
     acceptingResponses?: boolean;
   };
 };
 
-export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEditorProps) {
+function shufflePick<T>(items: T[], count: number): T[] {
+  const n = Math.max(0, Math.min(count, items.length));
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, n);
+}
+
+export default function ExamEditor({
+  open,
+  onOpenChange,
+  courses,
+  batches = [],
+  exam,
+}: ExamEditorProps) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<QuestionType[]>([]);
+  const [pdfPool, setPdfPool] = useState<ParsedPdfQuestion[]>([]);
+  const [pdfFileName, setPdfFileName] = useState<string | null>(null);
+  const [isParsingPdf, setIsParsingPdf] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isEditing = !!exam?.id;
 
@@ -86,9 +129,26 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
       title: "",
       description: "",
       courseId: "",
+      batchId: "none",
+      duration: 60,
       acceptingResponses: true,
+      questionSource: "manual",
+      questionCount: 10,
     },
   });
+
+  const selectedCourseId = form.watch("courseId");
+  const questionSource = form.watch("questionSource");
+  const questionCount = form.watch("questionCount");
+
+  const courseBatches = useMemo(
+    () =>
+      batches.filter(
+        (batch) =>
+          !selectedCourseId || batch.courseId === Number(selectedCourseId)
+      ),
+    [batches, selectedCourseId]
+  );
 
   useEffect(() => {
     if (fetchedExam && exam?.id) {
@@ -96,15 +156,26 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
         title: fetchedExam.title,
         description: fetchedExam.description,
         courseId: String(fetchedExam.courseId),
+        batchId: fetchedExam.batchId ? String(fetchedExam.batchId) : "none",
+        duration: fetchedExam.duration ?? 60,
         acceptingResponses: fetchedExam.acceptingResponses !== false,
+        questionSource: "manual",
+        questionCount: 10,
       });
     } else if (!exam?.id && open) {
       form.reset({
         title: "",
         description: "",
         courseId: "",
+        batchId: "none",
+        duration: 60,
         acceptingResponses: true,
+        questionSource: "manual",
+        questionCount: 10,
       });
+      setPdfPool([]);
+      setPdfFileName(null);
+      setQuestions([]);
     }
   }, [fetchedExam, exam?.id, open, form]);
 
@@ -116,7 +187,98 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
     }
   }, [examQuestions, exam?.id]);
 
+  // Clear batch if it no longer matches the selected course
+  useEffect(() => {
+    const batchId = form.getValues("batchId");
+    if (!batchId || batchId === "none") return;
+    const stillValid = courseBatches.some((b) => String(b.id) === batchId);
+    if (!stillValid) {
+      form.setValue("batchId", "none");
+    }
+  }, [courseBatches, form]);
+
+  const applyRandomFromPoolWith = (pool: ParsedPdfQuestion[], count: number) => {
+    const picked = shufflePick(pool, count);
+    setQuestions(
+      picked.map((q, index) => ({
+        id: index + 1,
+        text: q.text,
+        order: index,
+        modelAnswer: q.modelAnswer ?? null,
+      }))
+    );
+  };
+
+  const applyRandomFromPool = (count?: number) => {
+    if (pdfPool.length === 0) {
+      toast({
+        title: "No PDF questions",
+        description: "Upload a questions PDF first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const n = count ?? questionCount ?? pdfPool.length;
+    applyRandomFromPoolWith(pdfPool, n);
+    toast({
+      title: "Questions selected",
+      description: `Randomly picked ${Math.min(n, pdfPool.length)} of ${pdfPool.length} questions from the PDF.`,
+    });
+  };
+
+  const handlePdfUpload = async (file: File | null) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast({
+        title: "Invalid file",
+        description: "Please upload a PDF file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsParsingPdf(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/exams/parse-questions-pdf", {
+        method: "POST",
+        body,
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to parse PDF");
+      }
+
+      const parsed: ParsedPdfQuestion[] = data.questions || [];
+      setPdfPool(parsed);
+      setPdfFileName(data.fileName || file.name);
+      form.setValue("questionSource", "pdf");
+      const defaultCount = Math.min(10, parsed.length) || parsed.length;
+      form.setValue("questionCount", defaultCount);
+      applyRandomFromPoolWith(parsed, defaultCount);
+
+      toast({
+        title: "PDF parsed",
+        description: `Found ${parsed.length} questions. ${defaultCount} randomly selected for this exam.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "PDF parse failed",
+        description: error?.message || "Could not read questions from the PDF.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsParsingPdf(false);
+    }
+  };
+
   const onSubmit = async (data: ExamFormValues) => {
+    if (data.questionSource === "pdf" && pdfPool.length > 0 && questions.length === 0) {
+      applyRandomFromPool(data.questionCount);
+    }
+
     const emptyQuestions = questions.filter((q) => !q.text.trim());
     if (emptyQuestions.length > 0) {
       toast({
@@ -127,11 +289,24 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
       return;
     }
 
+    if (questions.length === 0) {
+      toast({
+        title: "No questions",
+        description: "Add questions manually or upload a PDF question bank.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
       const payload = {
-        ...data,
-        courseId: parseInt(data.courseId),
+        title: data.title,
+        description: data.description,
+        courseId: parseInt(data.courseId, 10),
+        duration: Number(data.duration),
+        batchId: data.batchId && data.batchId !== "none" ? parseInt(data.batchId, 10) : null,
+        acceptingResponses: data.acceptingResponses,
       };
 
       let examId: number;
@@ -163,6 +338,7 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
               text: question.text,
               order: index,
               examId,
+              modelAnswer: question.modelAnswer || null,
             });
           }
         } catch (err) {
@@ -199,6 +375,7 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
         id: newQuestionId,
         text: "",
         order: questions.length,
+        modelAnswer: null,
       },
     ]);
   };
@@ -224,8 +401,8 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
       title={isEditing ? "Edit Exam" : "Create Exam"}
       description={
         isEditing
-          ? "Update exam details and assignment questions."
-          : "Create a new assignment exam with text-based questions."
+          ? "Update exam details, time limit, and assignment questions."
+          : "Create an exam manually or from a questions PDF with random selection."
       }
       icon={<ClipboardList className="h-7 w-7 text-white" />}
       maxWidth="max-w-3xl"
@@ -235,7 +412,7 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
           onCancel={() => onOpenChange(false)}
           submitLabel={isEditing ? "Update Exam" : "Create Exam"}
           pendingLabel={isEditing ? "Saving..." : "Creating..."}
-          isPending={isSaving}
+          isPending={isSaving || isParsingPdf}
           submitDisabled={isLoading}
         />
       }
@@ -256,7 +433,7 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
           >
             <FormSection
               title="Exam details"
-              description="Title, course, description, and publish status"
+              description="Title, course, batch, time limit, and publish status"
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
@@ -309,6 +486,74 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
 
                 <FormField
                   control={form.control}
+                  name="batchId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>Batch (optional)</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value || "none"}
+                        disabled={isSaving || !selectedCourseId}
+                      >
+                        <FormControl>
+                          <SelectTrigger className={createFormControlClass}>
+                            <SelectValue placeholder="All course students" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">All students in course</SelectItem>
+                          {courseBatches.map((batch) => (
+                            <SelectItem key={batch.id} value={String(batch.id)}>
+                              {batch.name}
+                              {batch.batchCode ? ` (${batch.batchCode})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-xs">
+                        Limit this exam to one batch, or leave open to the whole course.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={createFormLabelClass}>
+                        Time limit (minutes)
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            type="number"
+                            min={1}
+                            max={600}
+                            className={createFormControlClass + " pl-9"}
+                            disabled={isSaving}
+                            value={field.value ?? 60}
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value === "" ? "" : Number(e.target.value)
+                              )
+                            }
+                          />
+                        </div>
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        Students get a countdown timer for this duration.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
@@ -333,7 +578,7 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between gap-3 rounded-xl border border-border bg-white p-4 sm:col-span-2">
                       <FormLabel className={createFormLabelClass + " cursor-pointer"}>
-                        Publish exam (students assigned to this course can take it)
+                        Publish exam (assigned students can take it)
                       </FormLabel>
                       <FormControl>
                         <Switch
@@ -348,9 +593,169 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
               </div>
             </FormSection>
 
+            {!isEditing && (
+              <FormSection
+                title="Question source"
+                description="Add questions manually or upload a PDF question bank"
+              >
+                <FormField
+                  control={form.control}
+                  name="questionSource"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={() => field.onChange("manual")}
+                          className={
+                            "rounded-xl border p-4 text-left transition-colors " +
+                            (field.value === "manual"
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-white hover:bg-muted/40")
+                          }
+                        >
+                          <p className="text-sm font-semibold text-[#2D3748]">Manual entry</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Type questions yourself in the form below.
+                          </p>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={() => field.onChange("pdf")}
+                          className={
+                            "rounded-xl border p-4 text-left transition-colors " +
+                            (field.value === "pdf"
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-white hover:bg-muted/40")
+                          }
+                        >
+                          <p className="text-sm font-semibold text-[#2D3748]">Upload questions PDF</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Parse numbered questions and randomly pick a set.
+                          </p>
+                        </button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {questionSource === "pdf" && (
+                  <div className="mt-4 space-y-4">
+                    <div className="rounded-xl border border-dashed border-border bg-white p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
+                            <FileText className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-[#2D3748]">
+                              {pdfFileName || "No PDF selected"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Format tip: Q1. question text, then optional Answer: line.
+                            </p>
+                            {pdfPool.length > 0 && (
+                              <Badge className="mt-2 rounded-full border border-green-200 bg-green-100 text-[10px] font-bold uppercase tracking-wide text-green-800">
+                                {pdfPool.length} questions in pool
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <label className="inline-flex">
+                          <input
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            className="hidden"
+                            disabled={isSaving || isParsingPdf}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              void handlePdfUpload(file);
+                              e.target.value = "";
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-11 gap-2 rounded-xl"
+                            disabled={isSaving || isParsingPdf}
+                            asChild
+                          >
+                            <span>
+                              {isParsingPdf ? (
+                                "Parsing..."
+                              ) : (
+                                <>
+                                  <Upload className="h-4 w-4" />
+                                  {pdfPool.length ? "Replace PDF" : "Upload PDF"}
+                                </>
+                              )}
+                            </span>
+                          </Button>
+                        </label>
+                      </div>
+                    </div>
+
+                    {pdfPool.length > 0 && (
+                      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                        <FormField
+                          control={form.control}
+                          name="questionCount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={createFormLabelClass}>
+                                Questions to pick randomly
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={pdfPool.length}
+                                  className={createFormControlClass}
+                                  disabled={isSaving}
+                                  value={field.value ?? 1}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      e.target.value === ""
+                                        ? ""
+                                        : Number(e.target.value)
+                                    )
+                                  }
+                                />
+                              </FormControl>
+                              <FormDescription className="text-xs">
+                                Max {pdfPool.length} from the uploaded PDF.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-11 gap-2 rounded-xl"
+                          disabled={isSaving}
+                          onClick={() => applyRandomFromPool(questionCount)}
+                        >
+                          <Shuffle className="h-4 w-4" />
+                          Re-shuffle
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </FormSection>
+            )}
+
             <FormSection
               title="Exam questions"
-              description="Text-based questions for written student answers"
+              description={
+                questionSource === "pdf" && pdfPool.length > 0
+                  ? "Randomly selected from your PDF — edit before saving"
+                  : "Text-based questions for written student answers"
+              }
             >
               <div className="space-y-3">
                 {questions.map((question, questionIndex) => (
@@ -390,9 +795,16 @@ export default function ExamEditor({ open, onOpenChange, courses, exam }: ExamEd
                       disabled={isSaving}
                       placeholder="Enter the question prompt"
                     />
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Students will provide written answers.
-                    </p>
+                    {question.modelAnswer ? (
+                      <p className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                        <span className="font-semibold text-[#2D3748]">Model answer: </span>
+                        {question.modelAnswer}
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Students will provide written answers.
+                      </p>
+                    )}
                   </div>
                 ))}
 

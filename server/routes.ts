@@ -20,6 +20,8 @@ import {
   insertBatchEnrollmentSchema,
   insertLessonProgressSchema
 } from "@shared/schema";
+import { parseQuestionsFromText } from "./pdf-questions";
+import { PDFParse } from "pdf-parse";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve static files from uploads directory
@@ -39,7 +41,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Middleware to check if user is an admin
   const isAdmin = (req: any, res: any, next: any) => {
-    if (req.isAuthenticated() && req.user!.role === "admin") {
+    if (
+      req.isAuthenticated() &&
+      (req.user!.role === "admin" || req.user!.role === "superadmin")
+    ) {
       return next();
     }
     res.status(403).json({ message: "Forbidden: Admin access required" });
@@ -798,6 +803,15 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return res.status(403).json({ message: "User not found or access denied" });
       }
 
+      const lockedCourseIds = await storage.getCourseIdsLockedByBatchForUser(userId);
+      if (lockedCourseIds.includes(courseId)) {
+        return res.status(400).json({
+          message:
+            "This course is assigned through a batch. Remove the student from the batch first, or keep this course enrolled.",
+          lockedByBatch: true,
+        });
+      }
+
       const deleted = await storage.deleteEnrollmentByUserAndCourse(userId, courseId);
       if (!deleted) {
         return res.status(404).json({ message: "Enrollment not found" });
@@ -807,6 +821,38 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
     } catch (error) {
       console.error("Failed to remove enrollment:", error);
       res.status(500).json({ message: "Failed to remove enrollment" });
+    }
+  });
+
+  // Courses locked for a student because they come from batch membership
+  app.get("/api/enrollments/user/:userId/batch-locked-courses", isAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId, 10);
+      const user = await storage.getUser(userId);
+      if (!user || user.tenantId !== req.user!.tenantId) {
+        return res.status(403).json({ message: "User not found or access denied" });
+      }
+      const courseIds = await storage.getCourseIdsLockedByBatchForUser(userId);
+      res.json({ userId, courseIds });
+    } catch (error) {
+      console.error("Failed to fetch batch-locked courses:", error);
+      res.status(500).json({ message: "Failed to fetch batch-locked courses" });
+    }
+  });
+
+  // Students locked for a course because they get it via batch membership
+  app.get("/api/enrollments/course/:courseId/batch-locked-users", isAdmin, async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId, 10);
+      const course = await storage.getCourse(courseId);
+      if (!course || course.tenantId !== req.user!.tenantId) {
+        return res.status(403).json({ message: "Course not found or access denied" });
+      }
+      const userIds = await storage.getUserIdsLockedByBatchForCourse(courseId);
+      res.json({ courseId, userIds });
+    } catch (error) {
+      console.error("Failed to fetch batch-locked users:", error);
+      res.status(500).json({ message: "Failed to fetch batch-locked users" });
     }
   });
 
@@ -820,19 +866,87 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         return;
       }
 
-      // Students only see published exams for courses assigned to them
+      // Students see published exams for any course they are enrolled in.
+      // batchId is used for admin targeting/reporting; course enrollment is the
+      // access gate so students already assigned to the course can always take it.
       const enrollments = await storage.getEnrollmentsByUser(req.user!.id);
       const enrolledCourseIds = new Set(enrollments.map((e) => e.courseId));
+
       const assignedExams = exams.filter(
         (exam) =>
-          enrolledCourseIds.has(exam.courseId) &&
-          exam.acceptingResponses !== false
+          enrolledCourseIds.has(exam.courseId) && exam.acceptingResponses !== false
       );
       res.json(assignedExams);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch exams" });
     }
   });
+
+  // Parse a questions PDF into structured question/answer items (admin only)
+  const questionsPdfUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 15 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (
+        file.mimetype === "application/pdf" ||
+        file.originalname.toLowerCase().endsWith(".pdf")
+      ) {
+        cb(null, true);
+      } else {
+        cb(new Error("Only PDF files are allowed"));
+      }
+    },
+  });
+
+  app.post(
+    "/api/exams/parse-questions-pdf",
+    isAdmin,
+    (req, res, next) => {
+      questionsPdfUpload.single("file")(req, res, (err) => {
+        if (err) {
+          return res.status(400).json({ message: err.message || "Upload failed" });
+        }
+        next();
+      });
+    },
+    async (req, res) => {
+      try {
+        if (!req.file?.buffer) {
+          return res.status(400).json({ message: "PDF file is required" });
+        }
+
+        const parser = new PDFParse({ data: req.file.buffer });
+        try {
+          const textResult = await parser.getText();
+          const questions = parseQuestionsFromText(textResult.text || "");
+          const pageCount = textResult.total ?? textResult.pages?.length ?? 0;
+
+          if (questions.length === 0) {
+            return res.status(422).json({
+              message:
+                "No questions found. Use numbered items like Q1. / 1. / Question 1: and optional Answer: lines.",
+              questions: [],
+              pageCount,
+            });
+          }
+
+          res.json({
+            questions,
+            total: questions.length,
+            pageCount,
+            fileName: req.file.originalname,
+          });
+        } finally {
+          await parser.destroy().catch(() => undefined);
+        }
+      } catch (error: any) {
+        console.error("Failed to parse questions PDF:", error);
+        res.status(500).json({
+          message: error?.message || "Failed to parse PDF",
+        });
+      }
+    }
+  );
 
   app.get("/api/exams/:id", isAuthenticated, async (req, res) => {
     try {
@@ -869,13 +983,34 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       const validatedData = insertExamSchema.parse({
         ...req.body,
         tenantId: req.user!.tenantId,
-        createdBy: req.user!.id
+        createdBy: req.user!.id,
+        courseId: Number(req.body.courseId),
+        duration: req.body.duration != null ? Number(req.body.duration) : 60,
+        batchId:
+          req.body.batchId === null ||
+          req.body.batchId === undefined ||
+          req.body.batchId === "" ||
+          req.body.batchId === "none"
+            ? null
+            : Number(req.body.batchId),
       });
       
       // Check if course belongs to user's tenant
       const course = await storage.getCourse(validatedData.courseId);
       if (!course || course.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this course" });
+      }
+
+      if (validatedData.batchId) {
+        const batch = await storage.getBatch(validatedData.batchId);
+        if (!batch || batch.tenantId !== req.user!.tenantId) {
+          return res.status(403).json({ message: "Access denied to this batch" });
+        }
+        if (batch.courseId !== validatedData.courseId) {
+          return res.status(400).json({
+            message: "Selected batch does not belong to the selected course",
+          });
+        }
       }
       
       const exam = await storage.createExam(validatedData);
@@ -884,6 +1019,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      console.error("Failed to create exam:", error);
       res.status(500).json({ message: "Failed to create exam" });
     }
   });
@@ -907,14 +1043,40 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         title: z.string().min(3).optional(),
         description: z.string().min(1).optional(),
         courseId: z.number().positive().optional(),
-        duration: z.number().min(1).optional(),
+        duration: z.number().min(1).max(600).optional(),
+        batchId: z.number().positive().nullable().optional(),
         maxAttempts: z.number().min(1).optional(),
         startTime: z.string().transform(str => new Date(str)).optional(),
         endTime: z.string().transform(str => new Date(str)).optional(),
         acceptingResponses: z.boolean().optional(),
       });
       
-      const validatedData = updateSchema.parse(req.body);
+      const validatedData = updateSchema.parse({
+        ...req.body,
+        courseId: req.body.courseId != null ? Number(req.body.courseId) : undefined,
+        duration: req.body.duration != null ? Number(req.body.duration) : undefined,
+        batchId:
+          req.body.batchId === undefined
+            ? undefined
+            : req.body.batchId === null ||
+                req.body.batchId === "" ||
+                req.body.batchId === "none"
+              ? null
+              : Number(req.body.batchId),
+      });
+
+      if (validatedData.batchId) {
+        const batch = await storage.getBatch(validatedData.batchId);
+        if (!batch || batch.tenantId !== req.user!.tenantId) {
+          return res.status(403).json({ message: "Access denied to this batch" });
+        }
+        const courseId = validatedData.courseId ?? exam.courseId;
+        if (batch.courseId !== courseId) {
+          return res.status(400).json({
+            message: "Selected batch does not belong to the selected course",
+          });
+        }
+      }
       
       const updatedExam = await storage.updateExam(examId, validatedData);
       res.json(updatedExam);
@@ -1019,12 +1181,10 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       const nextOrder = existingQuestions.length;
       
       const questionData = {
-        ...req.body,
         examId,
+        text: req.body.text,
         order: req.body.order !== undefined ? req.body.order : nextOrder,
-        // Provide default values for legacy columns that are now optional
-        options: req.body.options || null,
-        correctOption: req.body.correctOption || null
+        modelAnswer: req.body.modelAnswer ?? null,
       };
       
       const validatedData = insertQuestionSchema.parse(questionData);
@@ -1690,8 +1850,19 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   app.get("/api/batches", isAdmin, async (req, res) => {
     try {
       // @ts-ignore: req.user! is defined because of isAdmin middleware
-      const batches = await storage.getBatchesByTenant(req.user!.tenantId);
-      res.json(batches);
+      const batchesList = await storage.getBatchesByTenant(req.user!.tenantId);
+      const withCourses = await Promise.all(
+        batchesList.map(async (batch) => {
+          const courseIds = await storage.getBatchCourseIds(batch.id);
+          const members = await storage.getBatchEnrollmentsByBatch(batch.id);
+          return {
+            ...batch,
+            courseIds,
+            studentCount: members.length,
+          };
+        })
+      );
+      res.json(withCourses);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch batches" });
     }
@@ -1733,8 +1904,9 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       if (batch.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this batch" });
       }
-      
-      res.json(batch);
+
+      const courseIds = await storage.getBatchCourseIds(batchId);
+      res.json({ ...batch, courseIds });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch batch" });
     }
@@ -1743,29 +1915,53 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
   // Create new batch
   app.post("/api/batches", isAdmin, async (req, res) => {
     try {
+      const rawCourseIds: number[] = Array.isArray(req.body.courseIds)
+        ? req.body.courseIds.map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id) && id > 0)
+        : req.body.courseId
+          ? [Number(req.body.courseId)]
+          : [];
+
+      if (rawCourseIds.length === 0) {
+        return res.status(400).json({ message: "Select at least one course" });
+      }
+
       // @ts-ignore: req.user! is defined because of isAdmin middleware
       const validatedData = insertBatchSchema.parse({
         ...req.body,
+        courseId: rawCourseIds[0],
+        courseIds: rawCourseIds,
+        endDate: req.body.endDate || null,
         tenantId: req.user!.tenantId,
-        createdBy: req.user!.id
+        createdBy: req.user!.id,
       });
-      
-      // Check if course belongs to user's tenant
-      const course = await storage.getCourse(validatedData.courseId);
-      // @ts-ignore: req.user! is defined because of isAdmin middleware
-      if (!course || course.tenantId !== req.user!.tenantId) {
-        return res.status(403).json({ message: "Access denied to this course" });
+
+      // Validate all courses belong to tenant
+      for (const courseId of rawCourseIds) {
+        const course = await storage.getCourse(courseId);
+        // @ts-ignore
+        if (!course || course.tenantId !== req.user!.tenantId) {
+          return res.status(403).json({ message: `Access denied to course ${courseId}` });
+        }
       }
-      
+
       // Check if trainer belongs to user's tenant
       const trainer = await storage.getUser(validatedData.trainerId);
       // @ts-ignore: req.user! is defined because of isAdmin middleware
       if (!trainer || trainer.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this trainer" });
       }
-      
+
+      if (
+        validatedData.endDate &&
+        validatedData.startDate &&
+        validatedData.endDate < validatedData.startDate
+      ) {
+        return res.status(400).json({ message: "End date must be on or after start date" });
+      }
+
       const batch = await storage.createBatch(validatedData);
-      res.status(201).json(batch);
+      const courseIds = await storage.getBatchCourseIds(batch.id);
+      res.status(201).json({ ...batch, courseIds });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
@@ -1789,9 +1985,32 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       if (batch.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this batch" });
       }
-      
-      const updatedBatch = await storage.updateBatch(batchId, req.body);
-      res.json(updatedBatch);
+
+      const rawCourseIds: number[] | undefined = Array.isArray(req.body.courseIds)
+        ? req.body.courseIds
+            .map((id: any) => Number(id))
+            .filter((id: number) => Number.isFinite(id) && id > 0)
+        : undefined;
+
+      if (rawCourseIds) {
+        if (rawCourseIds.length === 0) {
+          return res.status(400).json({ message: "Select at least one course" });
+        }
+        for (const courseId of rawCourseIds) {
+          const course = await storage.getCourse(courseId);
+          // @ts-ignore
+          if (!course || course.tenantId !== req.user!.tenantId) {
+            return res.status(403).json({ message: `Access denied to course ${courseId}` });
+          }
+        }
+        await storage.setBatchCourses(batchId, rawCourseIds);
+        req.body.courseId = rawCourseIds[0];
+      }
+
+      const { courseIds: _ignored, ...batchFields } = req.body;
+      const updatedBatch = await storage.updateBatch(batchId, batchFields);
+      const courseIds = await storage.getBatchCourseIds(batchId);
+      res.json({ ...updatedBatch, courseIds });
     } catch (error) {
       res.status(500).json({ message: "Failed to update batch" });
     }
@@ -1913,6 +2132,10 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       if (!batchId || !Array.isArray(userIds) || userIds.length === 0) {
         return res.status(400).json({ message: "Invalid request data" });
       }
+
+      const uniqueUserIds = Array.from(
+        new Set(userIds.map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id)))
+      );
       
       // Check if batch belongs to user's tenant
       const batch = await storage.getBatch(batchId);
@@ -1920,19 +2143,28 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       if (!batch || batch.tenantId !== req.user!.tenantId) {
         return res.status(403).json({ message: "Access denied to this batch" });
       }
+
+      // Validate students belong to tenant
+      for (const userId of uniqueUserIds) {
+        const user = await storage.getUser(userId);
+        // @ts-ignore
+        if (!user || user.tenantId !== req.user!.tenantId || user.role !== "student") {
+          return res.status(403).json({ message: `Access denied to user ${userId}` });
+        }
+      }
       
-      // Create enrollment objects for all users
       // @ts-ignore: req.user! is defined because of isAdmin middleware
-      const enrollments = userIds.map(userId => ({
+      const enrollments = uniqueUserIds.map((userId) => ({
         batchId,
         userId,
         enrolledBy: req.user!.id,
-        status: "active"
+        status: "active",
       }));
       
       const createdEnrollments = await storage.createBatchEnrollmentsBulk(enrollments);
       res.status(201).json(createdEnrollments);
     } catch (error) {
+      console.error("Failed to create batch enrollments:", error);
       res.status(500).json({ message: "Failed to create batch enrollments" });
     }
   });

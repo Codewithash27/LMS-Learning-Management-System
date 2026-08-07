@@ -63,6 +63,12 @@ export default function AdminExams() {
     queryKey: ["/api/courses"],
   });
 
+  const { data: batches = [] } = useQuery<
+    { id: number; name: string; courseId: number; batchCode?: string }[]
+  >({
+    queryKey: ["/api/batches"],
+  });
+
   const deleteExamMutation = useMutation({
     mutationFn: async (examId: number) => {
       await apiRequest("DELETE", `/api/exams/${examId}`);
@@ -223,6 +229,7 @@ export default function AdminExams() {
           columns={[
             { key: "exam", label: "Exam" },
             { key: "course", label: "Course" },
+            { key: "duration", label: "Time" },
             { key: "visibility", label: "Student visibility" },
             { key: "status", label: "Status" },
             { key: "actions", label: "Actions", align: "right" },
@@ -276,6 +283,9 @@ export default function AdminExams() {
                     <BookOpen className="h-3.5 w-3.5 shrink-0 text-[#A0AEC0]" />
                     <span className="truncate">{getCourseName(exam.courseId)}</span>
                   </div>
+                </TableCell>
+                <TableCell className="text-[15px] text-[#2D3748]/90">
+                  {exam.duration ?? 60} min
                 </TableCell>
                 <TableCell className="text-[15px] text-[#2D3748]/90">
                   {published
@@ -368,6 +378,7 @@ export default function AdminExams() {
         open={isEditorOpen}
         onOpenChange={setIsEditorOpen}
         courses={courses}
+        batches={batches}
         exam={selectedExam}
       />
 

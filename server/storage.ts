@@ -10,6 +10,7 @@ import {
   examAttempts, type ExamAttempt, type InsertExamAttempt,
   activityLogs, type ActivityLog, type InsertActivityLog,
   batches, type Batch, type InsertBatch,
+  batchCourses, type BatchCourse, type InsertBatchCourse,
   batchEnrollments, type BatchEnrollment, type InsertBatchEnrollment,
   lessonProgress, type LessonProgress, type InsertLessonProgress,
   themeTemplates, type ThemeTemplate, type InsertThemeTemplate
@@ -118,6 +119,12 @@ export interface IStorage {
   createBatch(batch: InsertBatch): Promise<Batch>;
   updateBatch(id: number, batch: Partial<Batch>): Promise<Batch | undefined>;
   deleteBatch(id: number): Promise<boolean>;
+  getBatchCourseIds(batchId: number): Promise<number[]>;
+  setBatchCourses(batchId: number, courseIds: number[]): Promise<void>;
+  /** Course IDs a student has via batch membership (cannot be manually unassigned). */
+  getCourseIdsLockedByBatchForUser(userId: number): Promise<number[]>;
+  /** Student IDs who have this course via batch membership (cannot be manually unassigned). */
+  getUserIdsLockedByBatchForCourse(courseId: number): Promise<number[]>;
   
   // Batch enrollment operations
   getBatchEnrollment(id: number): Promise<BatchEnrollment | undefined>;
@@ -415,13 +422,30 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createEnrollment(insertEnrollment: InsertEnrollment): Promise<Enrollment> {
+    // Idempotent: never create duplicate (userId, courseId) rows
+    const existing = await db
+      .select()
+      .from(enrollments)
+      .where(
+        and(
+          eq(enrollments.userId, insertEnrollment.userId),
+          eq(enrollments.courseId, insertEnrollment.courseId)
+        )
+      )
+      .limit(1);
+
+    if (existing[0]) {
+      return existing[0];
+    }
+
     const enrollmentWithDefaults = {
       ...insertEnrollment,
       enrolledAt: new Date(),
-      progress: 0
+      progress: 0,
     };
-    
-    const [enrollment] = await db.insert(enrollments)
+
+    const [enrollment] = await db
+      .insert(enrollments)
       .values(enrollmentWithDefaults)
       .returning();
     return enrollment;
@@ -788,7 +812,18 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getBatchesByCourse(courseId: number): Promise<Batch[]> {
-    return await db.select().from(batches).where(eq(batches.courseId, courseId));
+    const linked = await db
+      .select({ batchId: batchCourses.batchId })
+      .from(batchCourses)
+      .where(eq(batchCourses.courseId, courseId));
+
+    const ids = new Set<number>(linked.map((r) => r.batchId));
+    const primary = await db.select().from(batches).where(eq(batches.courseId, courseId));
+    for (const b of primary) ids.add(b.id);
+
+    if (ids.size === 0) return [];
+    const all = await db.select().from(batches);
+    return all.filter((b) => ids.has(b.id));
   }
   
   async getBatchesByTrainer(trainerId: number): Promise<Batch[]> {
@@ -799,50 +834,108 @@ export class DatabaseStorage implements IStorage {
     // Generate a unique batch code if one is not provided
     if (!insertBatch.batchCode) {
       const timestamp = Date.now().toString().slice(-6);
-      const courseCode = insertBatch.courseId.toString().padStart(3, '0');
+      const courseCode = insertBatch.courseId.toString().padStart(3, "0");
       insertBatch.batchCode = `B${courseCode}${timestamp}`;
     }
-    
-    // Create a proper object for insertion (not an array)
-    // Convert startDate to string format if it's a Date object
-    const startDateValue = insertBatch.startDate instanceof Date 
-      ? insertBatch.startDate.toISOString().split('T')[0] 
-      : insertBatch.startDate;
-      
+
+    const startDateValue =
+      insertBatch.startDate instanceof Date
+        ? insertBatch.startDate.toISOString().split("T")[0]
+        : insertBatch.startDate;
+
+    const endDateValue =
+      insertBatch.endDate instanceof Date
+        ? insertBatch.endDate.toISOString().split("T")[0]
+        : insertBatch.endDate ?? null;
+
+    const courseIds =
+      insertBatch.courseIds && insertBatch.courseIds.length > 0
+        ? Array.from(new Set(insertBatch.courseIds))
+        : [insertBatch.courseId];
+
     const batchData = {
       name: insertBatch.name,
       batchCode: insertBatch.batchCode,
-      courseId: insertBatch.courseId,
+      courseId: courseIds[0],
       trainerId: insertBatch.trainerId,
       startDate: startDateValue,
+      endDate: endDateValue,
       batchTime: insertBatch.batchTime,
       tenantId: insertBatch.tenantId,
       createdBy: insertBatch.createdBy,
       description: insertBatch.description,
       maxStudents: insertBatch.maxStudents,
-      isActive: insertBatch.isActive !== undefined ? insertBatch.isActive : true
+      isActive: insertBatch.isActive !== undefined ? insertBatch.isActive : true,
     };
-    
+
     const [batch] = await db.insert(batches).values([batchData]).returning();
+    await this.setBatchCourses(batch.id, courseIds);
     return batch;
   }
-  
+
   async updateBatch(id: number, batchData: Partial<Batch>): Promise<Batch | undefined> {
-    const [updatedBatch] = await db.update(batches)
+    const [updatedBatch] = await db
+      .update(batches)
       .set(batchData)
       .where(eq(batches.id, id))
       .returning();
     return updatedBatch;
   }
-  
+
   async deleteBatch(id: number): Promise<boolean> {
+    await db.delete(batchCourses).where(eq(batchCourses.batchId, id));
+    await db.delete(batchEnrollments).where(eq(batchEnrollments.batchId, id));
     const result = await db.delete(batches).where(eq(batches.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
-  
+
+  async getBatchCourseIds(batchId: number): Promise<number[]> {
+    const rows = await db
+      .select()
+      .from(batchCourses)
+      .where(eq(batchCourses.batchId, batchId));
+    if (rows.length > 0) {
+      return rows.map((r) => r.courseId);
+    }
+    const batch = await this.getBatch(batchId);
+    return batch ? [batch.courseId] : [];
+  }
+
+  async setBatchCourses(batchId: number, courseIds: number[]): Promise<void> {
+    const unique = Array.from(new Set(courseIds.filter(Boolean)));
+    await db.delete(batchCourses).where(eq(batchCourses.batchId, batchId));
+    if (unique.length === 0) return;
+    await db.insert(batchCourses).values(
+      unique.map((courseId) => ({ batchId, courseId }))
+    );
+  }
+
+  async getCourseIdsLockedByBatchForUser(userId: number): Promise<number[]> {
+    const memberships = await this.getBatchEnrollmentsByUser(userId);
+    const locked = new Set<number>();
+    for (const membership of memberships) {
+      const courseIds = await this.getBatchCourseIds(membership.batchId);
+      for (const courseId of courseIds) locked.add(courseId);
+    }
+    return Array.from(locked);
+  }
+
+  async getUserIdsLockedByBatchForCourse(courseId: number): Promise<number[]> {
+    const batchesForCourse = await this.getBatchesByCourse(courseId);
+    const locked = new Set<number>();
+    for (const batch of batchesForCourse) {
+      const members = await this.getBatchEnrollmentsByBatch(batch.id);
+      for (const member of members) locked.add(member.userId);
+    }
+    return Array.from(locked);
+  }
+
   // Batch enrollment operations
   async getBatchEnrollment(id: number): Promise<BatchEnrollment | undefined> {
-    const [enrollment] = await db.select().from(batchEnrollments).where(eq(batchEnrollments.id, id));
+    const [enrollment] = await db
+      .select()
+      .from(batchEnrollments)
+      .where(eq(batchEnrollments.id, id));
     return enrollment;
   }
   
@@ -855,40 +948,70 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createBatchEnrollment(insertEnrollment: InsertBatchEnrollment): Promise<BatchEnrollment> {
-    const [enrollment] = await db.insert(batchEnrollments).values([insertEnrollment]).returning();
-    
-    // Also create a course enrollment since students in batches must be enrolled in the batch's course
-    const batch = await this.getBatch(insertEnrollment.batchId);
-    if (batch) {
+    // Skip if already in batch
+    const existing = await db
+      .select()
+      .from(batchEnrollments)
+      .where(
+        and(
+          eq(batchEnrollments.batchId, insertEnrollment.batchId),
+          eq(batchEnrollments.userId, insertEnrollment.userId)
+        )
+      )
+      .limit(1);
+
+    let enrollment = existing[0];
+    if (!enrollment) {
+      const [created] = await db
+        .insert(batchEnrollments)
+        .values([insertEnrollment])
+        .returning();
+      enrollment = created;
+    }
+
+    // Ensure course enrollments for all courses linked to this batch
+    const courseIds = await this.getBatchCourseIds(insertEnrollment.batchId);
+    for (const courseId of courseIds) {
       await this.createEnrollment({
         userId: insertEnrollment.userId,
-        courseId: batch.courseId
+        courseId,
       });
     }
-    
+
     return enrollment;
   }
-  
-  async createBatchEnrollmentsBulk(enrollments: InsertBatchEnrollment[]): Promise<BatchEnrollment[]> {
-    if (enrollments.length === 0) return [];
-    
-    const result = await db.insert(batchEnrollments).values(enrollments).returning();
-    
-    // Also create course enrollments for all students
-    const batchId = enrollments[0].batchId;
-    const batch = await this.getBatch(batchId);
-    
-    if (batch) {
-      const courseEnrollments = enrollments.map(enrollment => ({
-        userId: enrollment.userId,
-        courseId: batch.courseId
-      }));
-      
-      // Create course enrollments in bulk - note: we could optimize this with a proper batch insert
-      await Promise.all(courseEnrollments.map(enrollment => this.createEnrollment(enrollment)));
+
+  async createBatchEnrollmentsBulk(
+    enrollmentsInput: InsertBatchEnrollment[]
+  ): Promise<BatchEnrollment[]> {
+    if (enrollmentsInput.length === 0) return [];
+
+    const batchId = enrollmentsInput[0].batchId;
+    const existingMembers = await this.getBatchEnrollmentsByBatch(batchId);
+    const alreadyInBatch = new Set(existingMembers.map((e) => e.userId));
+
+    const toInsert = enrollmentsInput.filter((e) => !alreadyInBatch.has(e.userId));
+    let created: BatchEnrollment[] = [];
+    if (toInsert.length > 0) {
+      created = await db.insert(batchEnrollments).values(toInsert).returning();
     }
-    
-    return result;
+
+    const courseIds = await this.getBatchCourseIds(batchId);
+    const allUserIds = Array.from(
+      new Set(enrollmentsInput.map((e) => e.userId))
+    );
+
+    // Ensure every selected student is enrolled in every batch course (idempotent)
+    await Promise.all(
+      allUserIds.flatMap((userId) =>
+        courseIds.map((courseId) => this.createEnrollment({ userId, courseId }))
+      )
+    );
+
+    // Return current membership for those users
+    const refreshed = await this.getBatchEnrollmentsByBatch(batchId);
+    const requested = new Set(allUserIds);
+    return refreshed.filter((e) => requested.has(e.userId));
   }
   
   async updateBatchEnrollment(id: number, enrollmentData: Partial<BatchEnrollment>): Promise<BatchEnrollment | undefined> {
@@ -1252,6 +1375,22 @@ export class MemStorage implements IStorage {
   }
   
   async deleteBatch(id: number): Promise<boolean> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+
+  async getBatchCourseIds(batchId: number): Promise<number[]> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+
+  async setBatchCourses(batchId: number, courseIds: number[]): Promise<void> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+
+  async getCourseIdsLockedByBatchForUser(userId: number): Promise<number[]> {
+    throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
+  }
+
+  async getUserIdsLockedByBatchForCourse(courseId: number): Promise<number[]> {
     throw new Error("MemStorage is no longer used. Please use DatabaseStorage instead.");
   }
   

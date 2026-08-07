@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { GraduationCap, Users } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { toast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 import {
   CreateFormDialog,
   CreateFormFooter,
@@ -39,6 +41,33 @@ export default function EnrollStudentsDialog({
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const queryClient = useQueryClient();
 
+  const { data: batchEnrollments = [], isLoading: isLoadingEnrollments } = useQuery<
+    { id: number; userId: number; batchId: number }[]
+  >({
+    queryKey: [`/api/batches/${batchId}/enrollments`],
+    queryFn: async () => {
+      if (!batchId) return [];
+      const res = await apiRequest("GET", `/api/batches/${batchId}/enrollments`);
+      return res.json();
+    },
+    enabled: open && !!batchId,
+  });
+
+  const alreadyEnrolledIds = useMemo(
+    () => new Set(batchEnrollments.map((e) => Number(e.userId))),
+    [batchEnrollments]
+  );
+
+  const availableStudents = useMemo(
+    () => students.filter((s) => !alreadyEnrolledIds.has(s.id)),
+    [students, alreadyEnrolledIds]
+  );
+
+  const enrolledStudents = useMemo(
+    () => students.filter((s) => alreadyEnrolledIds.has(s.id)),
+    [students, alreadyEnrolledIds]
+  );
+
   useEffect(() => {
     if (!open) {
       setSelectedStudents([]);
@@ -52,7 +81,8 @@ export default function EnrollStudentsDialog({
     onSuccess: () => {
       toast({
         title: "Students enrolled successfully",
-        description: "Students have been enrolled to the batch successfully.",
+        description:
+          "Students were added to the batch and enrolled in all linked courses.",
       });
       onOpenChange(false);
       setSelectedStudents([]);
@@ -60,6 +90,11 @@ export default function EnrollStudentsDialog({
         queryClient.invalidateQueries({ queryKey: [`/api/batches/${batchId}/enrollments`] });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/batches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments/counts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments/course"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
       onSuccess?.();
     },
     onError: (error: any) => {
@@ -96,7 +131,7 @@ export default function EnrollStudentsDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Enroll Students"
-      description="Select students to enroll in this batch. They will also be enrolled in the associated course."
+      description="Select students for this batch. They will also be enrolled in all courses linked to the batch."
       icon={<GraduationCap className="h-7 w-7 text-white" />}
       maxWidth="max-w-2xl"
       footer={
@@ -105,7 +140,9 @@ export default function EnrollStudentsDialog({
           submitLabel="Enroll Selected Students"
           pendingLabel="Enrolling..."
           isPending={enrollStudentsMutation.isPending}
-          submitDisabled={selectedStudents.length === 0 || !batchId}
+          submitDisabled={
+            selectedStudents.length === 0 || !batchId || isLoadingEnrollments
+          }
           submitType="button"
           onSubmit={enrollStudents}
         />
@@ -122,44 +159,84 @@ export default function EnrollStudentsDialog({
 
         <FormSection
           title="Select students"
-          description={`${selectedStudents.length} student${selectedStudents.length === 1 ? "" : "s"} selected`}
+          description={`${selectedStudents.length} selected · ${enrolledStudents.length} already in batch`}
         >
-          {students.length === 0 ? (
+          {isLoadingEnrollments ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          ) : students.length === 0 ? (
             <div className="py-8 text-center">
               <Users className="mx-auto mb-3 h-10 w-10 text-[#A0AEC0]" />
-              <p className="text-sm text-muted-foreground">No students available for enrollment</p>
+              <p className="text-sm text-muted-foreground">No students available</p>
             </div>
           ) : (
-            <div className="divide-y divide-[#D4DEE3] overflow-hidden rounded-xl border border-border bg-white">
-              {students.map((student) => (
-                <div
-                  key={student.id}
-                  className="flex items-center gap-3 p-3.5 transition-colors hover:bg-[#FFFBF5]"
-                >
-                  <Checkbox
-                    id={`enroll-student-${student.id}`}
-                    checked={selectedStudents.includes(student.id)}
-                    onCheckedChange={() => toggleStudentSelection(student.id)}
-                  />
-                  <label
-                    htmlFor={`enroll-student-${student.id}`}
-                    className="flex flex-1 cursor-pointer items-center gap-3"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
-                      <span className="text-sm font-semibold text-primary">
-                        {student.firstName[0]}
-                        {student.lastName[0]}
-                      </span>
+            <div className="max-h-[320px] overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-white">
+              <ul className="divide-y divide-border/80">
+                {availableStudents.map((student) => {
+                  const checked = selectedStudents.includes(student.id);
+                  return (
+                    <li key={student.id}>
+                      <label
+                        className={cn(
+                          "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/70",
+                          checked && "bg-primary/5"
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleStudentSelection(student.id)}
+                        />
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                          <span className="text-sm font-semibold text-primary">
+                            {student.firstName[0]}
+                            {student.lastName[0]}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-semibold text-[#2D3748]">
+                            {student.firstName} {student.lastName}
+                          </p>
+                          <p className="truncate text-sm text-muted-foreground">
+                            {student.email}
+                          </p>
+                        </div>
+                      </label>
+                    </li>
+                  );
+                })}
+
+                {enrolledStudents.map((student) => (
+                  <li key={`enrolled-${student.id}`}>
+                    <div className="flex items-center gap-3 bg-muted/30 px-4 py-3 opacity-80">
+                      <Checkbox checked disabled />
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                        <span className="text-sm font-semibold text-primary">
+                          {student.firstName[0]}
+                          {student.lastName[0]}
+                        </span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[15px] font-semibold text-[#2D3748]">
+                          {student.firstName} {student.lastName}
+                        </p>
+                        <p className="truncate text-sm text-muted-foreground">
+                          {student.email}
+                        </p>
+                      </div>
+                      <Badge className="shrink-0 rounded-full border border-green-200 bg-green-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-800">
+                        In batch
+                      </Badge>
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-[15px] font-semibold text-[#2D3748]">
-                        {student.firstName} {student.lastName}
-                      </p>
-                      <p className="truncate text-sm text-muted-foreground">{student.email}</p>
-                    </div>
-                  </label>
-                </div>
-              ))}
+                  </li>
+                ))}
+              </ul>
+
+              {availableStudents.length === 0 && enrolledStudents.length > 0 ? (
+                <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  All students are already enrolled in this batch.
+                </p>
+              ) : null}
             </div>
           )}
         </FormSection>
