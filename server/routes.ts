@@ -1818,6 +1818,295 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
     }
   });
 
+  // Live admin reports aggregates (tenant-scoped) — real data for Reports page
+  app.get("/api/admin/reports", isAdmin, async (req, res) => {
+    try {
+      const tenantId = Number(req.user!.tenantId);
+      if (!Number.isFinite(tenantId)) {
+        return res.status(400).json({ message: "Invalid tenant" });
+      }
+
+      const rangeRaw = String(req.query.range || "7d");
+      const rangeDays = rangeRaw === "30d" ? 30 : rangeRaw === "90d" ? 90 : 7;
+      const batchIdParam = req.query.batchId != null ? Number(req.query.batchId) : null;
+
+      const users = await storage.getUsersByTenant(tenantId);
+      const courses = await storage.getCoursesByTenant(tenantId);
+      const exams = await storage.getExamsByTenant(tenantId);
+      const batchesList = await storage.getBatchesByTenant(tenantId);
+      const logs = await storage.getActivityLogsByTenant(tenantId);
+      const allAttempts = await storage.getAllExamAttemptsForAdmin(tenantId);
+
+      const students = users.filter((u) => u.role === "student");
+      const courseById = new Map(courses.map((c) => [c.id, c]));
+      const userById = new Map(users.map((u) => [u.id, u]));
+
+      const enrollmentsByCourse = await Promise.all(
+        courses.map(async (course) => ({
+          course,
+          enrollments: await storage.getEnrollmentsByCourse(course.id),
+        }))
+      );
+
+      const enrollmentByUserCourse = new Map<string, number>();
+      const enrollmentsByUser = new Map<number, { courseId: number; progress: number }[]>();
+      let totalEnrollments = 0;
+      let progressSumAcrossCourses = 0;
+
+      const coursesReport = enrollmentsByCourse.map(({ course, enrollments }) => {
+        totalEnrollments += enrollments.length;
+        let completed = 0;
+        let inProgress = 0;
+        let notStarted = 0;
+        let progressSum = 0;
+
+        for (const e of enrollments) {
+          const progress = Number(e.progress) || 0;
+          progressSum += progress;
+          enrollmentByUserCourse.set(`${e.userId}:${e.courseId}`, progress);
+          const list = enrollmentsByUser.get(e.userId) || [];
+          list.push({ courseId: e.courseId, progress });
+          enrollmentsByUser.set(e.userId, list);
+
+          if (progress >= 100) completed += 1;
+          else if (progress > 0) inProgress += 1;
+          else notStarted += 1;
+        }
+
+        const avgProgress =
+          enrollments.length === 0 ? 0 : Math.round(progressSum / enrollments.length);
+        progressSumAcrossCourses += avgProgress;
+
+        return {
+          id: course.id,
+          title: course.title,
+          enrolled: enrollments.length,
+          avgProgress,
+          completed,
+          inProgress,
+          notStarted,
+        };
+      });
+
+      const avgProgress =
+        courses.length === 0 ? 0 : Math.round(progressSumAcrossCourses / courses.length);
+
+      // Activity by day (exclude dashboard noise)
+      const signalLogs = logs.filter((l) => l.activityType !== "dashboard_view");
+      const now = new Date();
+      const startOfDay = (d: Date) => {
+        const x = new Date(d);
+        x.setHours(0, 0, 0, 0);
+        return x;
+      };
+      const activityByDay: { date: string; count: number }[] = [];
+      for (let i = rangeDays - 1; i >= 0; i--) {
+        const day = new Date(now);
+        day.setDate(now.getDate() - i);
+        const start = startOfDay(day);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 1);
+        const count = signalLogs.filter((l) => {
+          const t = new Date(l.timestamp as any).getTime();
+          return t >= start.getTime() && t < end.getTime();
+        }).length;
+        activityByDay.push({
+          date: start.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          count,
+        });
+      }
+
+      const rangeStart = startOfDay(new Date(now));
+      rangeStart.setDate(rangeStart.getDate() - (rangeDays - 1));
+
+      const attemptsInRange = allAttempts.filter((a) => {
+        const t = new Date(a.startedAt as any).getTime();
+        return t >= rangeStart.getTime();
+      });
+
+      // Exams comparison
+      const attemptsByExam = new Map<number, typeof allAttempts>();
+      for (const a of allAttempts) {
+        const list = attemptsByExam.get(a.examId) || [];
+        list.push(a);
+        attemptsByExam.set(a.examId, list);
+      }
+
+      const examsReport = exams.map((exam) => {
+        const attempts = attemptsByExam.get(exam.id) || [];
+        const completed = attempts.filter((a) => a.completedAt).length;
+        const reviewed = attempts.filter((a) => a.reviewedAt || (a.feedback && String(a.feedback).trim())).length;
+        const course = courseById.get(exam.courseId);
+        return {
+          id: exam.id,
+          title: exam.title,
+          courseTitle: course?.title || "Course",
+          attempts: attempts.length,
+          completed,
+          reviewed,
+          attemptsInRange: attemptsInRange.filter((a) => a.examId === exam.id).length,
+        };
+      });
+
+      // Batches
+      const batchesReport = await Promise.all(
+        batchesList.map(async (batch) => {
+          const courseIds = await storage.getBatchCourseIds(batch.id);
+          const members = await storage.getBatchEnrollmentsByBatch(batch.id);
+          let progressTotal = 0;
+          let progressSamples = 0;
+          for (const member of members) {
+            for (const courseId of courseIds) {
+              const key = `${member.userId}:${courseId}`;
+              if (enrollmentByUserCourse.has(key)) {
+                progressTotal += enrollmentByUserCourse.get(key)!;
+                progressSamples += 1;
+              }
+            }
+          }
+          return {
+            id: batch.id,
+            name: batch.name,
+            batchCode: batch.batchCode,
+            studentCount: members.length,
+            courseCount: courseIds.length,
+            avgProgress: progressSamples === 0 ? 0 : Math.round(progressTotal / progressSamples),
+            isActive: batch.isActive,
+            courseIds,
+          };
+        })
+      );
+
+      // Optional batch detail
+      let batchDetail: null | {
+        id: number;
+        name: string;
+        students: { id: number; name: string; avgProgress: number }[];
+        courses: { id: number; title: string; avgProgress: number }[];
+      } = null;
+
+      if (batchIdParam && Number.isFinite(batchIdParam)) {
+        const batch = batchesList.find((b) => b.id === batchIdParam);
+        if (batch && batch.tenantId === tenantId) {
+          const courseIds = await storage.getBatchCourseIds(batch.id);
+          const members = await storage.getBatchEnrollmentsByBatch(batch.id);
+
+          const detailStudents = members.map((member) => {
+            const user = userById.get(member.userId);
+            let sum = 0;
+            let n = 0;
+            for (const courseId of courseIds) {
+              const key = `${member.userId}:${courseId}`;
+              if (enrollmentByUserCourse.has(key)) {
+                sum += enrollmentByUserCourse.get(key)!;
+                n += 1;
+              }
+            }
+            return {
+              id: member.userId,
+              name: user
+                ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username
+                : `User #${member.userId}`,
+              avgProgress: n === 0 ? 0 : Math.round(sum / n),
+            };
+          }).sort((a, b) => b.avgProgress - a.avgProgress);
+
+          const detailCourses = courseIds.map((courseId) => {
+            const course = courseById.get(courseId);
+            let sum = 0;
+            let n = 0;
+            for (const member of members) {
+              const key = `${member.userId}:${courseId}`;
+              if (enrollmentByUserCourse.has(key)) {
+                sum += enrollmentByUserCourse.get(key)!;
+                n += 1;
+              }
+            }
+            return {
+              id: courseId,
+              title: course?.title || `Course #${courseId}`,
+              avgProgress: n === 0 ? 0 : Math.round(sum / n),
+            };
+          });
+
+          batchDetail = {
+            id: batch.id,
+            name: batch.name,
+            students: detailStudents,
+            courses: detailCourses,
+          };
+        }
+      }
+
+      // Student rankings (top by avg course progress)
+      const attemptsByUser = new Map<number, number>();
+      for (const a of allAttempts) {
+        attemptsByUser.set(a.userId, (attemptsByUser.get(a.userId) || 0) + 1);
+      }
+
+      const studentsReport = students
+        .map((s) => {
+          const enrolls = enrollmentsByUser.get(s.id) || [];
+          const avg =
+            enrolls.length === 0
+              ? 0
+              : Math.round(
+                  enrolls.reduce((sum, e) => sum + e.progress, 0) / enrolls.length
+                );
+          return {
+            id: s.id,
+            name: `${s.firstName || ""} ${s.lastName || ""}`.trim() || s.username,
+            coursesEnrolled: enrolls.length,
+            avgProgress: avg,
+            examAttempts: attemptsByUser.get(s.id) || 0,
+          };
+        })
+        .sort(
+          (a, b) =>
+            b.avgProgress - a.avgProgress ||
+            b.examAttempts - a.examAttempts ||
+            b.coursesEnrolled - a.coursesEnrolled
+        )
+        .slice(0, 15);
+
+      // Completion pie buckets (tenant-wide)
+      const completionBuckets = coursesReport.reduce(
+        (acc, c) => {
+          acc.completed += c.completed;
+          acc.inProgress += c.inProgress;
+          acc.notStarted += c.notStarted;
+          return acc;
+        },
+        { completed: 0, inProgress: 0, notStarted: 0 }
+      );
+
+      res.json({
+        summary: {
+          students: students.length,
+          batches: batchesList.length,
+          courses: courses.length,
+          enrollments: totalEnrollments,
+          avgProgress,
+          examAttempts: allAttempts.length,
+          examAttemptsInRange: attemptsInRange.length,
+          activityEvents: signalLogs.length,
+          exams: exams.length,
+        },
+        activityByDay,
+        completionBuckets,
+        batches: batchesReport,
+        batchDetail,
+        courses: coursesReport.sort((a, b) => b.enrolled - a.enrolled || b.avgProgress - a.avgProgress),
+        exams: examsReport.sort((a, b) => b.attempts - a.attempts),
+        students: studentsReport,
+        range: rangeRaw === "30d" || rangeRaw === "90d" ? rangeRaw : "7d",
+      });
+    } catch (error) {
+      console.error("Failed to build admin reports:", error);
+      res.status(500).json({ message: "Failed to load reports data" });
+    }
+  });
+
   app.post("/api/activity-logs", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertActivityLogSchema.parse({
