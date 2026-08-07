@@ -1342,6 +1342,20 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       if (exam.acceptingResponses === false) {
         return res.status(403).json({ message: "This exam is not accepting responses at this time" });
       }
+
+      // One attempt only: block if already submitted; resume if in progress
+      const userAttempts = await storage.getExamAttemptsByUser(req.user!.id);
+      const forThisExam = userAttempts.filter((a) => a.examId === validatedData.examId);
+      const completed = forThisExam.find((a) => a.completedAt);
+      if (completed) {
+        return res.status(403).json({
+          message: "You have already submitted this exam. Only one attempt is allowed.",
+        });
+      }
+      const inProgress = forThisExam.find((a) => !a.completedAt);
+      if (inProgress) {
+        return res.status(200).json(inProgress);
+      }
       
       const attempt = await storage.createExamAttempt(validatedData);
       
@@ -1375,6 +1389,13 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       // Check if attempt belongs to user or user is admin
       if (attempt.userId !== req.user!.id && req.user!.role !== "admin") {
         return res.status(403).json({ message: "Access denied to this exam attempt" });
+      }
+
+      // One attempt: cannot modify after submit
+      if (attempt.completedAt) {
+        return res.status(403).json({
+          message: "This exam was already submitted. Only one attempt is allowed.",
+        });
       }
       
       // For assignment-style exams, we don't automatically score - instructor will review

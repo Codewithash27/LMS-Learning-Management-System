@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import Header from "@/components/layout/header";
 import ListToolbar from "@/components/layout/list-toolbar";
 import DataTable from "@/components/primitives/DataTable";
 import { useClientPagination } from "@/hooks/use-client-pagination";
-import ExamView from "@/components/exams/exam-view";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,17 +14,30 @@ import {
   LayoutGrid,
   List,
   FileText,
+  ExternalLink,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
+function hasCompletedAttempt(examAttempts: any[], examId: number) {
+  return examAttempts.some(
+    (attempt) =>
+      Number(attempt.examId) === Number(examId) && attempt.completedAt
+  );
+}
+
+function hasInProgressAttempt(examAttempts: any[], examId: number) {
+  return examAttempts.some(
+    (attempt) =>
+      Number(attempt.examId) === Number(examId) && !attempt.completedAt
+  );
+}
+
 export default function StudentUpcomingExams() {
   const [searchTerm, setSearchTerm] = useState("");
   const [view, setView] = useState<"grid" | "list">("list");
-  const [selectedExam, setSelectedExam] = useState<any>(null);
-  const [isExamOpen, setIsExamOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: exams = [], isLoading: isLoadingExams } = useQuery({
@@ -45,36 +57,58 @@ export default function StudentUpcomingExams() {
     return course ? course.title : "Unknown Course";
   };
 
-  const filteredExams = (exams as any[]).filter(
+  // Newest exams first
+  const sortedExams = useMemo(
+    () =>
+      [...(exams as any[])].sort(
+        (a, b) => Number(b.id || 0) - Number(a.id || 0)
+      ),
+    [exams]
+  );
+
+  const filteredExams = sortedExams.filter(
     (exam) =>
       exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getCourseName(exam.courseId).toLowerCase().includes(searchTerm.toLowerCase())
+      getCourseName(exam.courseId)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
   );
 
   const { page, pageSize, total, pageItems, setPage, setPageSize } =
     useClientPagination(filteredExams, 10);
 
-  const canTakeExam = (exam: any) => exam.acceptingResponses !== false;
+  const getExamState = (exam: any) => {
+    const attempted = hasCompletedAttempt(examAttempts as any[], exam.id);
+    const inProgress = hasInProgressAttempt(examAttempts as any[], exam.id);
+    const closed = exam.acceptingResponses === false;
 
-  const getExamStatus = (exam: any) => {
-    const attemptsForExam = (examAttempts as any[]).filter(
-      (attempt) => attempt.examId === exam.id
-    );
-    const hasCompletedAttempt = attemptsForExam.some((attempt) => attempt.completedAt);
+    if (attempted) {
+      return {
+        label: "Attempted",
+        color: "border-slate-200 bg-slate-100 text-slate-800",
+        icon: <CheckCircle2 className="mr-1 h-3.5 w-3.5" />,
+        canStart: false,
+        buttonLabel: "Attempted",
+      };
+    }
 
-    if (exam.acceptingResponses === false) {
+    if (closed) {
       return {
         label: "Closed",
         color: "border-red-200 bg-red-100 text-red-800",
         icon: <XCircle className="mr-1 h-3.5 w-3.5" />,
+        canStart: false,
+        buttonLabel: "Unavailable",
       };
     }
 
-    if (hasCompletedAttempt) {
+    if (inProgress) {
       return {
-        label: "Retake Available",
-        color: "border-blue-200 bg-blue-100 text-blue-800",
+        label: "In Progress",
+        color: "border-amber-200 bg-amber-100 text-amber-800",
         icon: <CheckCircle2 className="mr-1 h-3.5 w-3.5" />,
+        canStart: true,
+        buttonLabel: "Continue Exam",
       };
     }
 
@@ -82,21 +116,30 @@ export default function StudentUpcomingExams() {
       label: "Available",
       color: "border-green-200 bg-green-100 text-green-800",
       icon: <CheckCircle2 className="mr-1 h-3.5 w-3.5" />,
+      canStart: true,
+      buttonLabel: "Start Exam",
     };
   };
 
   const handleStartExam = (exam: any) => {
-    if (!canTakeExam(exam)) {
+    const state = getExamState(exam);
+    if (!state.canStart) {
       toast({
-        title: "Cannot start exam",
-        description: "This exam is not available at this time.",
+        title: state.buttonLabel === "Attempted" ? "Already attempted" : "Cannot start exam",
+        description:
+          state.buttonLabel === "Attempted"
+            ? "You already submitted this exam. Only one attempt is allowed."
+            : "This exam is not available at this time.",
         variant: "destructive",
       });
       return;
     }
 
-    setSelectedExam(exam);
-    setIsExamOpen(true);
+    window.open(
+      `/student/take-exam/${exam.id}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
   };
 
   const viewToggle = (
@@ -179,8 +222,7 @@ export default function StudentUpcomingExams() {
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredExams.map((exam: any) => {
-            const status = getExamStatus(exam);
-            const isAvailable = canTakeExam(exam);
+            const state = getExamState(exam);
             return (
               <Card
                 key={exam.id}
@@ -194,28 +236,37 @@ export default function StudentUpcomingExams() {
                     <Badge
                       className={cn(
                         "rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase",
-                        status.color
+                        state.color
                       )}
                     >
                       <span className="flex items-center">
-                        {status.icon}
-                        {status.label}
+                        {state.icon}
+                        {state.label}
                       </span>
                     </Badge>
                   </div>
-                  <CardTitle className="line-clamp-2 text-[17px]">{exam.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{getCourseName(exam.courseId)}</p>
+                  <CardTitle className="line-clamp-2 text-[17px]">
+                    {exam.title}
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {getCourseName(exam.courseId)}
+                  </p>
                 </CardHeader>
                 <CardContent className="mt-auto space-y-4 pb-4">
                   <p className="line-clamp-2 text-[15px] text-muted-foreground">
                     {exam.description || "No description"}
                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    Opens in a new tab · one attempt only
+                  </p>
                   <Button
-                    className="w-full"
+                    className="w-full gap-2"
                     onClick={() => handleStartExam(exam)}
-                    disabled={!isAvailable}
+                    disabled={!state.canStart}
+                    variant={state.canStart ? "default" : "outline"}
                   >
-                    {isAvailable ? "Start Exam" : "Not Available"}
+                    {state.buttonLabel}
+                    {state.canStart ? <ExternalLink className="h-4 w-4" /> : null}
                   </Button>
                 </CardContent>
               </Card>
@@ -229,7 +280,7 @@ export default function StudentUpcomingExams() {
             { key: "exam", label: "Exam" },
             { key: "course", label: "Course" },
             { key: "status", label: "Status" },
-            { key: "actions", label: "Actions", align: "right" },
+            { key: "actions", label: "Actions", align: "right", className: "min-w-[140px]" },
           ]}
           isEmpty={filteredExams.length === 0}
           empty={emptyState}
@@ -240,8 +291,7 @@ export default function StudentUpcomingExams() {
           onPageSizeChange={setPageSize}
         >
           {pageItems.map((exam: any) => {
-            const status = getExamStatus(exam);
-            const isAvailable = canTakeExam(exam);
+            const state = getExamState(exam);
             return (
               <TableRow key={exam.id} className="hover:bg-muted/70">
                 <TableCell className="py-3.5 pl-5">
@@ -269,12 +319,12 @@ export default function StudentUpcomingExams() {
                   <Badge
                     className={cn(
                       "rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide",
-                      status.color
+                      state.color
                     )}
                   >
                     <span className="flex items-center">
-                      {status.icon}
-                      {status.label}
+                      {state.icon}
+                      {state.label}
                     </span>
                   </Badge>
                 </TableCell>
@@ -282,26 +332,19 @@ export default function StudentUpcomingExams() {
                   <Button
                     type="button"
                     size="sm"
-                    variant={isAvailable ? "default" : "outline"}
-                    className="h-9 rounded-xl"
+                    variant={state.canStart ? "default" : "outline"}
+                    className="h-9 gap-1.5 rounded-xl"
                     onClick={() => handleStartExam(exam)}
-                    disabled={!isAvailable}
+                    disabled={!state.canStart}
                   >
-                    {isAvailable ? "Start Exam" : "Unavailable"}
+                    {state.buttonLabel}
+                    {state.canStart ? <ExternalLink className="h-3.5 w-3.5" /> : null}
                   </Button>
                 </TableCell>
               </TableRow>
             );
           })}
         </DataTable>
-      )}
-
-      {selectedExam && (
-        <ExamView
-          open={isExamOpen}
-          onOpenChange={setIsExamOpen}
-          exam={selectedExam}
-        />
       )}
     </DashboardLayout>
   );
