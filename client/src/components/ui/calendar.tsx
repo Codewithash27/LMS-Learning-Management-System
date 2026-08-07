@@ -11,17 +11,37 @@ function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  captionLayout = "buttons",
+  fromYear,
+  toYear,
   ...props
 }: CalendarProps) {
+  const useDropdown =
+    captionLayout === "dropdown" || captionLayout === "dropdown-buttons"
+
+  const resolvedFromYear =
+    fromYear ?? (useDropdown ? new Date().getFullYear() - 10 : undefined)
+  const resolvedToYear =
+    toYear ?? (useDropdown ? new Date().getFullYear() + 10 : undefined)
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      captionLayout={captionLayout}
+      fromYear={resolvedFromYear}
+      toYear={resolvedToYear}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption: "flex justify-center pt-1 relative items-center gap-1",
+        caption_label: useDropdown ? "hidden" : "text-sm font-medium",
+        caption_dropdowns: "flex items-center justify-center gap-1.5",
+        dropdown_month: "relative inline-flex items-center",
+        dropdown_year: "relative inline-flex items-center",
+        dropdown:
+          "h-8 appearance-none rounded-md border border-border bg-background px-2 py-1 text-sm font-medium text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        vhidden: "hidden",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),

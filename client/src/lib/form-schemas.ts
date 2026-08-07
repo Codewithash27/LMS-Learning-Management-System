@@ -33,7 +33,15 @@ export const examFormSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().min(1, "Description is required"),
   courseId: z.string().min(1, "Please select a course"),
+  batchId: z.string().optional().default("none"),
+  duration: z.coerce
+    .number({ invalid_type_error: "Duration is required" })
+    .int()
+    .min(1, "Duration must be at least 1 minute")
+    .max(600, "Duration cannot exceed 600 minutes"),
   acceptingResponses: z.boolean().default(true),
+  questionSource: z.enum(["manual", "pdf"]).default("manual"),
+  questionCount: z.coerce.number().int().min(1).optional(),
 });
 
 export type ExamFormValues = z.infer<typeof examFormSchema>;
@@ -50,15 +58,23 @@ export const courseMetadataSchema = z.object({
 
 export type CourseMetadataFormValues = z.infer<typeof courseMetadataSchema>;
 
-export const batchFormSchema = z.object({
-  name: z.string().min(3, { message: "Batch name must be at least 3 characters" }),
-  batchCode: z.string().min(2, { message: "Batch code must be at least 2 characters" }),
-  courseId: z.coerce.number({ required_error: "Please select a course" }),
-  trainerId: z.coerce.number({ required_error: "Please select a trainer" }),
-  startDate: z.date({ required_error: "Please select a start date" }),
-  batchTime: z.string().min(1, { message: "Please enter batch time" }),
-  description: z.string().optional(),
-  isActive: z.boolean().default(true),
-});
+export const batchFormSchema = z
+  .object({
+    name: z.string().min(3, { message: "Batch name must be at least 3 characters" }),
+    batchCode: z.string().min(2, { message: "Batch code must be at least 2 characters" }),
+    courseIds: z
+      .array(z.number().int().positive())
+      .min(1, { message: "Select at least one course" }),
+    trainerId: z.coerce.number({ required_error: "Please select a trainer" }),
+    startDate: z.date({ required_error: "Please select a start date" }),
+    endDate: z.date({ required_error: "Please select an end date" }),
+    batchTime: z.string().min(1, { message: "Please enter batch time" }),
+    description: z.string().optional(),
+    isActive: z.boolean().default(true),
+  })
+  .refine((data) => data.endDate >= data.startDate, {
+    message: "End date must be on or after start date",
+    path: ["endDate"],
+  });
 
 export type BatchFormValues = z.infer<typeof batchFormSchema>;

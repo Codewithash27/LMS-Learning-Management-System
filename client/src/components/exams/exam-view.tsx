@@ -40,7 +40,7 @@ type ExamViewProps = {
     id: number;
     title: string;
     description: string;
-    duration: number;
+    duration?: number;
     acceptingResponses?: boolean;
   };
 };
@@ -100,8 +100,8 @@ export default function ExamView({ open, onOpenChange, exam }: ExamViewProps) {
           });
           setAnswers(initialAnswers);
           
-          // Set timer
-          setTimeRemaining(exam.duration * 60);
+          // Set timer (duration is minutes; default 60 if missing)
+          setTimeRemaining((exam.duration || 60) * 60);
           
           setIsLoading(false);
         } catch (error) {
