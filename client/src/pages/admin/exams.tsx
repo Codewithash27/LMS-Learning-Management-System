@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import ListToolbar from "@/components/layout/list-toolbar";
@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Send,
   Ban,
+  Clock,
 } from "lucide-react";
 import {
   TableCell,
@@ -32,7 +33,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -89,7 +90,7 @@ export default function AdminExams() {
         description: error.message || "There was an error deleting the exam",
         variant: "destructive",
       });
-    }
+    },
   });
 
   const publishMutation = useMutation({
@@ -148,7 +149,16 @@ export default function AdminExams() {
     return course ? course.title : "Unknown Course";
   };
 
-  const filteredExams = (exams as any[]).filter((exam: any) => {
+  // Newest exams first (higher id = more recent)
+  const sortedExams = useMemo(
+    () =>
+      [...(exams as any[])].sort(
+        (a, b) => Number(b.id || 0) - Number(a.id || 0)
+      ),
+    [exams]
+  );
+
+  const filteredExams = sortedExams.filter((exam: any) => {
     const matchesSearch =
       exam.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getCourseName(exam.courseId).toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -172,19 +182,6 @@ export default function AdminExams() {
     setPageSize,
   } = useClientPagination(filteredExams, 10);
 
-  const getStatusBadge = (exam: any) => {
-    if (isPublished(exam)) {
-      return {
-        label: "Published",
-        className: "border-green-200 bg-green-100 text-green-800",
-      };
-    }
-    return {
-      label: "Closed",
-      className: "border-gray-200 bg-gray-100 text-gray-800",
-    };
-  };
-
   return (
     <DashboardLayout>
       <Header
@@ -196,7 +193,7 @@ export default function AdminExams() {
             searchPlaceholder="Search exams..."
             filters={
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-10 w-[140px] rounded-xl border-border bg-card shadow-sm">
+                <SelectTrigger className="h-10 w-[150px] rounded-xl border-border bg-card shadow-sm">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -230,12 +227,16 @@ export default function AdminExams() {
         <DataTable
           title="Exam Directory"
           columns={[
-            { key: "exam", label: "Exam" },
-            { key: "course", label: "Course" },
-            { key: "duration", label: "Time" },
-            { key: "visibility", label: "Student visibility" },
-            { key: "status", label: "Status" },
-            { key: "actions", label: "Actions", align: "right" },
+            { key: "exam", label: "Exam", className: "min-w-[220px]" },
+            { key: "course", label: "Course", className: "min-w-[160px]" },
+            { key: "duration", label: "Duration", className: "w-[100px]" },
+            { key: "status", label: "Status", className: "w-[130px]" },
+            {
+              key: "actions",
+              label: "Actions",
+              align: "right",
+              className: "w-[180px] min-w-[180px]",
+            },
           ]}
           isEmpty={filteredExams.length === 0}
           empty={
@@ -262,7 +263,6 @@ export default function AdminExams() {
           onPageSizeChange={setPageSize}
         >
           {pageItems.map((exam: any) => {
-            const status = getStatusBadge(exam);
             const published = isPublished(exam);
             return (
               <TableRow key={exam.id} className="hover:bg-muted/70">
@@ -271,49 +271,54 @@ export default function AdminExams() {
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
                       <FileText className="h-5 w-5 text-primary" />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 max-w-[280px]">
                       <p className="truncate text-[15px] font-semibold text-[#2D3748]">
                         {exam.title}
                       </p>
-                      <p className="line-clamp-1 text-xs text-muted-foreground">
-                        {exam.description || "No description"}
+                      <p className="truncate text-xs text-muted-foreground">
+                        {exam.description?.trim() || "No description"}
                       </p>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2 text-[15px] text-[#2D3748]/90">
+                  <div className="flex max-w-[200px] items-center gap-2 text-[15px] text-[#2D3748]/90">
                     <BookOpen className="h-3.5 w-3.5 shrink-0 text-[#A0AEC0]" />
                     <span className="truncate">{getCourseName(exam.courseId)}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-[15px] text-[#2D3748]/90">
-                  {exam.duration ?? 60} min
-                </TableCell>
-                <TableCell className="text-[15px] text-[#2D3748]/90">
-                  {published
-                    ? "Visible to assigned students"
-                    : "Hidden from students"}
+                <TableCell>
+                  <div className="flex items-center gap-1.5 text-[15px] text-[#2D3748]/90">
+                    <Clock className="h-3.5 w-3.5 text-[#A0AEC0]" />
+                    <span>{exam.duration ?? 60} min</span>
+                  </div>
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    className={cn(
-                      "rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide",
-                      status.className
-                    )}
-                  >
-                    {status.label}
-                  </Badge>
+                  <div className="flex flex-col items-start gap-1">
+                    <Badge
+                      className={cn(
+                        "rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide",
+                        published
+                          ? "border-green-200 bg-green-100 text-green-800"
+                          : "border-gray-200 bg-gray-100 text-gray-800"
+                      )}
+                    >
+                      {published ? "Published" : "Closed"}
+                    </Badge>
+                    <span className="text-[11px] text-muted-foreground">
+                      {published ? "Visible to students" : "Hidden from students"}
+                    </span>
+                  </div>
                 </TableCell>
                 <TableCell className="pr-5 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <ActionTooltip label={published ? "Unpublish exam" : "Publish exam"}>
+                    <ActionTooltip label={published ? "Unpublish" : "Publish"}>
                       <Button
                         type="button"
                         size="sm"
                         variant="ghost"
                         className={cn(
-                          "h-9 gap-1.5 px-2.5",
+                          "h-9 w-9 p-0",
                           published
                             ? "text-amber-700 hover:bg-amber-50"
                             : "text-green-700 hover:bg-green-50"
@@ -328,15 +333,9 @@ export default function AdminExams() {
                         }
                       >
                         {published ? (
-                          <>
-                            <Ban className="h-4 w-4" />
-                            <span className="hidden sm:inline">Unpublish</span>
-                          </>
+                          <Ban className="h-4 w-4" />
                         ) : (
-                          <>
-                            <Send className="h-4 w-4" />
-                            <span className="hidden sm:inline">Publish</span>
-                          </>
+                          <Send className="h-4 w-4" />
                         )}
                       </Button>
                     </ActionTooltip>
