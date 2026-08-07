@@ -6,6 +6,7 @@ import CourseEditor from "@/components/courses/course-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ActionTooltip } from "@/components/ui/action-tooltip";
 import {
   Plus,
   Edit,
@@ -348,36 +349,40 @@ export default function AdminCourses() {
   const thumbSrc = (course: any) => getCourseThumbnailSrc(course.thumbnail);
 
   const CourseActionsMenu = ({ course }: { course: any }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="ghost" className="h-9 w-9 p-0">
-          <MoreVertical className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="rounded-xl">
-        <DropdownMenuItem className="gap-2" onClick={() => handleEditCourse(course)}>
-          <Edit className="h-4 w-4" /> Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem className="gap-2" onClick={() => openAssignDialog(course)}>
-          <UserPlus className="h-4 w-4" /> Assign to Student
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="gap-2"
-          onClick={() => {
-            window.location.href = `/admin/courses/${course.id}/progress`;
-          }}
-        >
-          <Eye className="h-4 w-4" /> Student Progress
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="gap-2 text-destructive focus:text-destructive"
-          onClick={() => handleDeleteCourse(course)}
-        >
-          <Trash2 className="h-4 w-4" /> Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ActionTooltip label="More actions">
+      <span className="inline-flex">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="ghost" className="h-9 w-9 p-0" aria-label="More actions">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="rounded-xl">
+            <DropdownMenuItem className="gap-2" onClick={() => handleEditCourse(course)}>
+              <Edit className="h-4 w-4" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2" onClick={() => openAssignDialog(course)}>
+              <UserPlus className="h-4 w-4" /> Assign to Student
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="gap-2"
+              onClick={() => {
+                window.location.href = `/admin/courses/${course.id}/progress`;
+              }}
+            >
+              <Eye className="h-4 w-4" /> Student Progress
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="gap-2 text-destructive focus:text-destructive"
+              onClick={() => handleDeleteCourse(course)}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </span>
+    </ActionTooltip>
   );
 
   return (
@@ -419,43 +424,49 @@ export default function AdminCourses() {
             }
             extras={
               <div className="inline-flex rounded-xl border border-border bg-white p-0.5 shadow-sm">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className={cn(
-                    "h-9 w-9 rounded-lg p-0",
-                    view === "grid" && "bg-brand-turquoise/15 text-brand-turquoise"
-                  )}
-                  onClick={() => setView("grid")}
-                  aria-label="Grid view"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className={cn(
-                    "h-9 w-9 rounded-lg p-0",
-                    view === "list" && "bg-brand-turquoise/15 text-brand-turquoise"
-                  )}
-                  onClick={() => setView("list")}
-                  aria-label="List view"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
+                <ActionTooltip label="Grid view">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className={cn(
+                      "h-9 w-9 rounded-lg p-0",
+                      view === "grid" && "bg-brand-turquoise/15 text-brand-turquoise"
+                    )}
+                    onClick={() => setView("grid")}
+                    aria-label="Grid view"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                </ActionTooltip>
+                <ActionTooltip label="List view">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className={cn(
+                      "h-9 w-9 rounded-lg p-0",
+                      view === "list" && "bg-brand-turquoise/15 text-brand-turquoise"
+                    )}
+                    onClick={() => setView("list")}
+                    aria-label="List view"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </ActionTooltip>
               </div>
             }
             action={
-              <Button
-                type="button"
-                onClick={handleCreateCourse}
-                className="h-11 w-11 shrink-0 rounded-xl p-0"
-                aria-label="Create course"
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
+              <ActionTooltip label="Create course">
+                <Button
+                  type="button"
+                  onClick={handleCreateCourse}
+                  className="h-11 w-11 shrink-0 rounded-xl p-0"
+                  aria-label="Create course"
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </ActionTooltip>
             }
           />
         }
@@ -664,48 +675,56 @@ export default function AdminCourses() {
                 </TableCell>
                 <TableCell className="pr-5 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
-                      aria-label="Edit"
-                      onClick={() => handleEditCourse(course)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
-                      aria-label="Assign to student"
-                      onClick={() => openAssignDialog(course)}
-                    >
-                      <UserPlus className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-primary/80 hover:bg-primary/10"
-                      aria-label="Progress"
-                      onClick={() => {
-                        window.location.href = `/admin/courses/${course.id}/progress`;
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-[#d32f2f] hover:bg-[#d32f2f]/10"
-                      aria-label="Delete"
-                      onClick={() => handleDeleteCourse(course)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <ActionTooltip label="Edit course">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
+                        aria-label="Edit course"
+                        onClick={() => handleEditCourse(course)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </ActionTooltip>
+                    <ActionTooltip label="Assign to student">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
+                        aria-label="Assign to student"
+                        onClick={() => openAssignDialog(course)}
+                      >
+                        <UserPlus className="h-4 w-4" />
+                      </Button>
+                    </ActionTooltip>
+                    <ActionTooltip label="View progress">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 p-0 text-primary/80 hover:bg-primary/10"
+                        aria-label="View progress"
+                        onClick={() => {
+                          window.location.href = `/admin/courses/${course.id}/progress`;
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </ActionTooltip>
+                    <ActionTooltip label="Delete course">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 p-0 text-[#d32f2f] hover:bg-[#d32f2f]/10"
+                        aria-label="Delete course"
+                        onClick={() => handleDeleteCourse(course)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ActionTooltip>
                   </div>
                 </TableCell>
               </TableRow>

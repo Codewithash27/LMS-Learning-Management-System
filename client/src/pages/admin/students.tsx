@@ -7,6 +7,7 @@ import ListToolbar from "@/components/layout/list-toolbar";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ActionTooltip } from "@/components/ui/action-tooltip";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -390,31 +391,35 @@ export default function AdminStudents() {
               </Select>
             }
             action={
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    className="h-11 w-11 shrink-0 rounded-xl p-0"
-                    aria-label="Add student"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="rounded-xl">
-                  <DropdownMenuItem className="gap-2" onClick={openAddDialog}>
-                    <UserPlus className="h-4 w-4" />
-                    Add Single Student
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2" disabled>
-                    <Upload className="h-4 w-4" />
-                    Bulk Import
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2" disabled>
-                    <Download className="h-4 w-4" />
-                    Export Template
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <ActionTooltip label="Add student">
+                <span className="inline-flex">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        className="h-11 w-11 shrink-0 rounded-xl p-0"
+                        aria-label="Add student"
+                      >
+                        <Plus className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="rounded-xl">
+                      <DropdownMenuItem className="gap-2" onClick={openAddDialog}>
+                        <UserPlus className="h-4 w-4" />
+                        Add Single Student
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2" disabled>
+                        <Upload className="h-4 w-4" />
+                        Bulk Import
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2" disabled>
+                        <Download className="h-4 w-4" />
+                        Export Template
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </span>
+              </ActionTooltip>
             }
           />
         }
@@ -504,36 +509,42 @@ export default function AdminStudents() {
                 <TableCell className="pr-5 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Link href={`/admin/students/${student.id}`}>
+                      <ActionTooltip label="View details">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
+                          aria-label="View details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </ActionTooltip>
+                    </Link>
+                    <ActionTooltip label="Assign course">
                       <Button
                         type="button"
                         size="sm"
                         variant="ghost"
                         className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
-                        aria-label="View"
+                        aria-label="Assign course"
+                        onClick={() => openAssignDialog(student)}
                       >
-                        <Eye className="h-4 w-4" />
+                        <BookOpen className="h-4 w-4" />
                       </Button>
-                    </Link>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
-                      aria-label="Assign course"
-                      onClick={() => openAssignDialog(student)}
-                    >
-                      <BookOpen className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-[#d32f2f] hover:bg-[#d32f2f]/10"
-                      aria-label="Delete"
-                      onClick={() => openDeleteDialog(student)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </ActionTooltip>
+                    <ActionTooltip label="Delete student">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 p-0 text-[#d32f2f] hover:bg-[#d32f2f]/10"
+                        aria-label="Delete student"
+                        onClick={() => openDeleteDialog(student)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ActionTooltip>
                   </div>
                 </TableCell>
               </TableRow>

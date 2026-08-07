@@ -44,6 +44,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { ActionTooltip } from "@/components/ui/action-tooltip";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -379,14 +380,16 @@ export default function BatchesPage() {
               </Select>
             }
             action={
-              <Button
-                type="button"
-                onClick={openCreateBatch}
-                className="h-11 w-11 shrink-0 rounded-xl p-0"
-                aria-label="Create batch"
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
+              <ActionTooltip label="Create batch">
+                <Button
+                  type="button"
+                  onClick={openCreateBatch}
+                  className="h-11 w-11 shrink-0 rounded-xl p-0"
+                  aria-label="Create batch"
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </ActionTooltip>
             }
           />
         }
@@ -507,49 +510,57 @@ export default function BatchesPage() {
                 <TableCell className="pr-5 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Link href={`/admin/batches/${batch.id}`}>
+                      <ActionTooltip label="View details">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
+                          aria-label="View details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </ActionTooltip>
+                    </Link>
+                    <ActionTooltip label="Edit batch">
                       <Button
                         type="button"
                         size="sm"
                         variant="ghost"
                         className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
-                        aria-label="View"
+                        aria-label="Edit batch"
+                        onClick={() => handleEditBatch(batch)}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
-                    </Link>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
-                      aria-label="Edit batch"
-                      onClick={() => handleEditBatch(batch)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
-                      aria-label="Enroll students"
-                      onClick={() => {
-                        setSelectedBatchId(batch.id);
-                        setOpenEnrollDialog(true);
-                      }}
-                    >
-                      <Users className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-[#d32f2f] hover:bg-[#d32f2f]/10"
-                      aria-label="Delete batch"
-                      onClick={() => handleDeleteBatch(batch)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </ActionTooltip>
+                    <ActionTooltip label="Enroll students">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
+                        aria-label="Enroll students"
+                        onClick={() => {
+                          setSelectedBatchId(batch.id);
+                          setOpenEnrollDialog(true);
+                        }}
+                      >
+                        <Users className="h-4 w-4" />
+                      </Button>
+                    </ActionTooltip>
+                    <ActionTooltip label="Delete batch">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 p-0 text-[#d32f2f] hover:bg-[#d32f2f]/10"
+                        aria-label="Delete batch"
+                        onClick={() => handleDeleteBatch(batch)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ActionTooltip>
                   </div>
                 </TableCell>
               </TableRow>
