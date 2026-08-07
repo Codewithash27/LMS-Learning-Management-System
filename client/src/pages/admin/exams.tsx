@@ -8,6 +8,7 @@ import DataTable from "@/components/primitives/DataTable";
 import { useClientPagination } from "@/hooks/use-client-pagination";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ActionTooltip } from "@/components/ui/action-tooltip";
 import {
   Plus,
   Edit,
@@ -206,14 +207,16 @@ export default function AdminExams() {
               </Select>
             }
             action={
-              <Button
-                type="button"
-                onClick={handleCreateExam}
-                className="h-11 w-11 shrink-0 rounded-xl p-0"
-                aria-label="Create exam"
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
+              <ActionTooltip label="Create exam">
+                <Button
+                  type="button"
+                  onClick={handleCreateExam}
+                  className="h-11 w-11 shrink-0 rounded-xl p-0"
+                  aria-label="Create exam"
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </ActionTooltip>
             }
           />
         }
@@ -304,68 +307,76 @@ export default function AdminExams() {
                 </TableCell>
                 <TableCell className="pr-5 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className={cn(
-                        "h-9 gap-1.5 px-2.5",
-                        published
-                          ? "text-amber-700 hover:bg-amber-50"
-                          : "text-green-700 hover:bg-green-50"
-                      )}
-                      aria-label={published ? "Unpublish" : "Publish"}
-                      disabled={publishMutation.isPending}
-                      onClick={() =>
-                        publishMutation.mutate({
-                          examId: exam.id,
-                          acceptingResponses: !published,
-                        })
-                      }
-                    >
-                      {published ? (
-                        <>
-                          <Ban className="h-4 w-4" />
-                          <span className="hidden sm:inline">Unpublish</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="h-4 w-4" />
-                          <span className="hidden sm:inline">Publish</span>
-                        </>
-                      )}
-                    </Button>
+                    <ActionTooltip label={published ? "Unpublish exam" : "Publish exam"}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className={cn(
+                          "h-9 gap-1.5 px-2.5",
+                          published
+                            ? "text-amber-700 hover:bg-amber-50"
+                            : "text-green-700 hover:bg-green-50"
+                        )}
+                        aria-label={published ? "Unpublish exam" : "Publish exam"}
+                        disabled={publishMutation.isPending}
+                        onClick={() =>
+                          publishMutation.mutate({
+                            examId: exam.id,
+                            acceptingResponses: !published,
+                          })
+                        }
+                      >
+                        {published ? (
+                          <>
+                            <Ban className="h-4 w-4" />
+                            <span className="hidden sm:inline">Unpublish</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="h-4 w-4" />
+                            <span className="hidden sm:inline">Publish</span>
+                          </>
+                        )}
+                      </Button>
+                    </ActionTooltip>
                     <Link href={`/admin/exams/${exam.id}`}>
+                      <ActionTooltip label="View exam">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
+                          aria-label="View exam"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </ActionTooltip>
+                    </Link>
+                    <ActionTooltip label="Edit exam">
                       <Button
                         type="button"
                         size="sm"
                         variant="ghost"
                         className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
-                        aria-label="View"
+                        aria-label="Edit exam"
+                        onClick={() => handleEditExam(exam)}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Edit className="h-4 w-4" />
                       </Button>
-                    </Link>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-primary hover:bg-primary/10"
-                      aria-label="Edit"
-                      onClick={() => handleEditExam(exam)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-[#d32f2f] hover:bg-[#d32f2f]/10"
-                      aria-label="Delete"
-                      onClick={() => openDeleteDialog(exam)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </ActionTooltip>
+                    <ActionTooltip label="Delete exam">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 p-0 text-[#d32f2f] hover:bg-[#d32f2f]/10"
+                        aria-label="Delete exam"
+                        onClick={() => openDeleteDialog(exam)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ActionTooltip>
                   </div>
                 </TableCell>
               </TableRow>
