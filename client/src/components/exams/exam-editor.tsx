@@ -147,12 +147,8 @@ export default function ExamEditor({
   const questionCount = form.watch("questionCount");
 
   const courseBatches = useMemo(
-    () =>
-      batches.filter(
-        (batch) =>
-          !selectedCourseId || batch.courseId === Number(selectedCourseId)
-      ),
-    [batches, selectedCourseId]
+    () => batches, // Show all batches, validation will happen on backend
+    [batches]
   );
 
   useEffect(() => {
@@ -192,15 +188,8 @@ export default function ExamEditor({
     }
   }, [examQuestions, exam?.id]);
 
-  // Clear batch if it no longer matches the selected course
-  useEffect(() => {
-    const batchId = form.getValues("batchId");
-    if (!batchId || batchId === "none") return;
-    const stillValid = courseBatches.some((b) => String(b.id) === batchId);
-    if (!stillValid) {
-      form.setValue("batchId", "none");
-    }
-  }, [courseBatches, form]);
+  // Note: Batch validation is now done on the backend
+  // Users can select any batch, and the server will validate if the course is assigned to that batch
 
   const applyRandomFromPoolWith = (pool: ParsedPdfQuestion[], count: number) => {
     const picked = shufflePick(pool, count);
@@ -405,10 +394,11 @@ export default function ExamEditor({
       queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
       queryClient.invalidateQueries({ queryKey: [`/api/exams/${examId}/questions`] });
       onOpenChange(false);
-    } catch {
+    } catch (error: any) {
+      const errorMessage = error?.message || "There was an error saving the exam.";
       toast({
         title: "Error",
-        description: "There was an error saving the exam.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -570,7 +560,7 @@ export default function ExamEditor({
                         <Select
                           onValueChange={field.onChange}
                           value={field.value ?? "none"}
-                          disabled={isSaving || !selectedCourseId}
+                          disabled={isSaving}
                         >
                           <FormControl>
                             <SelectTrigger className={createFormControlClass}>

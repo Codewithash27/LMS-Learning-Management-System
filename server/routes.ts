@@ -1099,9 +1099,12 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         if (!batch || batch.tenantId !== req.user!.tenantId) {
           return res.status(403).json({ message: "Access denied to this batch" });
         }
-        if (batch.courseId !== validatedData.courseId) {
+        
+        // Check if the selected course is assigned to this batch
+        const batchCourseIds = await storage.getBatchCourseIds(validatedData.batchId);
+        if (!batchCourseIds.includes(validatedData.courseId)) {
           return res.status(400).json({
-            message: "Selected batch does not belong to the selected course",
+            message: "This batch doesn't have access to the selected course. Please assign the course to this batch first or choose a different batch.",
           });
         }
       }
@@ -1164,9 +1167,12 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
           return res.status(403).json({ message: "Access denied to this batch" });
         }
         const courseId = validatedData.courseId ?? exam.courseId;
-        if (batch.courseId !== courseId) {
+        
+        // Check if the selected course is assigned to this batch
+        const batchCourseIds = await storage.getBatchCourseIds(validatedData.batchId);
+        if (!batchCourseIds.includes(courseId)) {
           return res.status(400).json({
-            message: "Selected batch does not belong to the selected course",
+            message: "This batch doesn't have access to the selected course. Please assign the course to this batch first or choose a different batch.",
           });
         }
       }
