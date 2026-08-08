@@ -1,4 +1,4 @@
-﻿import express, { type Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
@@ -2274,7 +2274,97 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
       res.status(500).json({ message: "Failed to fetch exam results" });
     }
   });
-  
+
+  // ─── Token-Based Theme API ─────────────────────────────────────────────────
+
+  // GET /api/theme — returns the active tenant theme token overrides (all roles)
+  app.get("/api/theme", isAuthenticated, async (req, res) => {
+    try {
+      const themeConfig = await storage.getTenantTheme(req.user!.tenantId);
+      res.json({ themeConfig });
+    } catch (error) {
+      console.error("Failed to fetch tenant theme:", error);
+      res.status(500).json({ message: "Failed to fetch theme" });
+    }
+  });
+
+  // PUT /api/theme — save/update tenant theme token overrides (admin only)
+  app.put("/api/theme", isAdmin, async (req, res) => {
+    try {
+      const { tokenOverrides } = req.body;
+      if (!tokenOverrides || typeof tokenOverrides !== "object") {
+        return res.status(400).json({ message: "tokenOverrides object is required" });
+      }
+      const updated = await storage.updateTenantTheme(req.user!.tenantId, tokenOverrides);
+      res.json({ tenant: updated, message: "Theme saved successfully" });
+    } catch (error) {
+      console.error("Failed to update tenant theme:", error);
+      res.status(500).json({ message: "Failed to save theme" });
+    }
+  });
+
+  // DELETE /api/theme — reset tenant theme to default (admin only)
+  app.delete("/api/theme", isAdmin, async (req, res) => {
+    try {
+      await storage.resetTenantTheme(req.user!.tenantId);
+      res.json({ message: "Theme reset to default" });
+    } catch (error) {
+      console.error("Failed to reset tenant theme:", error);
+      res.status(500).json({ message: "Failed to reset theme" });
+    }
+  });
+
+  // GET /api/theme/templates — list all theme templates for this tenant (admin only)
+  app.get("/api/theme/templates", isAdmin, async (req, res) => {
+    try {
+      const templates = await storage.getThemeTemplates(req.user!.tenantId);
+      res.json(templates);
+    } catch (error) {
+      console.error("Failed to fetch theme templates:", error);
+      res.status(500).json({ message: "Failed to fetch theme templates" });
+    }
+  });
+
+  // POST /api/theme/templates — save a named custom theme (admin only)
+  app.post("/api/theme/templates", isAdmin, async (req, res) => {
+    try {
+      const { name, tag, tokenOverrides } = req.body;
+      if (!name || !tokenOverrides || typeof tokenOverrides !== "object") {
+        return res.status(400).json({ message: "name and tokenOverrides are required" });
+      }
+      const template = await storage.createThemeTemplate({
+        name,
+        tag: tag ?? null,
+        tokenOverrides,
+        isPreset: false,
+        tenantId: req.user!.tenantId,
+        createdBy: req.user!.id,
+      });
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Failed to create theme template:", error);
+      res.status(500).json({ message: "Failed to save theme template" });
+    }
+  });
+
+  // DELETE /api/theme/templates/:id — delete a custom theme (admin only, tenant-owned only)
+  app.delete("/api/theme/templates/:id", isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid template ID" });
+      const deleted = await storage.deleteThemeTemplate(id, req.user!.tenantId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Template not found or not deletable" });
+      }
+      res.json({ message: "Theme template deleted" });
+    } catch (error) {
+      console.error("Failed to delete theme template:", error);
+      res.status(500).json({ message: "Failed to delete theme template" });
+    }
+  });
+
+  // ─── End Theme API ─────────────────────────────────────────────────────────
+
   // Initialize the HTTP server
   const httpServer = createServer(app);
   return httpServer;

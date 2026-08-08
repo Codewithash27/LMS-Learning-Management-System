@@ -21,6 +21,8 @@ import AdminBatchDetails from "@/pages/admin/batch-details";
 import AdminReports from "@/pages/admin/reports";
 import AdminProfile from "@/pages/admin/profile";
 import AdminGrading from "@/pages/admin/grading";
+import AdminThemeStudio from "@/pages/admin/theme-studio";
+import { ThemeProvider } from "@/theme";
 
 // Student Pages
 import StudentDashboard from "@/pages/student/dashboard";
@@ -50,6 +52,7 @@ function Router() {
       <ProtectedRoute path="/admin/batches/:id" component={AdminBatchDetails} roles={["admin", "superadmin"]} />
       <ProtectedRoute path="/admin/reports" component={AdminReports} roles={["admin", "superadmin"]} />
       <ProtectedRoute path="/admin/grading" component={AdminGrading} roles={["admin", "superadmin"]} />
+      <ProtectedRoute path="/admin/theme-studio" component={AdminThemeStudio} roles={["admin", "superadmin"]} />
       <ProtectedRoute path="/admin/profile" component={AdminProfile} roles={["admin", "superadmin"]} />
 
       {/* Student Routes */}
@@ -81,9 +84,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <SidebarProvider>
-          <AppContent />
-        </SidebarProvider>
+        <ThemeProvider>
+          <SidebarProvider>
+            <AppContent />
+          </SidebarProvider>
+        </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, time } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, time, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -7,6 +7,9 @@ export const tenants = pgTable("tenants", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   subdomain: text("subdomain").notNull().unique(),
+  // Token-based theme config: stores full ThemeTokenOverrides JSON for this tenant
+  themeConfig: jsonb("theme_config"),
+  logoUrl: text("logo_url"),
 });
 
 export const insertTenantSchema = createInsertSchema(tenants).pick({
@@ -333,3 +336,33 @@ export const insertBatchEnrollmentSchema = createInsertSchema(batchEnrollments).
 
 export type InsertBatchEnrollment = z.infer<typeof insertBatchEnrollmentSchema>;
 export type BatchEnrollment = typeof batchEnrollments.$inferSelect;
+
+// Theme Templates model — stores named preset/custom themes per tenant
+export const themeTemplates = pgTable("theme_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  tag: text("tag"),                         // Short descriptor e.g. "Corporate & trustworthy"
+  tokenOverrides: jsonb("token_overrides").notNull(), // ThemeTokenOverrides JSON
+  isPreset: boolean("is_preset").notNull().default(false), // Built-in presets vs custom
+  tenantId: integer("tenant_id"),            // null = global preset, set = tenant-custom
+  createdBy: integer("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertThemeTemplateSchema = createInsertSchema(themeTemplates).pick({
+  name: true,
+  tag: true,
+  tokenOverrides: true,
+  isPreset: true,
+  tenantId: true,
+  createdBy: true,
+}).extend({
+  tag: z.string().nullable().optional(),
+  isPreset: z.boolean().optional(),
+  tenantId: z.number().nullable().optional(),
+  createdBy: z.number().nullable().optional(),
+  tokenOverrides: z.record(z.unknown()),
+});
+
+export type InsertThemeTemplate = z.infer<typeof insertThemeTemplateSchema>;
+export type ThemeTemplate = typeof themeTemplates.$inferSelect;

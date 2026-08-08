@@ -22,7 +22,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { colorTokens } from "@/tokens/colors";
 import { getProfilePhotoSrc } from "@/lib/profile-photo";
 
 type MainLayoutProps = {
@@ -107,7 +106,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
                 <p className="hidden max-w-[140px] truncate text-right text-[0.82rem] font-extrabold tracking-tight text-foreground sm:block sm:max-w-[260px] sm:text-[0.92rem] md:max-w-[320px] md:text-base">
                   {greeting.text},{" "}
-                  <span style={{ color: colorTokens.primary.main }}>{firstName}</span>{" "}
+                  <span className="text-primary">{firstName}</span>{" "}
                   <span className="animate-wave-hand text-base">👋</span>
                 </p>
 
