@@ -144,7 +144,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
                 
                 // Process lessons and parse quiz data
                 const processedLessons = lessonsData.map((lesson: any) => {
-                  let processedLesson = {
+                  let processedLesson: any = {
                     id: lesson.id,
                     title: lesson.title,
                     contentType: lesson.contentType || "text",
@@ -490,7 +490,7 @@ export default function CourseEditor({ open, onOpenChange, course }: CourseEdito
     if (file) {
       const inputEvent = {
         target: { files: [file] }
-      } as React.ChangeEvent<HTMLInputElement>;
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
       handleFileSelect(inputEvent);
     }
   };

@@ -667,8 +667,9 @@ export default function StudentDetailsPage() {
                         </TableHeader>
                         <TableBody>
                           {studentExamAttempts.map((attempt) => {
-                            const course = attempt.exam
-                              ? allCourses.find((c) => c.id === attempt.exam.courseId)
+                            const exam = attempt.exam;
+                            const course = exam
+                              ? allCourses.find((c) => c.id === exam.courseId)
                               : null;
                             const isCompleted = !!attempt.completedAt;
                             return (

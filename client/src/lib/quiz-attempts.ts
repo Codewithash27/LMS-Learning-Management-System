@@ -115,13 +115,13 @@ function normalizeAttemptNumbers(records: QuizScoreRecord[]): QuizScoreRecord[] 
   }
 
   const remapped = new Map<string, number>();
-  for (const [, list] of byLesson) {
+  byLesson.forEach((list) => {
     const sorted = [...list].sort(
       (a, b) =>
         new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime()
     );
     sorted.forEach((r, i) => remapped.set(r.id, i + 1));
-  }
+  });
 
   return records.map((r) => ({
     ...r,
@@ -205,7 +205,7 @@ export function getQuizScoresGrouped(): QuizScoreGroup[] {
   }
 
   const groups: QuizScoreGroup[] = [];
-  for (const [key, list] of map) {
+  map.forEach((list, key) => {
     const attempts = [...list].sort(
       (a, b) =>
         new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime()
@@ -222,7 +222,7 @@ export function getQuizScoresGrouped(): QuizScoreGroup[] {
       latest,
       bestPercent: Math.max(...attempts.map((a) => a.percent)),
     });
-  }
+  });
 
   // Most recently attempted quizzes first
   return groups.sort(
