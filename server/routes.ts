@@ -20,7 +20,7 @@ import {
   insertBatchEnrollmentSchema,
   insertLessonProgressSchema
 } from "@shared/schema";
-import { parseQuestionsFromText } from "./pdf-questions";
+import { parseQuestionsFromText, parseQuestionsFromDocx, extractImagesFromPdfBuffer } from "./pdf-questions";
 import { PDFParse } from "pdf-parse";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -882,70 +882,163 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
     }
   });
 
-  // Parse a questions PDF into structured question/answer items (admin only)
-  const questionsPdfUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 15 * 1024 * 1024 },
+  // Question image upload endpoint (admin only)
+  const questionImageStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      const dir = path.join(process.cwd(), "uploads", "questions");
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      cb(null, dir);
+    },
+    filename: (_req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const ext = path.extname(file.originalname) || ".png";
+      cb(null, `q-img-${uniqueSuffix}${ext}`);
+    },
+  });
+
+  const questionImageUpload = multer({
+    storage: questionImageStorage,
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-      if (
-        file.mimetype === "application/pdf" ||
-        file.originalname.toLowerCase().endsWith(".pdf")
-      ) {
+      const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+      if (allowed.includes(file.mimetype) || /\.(png|jpe?g|webp|gif)$/i.test(file.originalname)) {
         cb(null, true);
       } else {
-        cb(new Error("Only PDF files are allowed"));
+        cb(new Error("Only image files (PNG, JPG, JPEG, WEBP, GIF) are allowed"));
       }
     },
   });
 
   app.post(
+    "/api/exams/upload-question-image",
+    isAdmin,
+    questionImageUpload.single("image"),
+    (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "No image file provided" });
+        }
+        const imageUrl = `/uploads/questions/${req.file.filename}`;
+        res.json({ imageUrl });
+      } catch (error: any) {
+        res.status(500).json({ message: error?.message || "Failed to upload image" });
+      }
+    }
+  );
+
+  // Parse questions document (PDF or Word .docx) into structured question/answer items (admin only)
+  const questionsDocUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      const ext = file.originalname.toLowerCase();
+      if (
+        file.mimetype === "application/pdf" ||
+        file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        file.mimetype === "application/msword" ||
+        ext.endsWith(".pdf") ||
+        ext.endsWith(".docx") ||
+        ext.endsWith(".doc")
+      ) {
+        cb(null, true);
+      } else {
+        cb(new Error("Only PDF (.pdf) and Word (.docx) files are allowed"));
+      }
+    },
+  });
+
+  const handleDocumentParse = async (req: any, res: any) => {
+    try {
+      if (!req.file?.buffer) {
+        return res.status(400).json({ message: "Document file is required" });
+      }
+
+      const fileName = req.file.originalname || "";
+      const isDocx =
+        fileName.toLowerCase().endsWith(".docx") ||
+        fileName.toLowerCase().endsWith(".doc") ||
+        req.file.mimetype.includes("word");
+
+      let questions: any[] = [];
+      let pageCount = 1;
+
+      if (isDocx) {
+        questions = await parseQuestionsFromDocx(req.file.buffer);
+      } else {
+        const parser = new PDFParse({ data: req.file.buffer });
+        try {
+          const textResult = await parser.getText();
+          questions = parseQuestionsFromText(textResult.text || "");
+          pageCount = textResult.total ?? textResult.pages?.length ?? 1;
+
+          // Extract embedded JPEG images from PDF and assign if available
+          const extractedPdfImages = extractImagesFromPdfBuffer(req.file.buffer);
+          if (extractedPdfImages.length > 0 && questions.length > 0) {
+            let imgIdx = 0;
+            for (let i = 0; i < questions.length && imgIdx < extractedPdfImages.length; i++) {
+              const q = questions[i];
+              const mentionsImage = /(picture|image|figure|diagram|triangle|shape|graph|photo|shown|below)/i.test(q.text);
+              if (!q.imageUrl && (mentionsImage || extractedPdfImages.length === questions.length)) {
+                q.imageUrl = extractedPdfImages[imgIdx++];
+              }
+            }
+          }
+        } finally {
+          await parser.destroy().catch(() => undefined);
+        }
+      }
+
+      if (questions.length === 0) {
+        return res.status(422).json({
+          message:
+            "No questions found. Use numbered items like Q1. / 1. / Question 1: and optional Answer: lines.",
+          questions: [],
+          pageCount,
+        });
+      }
+
+      res.json({
+        questions,
+        total: questions.length,
+        pageCount,
+        fileName: req.file.originalname,
+      });
+    } catch (error: any) {
+      console.error("Failed to parse questions document:", error);
+      res.status(500).json({
+        message: error?.message || "Failed to parse document",
+      });
+    }
+  };
+
+  app.post(
     "/api/exams/parse-questions-pdf",
     isAdmin,
     (req, res, next) => {
-      questionsPdfUpload.single("file")(req, res, (err) => {
+      questionsDocUpload.single("file")(req, res, (err) => {
         if (err) {
           return res.status(400).json({ message: err.message || "Upload failed" });
         }
         next();
       });
     },
-    async (req, res) => {
-      try {
-        if (!req.file?.buffer) {
-          return res.status(400).json({ message: "PDF file is required" });
+    handleDocumentParse
+  );
+
+  app.post(
+    "/api/exams/parse-questions-file",
+    isAdmin,
+    (req, res, next) => {
+      questionsDocUpload.single("file")(req, res, (err) => {
+        if (err) {
+          return res.status(400).json({ message: err.message || "Upload failed" });
         }
-
-        const parser = new PDFParse({ data: req.file.buffer });
-        try {
-          const textResult = await parser.getText();
-          const questions = parseQuestionsFromText(textResult.text || "");
-          const pageCount = textResult.total ?? textResult.pages?.length ?? 0;
-
-          if (questions.length === 0) {
-            return res.status(422).json({
-              message:
-                "No questions found. Use numbered items like Q1. / 1. / Question 1: and optional Answer: lines.",
-              questions: [],
-              pageCount,
-            });
-          }
-
-          res.json({
-            questions,
-            total: questions.length,
-            pageCount,
-            fileName: req.file.originalname,
-          });
-        } finally {
-          await parser.destroy().catch(() => undefined);
-        }
-      } catch (error: any) {
-        console.error("Failed to parse questions PDF:", error);
-        res.status(500).json({
-          message: error?.message || "Failed to parse PDF",
-        });
-      }
-    }
+        next();
+      });
+    },
+    handleDocumentParse
   );
 
   app.get("/api/exams/:id", isAuthenticated, async (req, res) => {
@@ -1185,6 +1278,7 @@ app.delete("/api/users/:id", isAdmin, async (req, res) => {
         text: req.body.text,
         order: req.body.order !== undefined ? req.body.order : nextOrder,
         modelAnswer: req.body.modelAnswer ?? null,
+        imageUrl: req.body.imageUrl ?? null,
       };
       
       const validatedData = insertQuestionSchema.parse(questionData);

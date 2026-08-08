@@ -23,6 +23,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { getQuestionImageUrl, getCleanQuestionText } from "@/components/exams/exam-view";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +62,7 @@ type Question = {
   text: string;
   order: number;
   examId: number;
+  imageUrl?: string | null;
 };
 
 function scoreTone(percent: number) {
@@ -792,7 +794,16 @@ export default function StudentResults() {
                       {questions?.map((question: Question, index: number) => (
                         <div key={question.id} className="border border-border rounded-lg p-3">
                           <h4 className="font-medium mb-1 text-sm">Question {index + 1}</h4>
-                          <p className="text-gray-700 mb-2 text-sm">{question.text}</p>
+                          <p className="text-gray-700 mb-2 text-sm">{getCleanQuestionText(question.text)}</p>
+                          {getQuestionImageUrl(question) && (
+                            <div className="mb-2 max-w-md overflow-hidden rounded-lg border border-border bg-slate-50 p-1.5">
+                              <img
+                                src={getQuestionImageUrl(question)!}
+                                alt={`Question ${index + 1} diagram`}
+                                className="max-h-56 w-auto rounded object-contain"
+                              />
+                            </div>
+                          )}
                           <div className="bg-sky-50 rounded p-2.5">
                             <Label className="text-xs font-medium text-sky-700">Your Answer:</Label>
                             <p className="mt-1 text-sm text-gray-900">

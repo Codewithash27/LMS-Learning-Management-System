@@ -21,6 +21,7 @@ type ExamQuestion = {
   id: number;
   text: string;
   order: number;
+  imageUrl?: string | null;
 };
 
 type ExamViewProps = {
@@ -41,6 +42,35 @@ function formatTime(seconds: number) {
   const m = Math.floor(Math.max(0, seconds) / 60);
   const s = Math.max(0, seconds) % 60;
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+export function getQuestionImageUrl(q: any): string | null {
+  if (!q) return null;
+  if (q.imageUrl && typeof q.imageUrl === "string" && q.imageUrl.trim() !== "") {
+    return q.imageUrl.trim();
+  }
+  if (q.image_url && typeof q.image_url === "string" && q.image_url.trim() !== "") {
+    return q.image_url.trim();
+  }
+  if (q.text && typeof q.text === "string") {
+    const imgMatch =
+      q.text.match(/\[IMG:(https?:\/\/[^\s\]]+|\/uploads\/[^\s\]]+)\]/i) ||
+      q.text.match(/!\[.*?\]\((https?:\/\/[^\s\)]+|\/uploads\/[^\s\)]+)\)/i) ||
+      q.text.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+    if (imgMatch) {
+      return imgMatch[1];
+    }
+  }
+  return null;
+}
+
+export function getCleanQuestionText(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\[IMG:(https?:\/\/[^\s\]]+|\/uploads\/[^\s\]]+)\]/gi, "")
+    .replace(/!\[.*?\]\((https?:\/\/[^\s\)]+|\/uploads\/[^\s\)]+)\)/gi, "")
+    .replace(/<img[^>]*>/gi, "")
+    .trim();
 }
 
 function parseStoredAnswers(
@@ -539,8 +569,18 @@ export default function ExamView({
           </div>
 
           <h2 className="max-w-3xl text-lg font-bold leading-snug text-gray-900 sm:text-xl lg:text-2xl">
-            {currentQuestion?.text}
+            {getCleanQuestionText(currentQuestion?.text || "")}
           </h2>
+
+          {getQuestionImageUrl(currentQuestion) && (
+            <div className="mt-4 max-w-3xl overflow-hidden rounded-2xl border border-border bg-white p-3.5 shadow-md">
+              <img
+                src={getQuestionImageUrl(currentQuestion)!}
+                alt={`Question ${currentQuestionIndex + 1} illustration`}
+                className="max-h-[420px] w-auto rounded-xl object-contain"
+              />
+            </div>
+          )}
 
           <div className="mt-5 max-w-3xl sm:mt-6">
             <Textarea
