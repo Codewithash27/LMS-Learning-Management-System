@@ -21,6 +21,7 @@ import DataTable from "@/components/primitives/DataTable";
 import { useClientPagination } from "@/hooks/use-client-pagination";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { getQuestionImageUrl, getCleanQuestionText } from "@/components/exams/exam-view";
 
 type ExamAttempt = {
   id: number;
@@ -49,6 +50,7 @@ type Question = {
   text: string;
   order: number;
   examId: number;
+  imageUrl?: string | null;
 };
 
 export default function GradingPage() {
@@ -275,7 +277,18 @@ export default function GradingPage() {
                     className="rounded-2xl border border-border bg-white p-4 shadow-sm"
                   >
                     <h4 className="mb-2 font-semibold">Question {index + 1}</h4>
-                    <p className="mb-3 leading-relaxed text-[#2D3748]">{question.text}</p>
+                    <p className="mb-3 leading-relaxed text-[#2D3748]">
+                      {getCleanQuestionText(question.text)}
+                    </p>
+                    {getQuestionImageUrl(question) && (
+                      <div className="mb-3 max-w-lg overflow-hidden rounded-xl border border-border bg-slate-50 p-2">
+                        <img
+                          src={getQuestionImageUrl(question)!}
+                          alt={`Question ${index + 1} diagram`}
+                          className="max-h-64 w-auto rounded-lg object-contain"
+                        />
+                      </div>
+                    )}
                     <div className="rounded-xl border border-border bg-[#EEF3F5]/50 p-4">
                       <Label className="text-sm font-semibold text-muted-foreground">
                         Student Answer:

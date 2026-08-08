@@ -219,7 +219,7 @@ export const insertExamSchema = createInsertSchema(exams)
 export type InsertExam = z.infer<typeof insertExamSchema>;
 export type Exam = typeof exams.$inferSelect;
 
-// Question model - Updated for text-based assignment questions
+// Question model - Updated for text-based assignment questions with image support
 export const questions = pgTable("questions", {
   id: serial("id").primaryKey(),
   examId: integer("exam_id").notNull(),
@@ -227,6 +227,8 @@ export const questions = pgTable("questions", {
   order: integer("order").notNull(),
   /** Optional model / expected answer from question-bank PDF (for instructor reference). */
   modelAnswer: text("model_answer"),
+  /** Optional image / diagram URL attached to this question. */
+  imageUrl: text("image_url"),
 });
 
 export const insertQuestionSchema = createInsertSchema(questions).pick({
@@ -234,8 +236,10 @@ export const insertQuestionSchema = createInsertSchema(questions).pick({
   text: true,
   order: true,
   modelAnswer: true,
+  imageUrl: true,
 }).extend({
   modelAnswer: z.string().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
 });
 
 export type InsertQuestion = z.infer<typeof insertQuestionSchema>;

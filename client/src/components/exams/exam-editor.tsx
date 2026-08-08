@@ -19,6 +19,8 @@ import {
   Shuffle,
   FileText,
   Clock,
+  ImageIcon,
+  X,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,11 +52,13 @@ type QuestionType = {
   text: string;
   order: number;
   modelAnswer?: string | null;
+  imageUrl?: string | null;
 };
 
 type ParsedPdfQuestion = {
   text: string;
   modelAnswer?: string | null;
+  imageUrl?: string | null;
 };
 
 type ExamEditorProps = {
@@ -100,6 +104,7 @@ export default function ExamEditor({
   const [pdfPool, setPdfPool] = useState<ParsedPdfQuestion[]>([]);
   const [pdfFileName, setPdfFileName] = useState<string | null>(null);
   const [isParsingPdf, setIsParsingPdf] = useState(false);
+  const [uploadingImageQuestionId, setUploadingImageQuestionId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const isEditing = !!exam?.id;
 
@@ -205,6 +210,7 @@ export default function ExamEditor({
         text: q.text,
         order: index,
         modelAnswer: q.modelAnswer ?? null,
+        imageUrl: q.imageUrl ?? null,
       }))
     );
   };
@@ -212,8 +218,8 @@ export default function ExamEditor({
   const applyRandomFromPool = (count?: number) => {
     if (pdfPool.length === 0) {
       toast({
-        title: "No PDF questions",
-        description: "Upload a questions PDF first.",
+        title: "No document questions",
+        description: "Upload a questions PDF or Word (.docx) document first.",
         variant: "destructive",
       });
       return;
@@ -222,16 +228,21 @@ export default function ExamEditor({
     applyRandomFromPoolWith(pdfPool, n);
     toast({
       title: "Questions selected",
-      description: `Randomly picked ${Math.min(n, pdfPool.length)} of ${pdfPool.length} questions from the PDF.`,
+      description: `Randomly picked ${Math.min(n, pdfPool.length)} of ${pdfPool.length} questions from the document.`,
     });
   };
 
   const handlePdfUpload = async (file: File | null) => {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
+    const nameLower = file.name.toLowerCase();
+    if (
+      !nameLower.endsWith(".pdf") &&
+      !nameLower.endsWith(".docx") &&
+      !nameLower.endsWith(".doc")
+    ) {
       toast({
         title: "Invalid file",
-        description: "Please upload a PDF file.",
+        description: "Please upload a PDF (.pdf) or Word (.docx) file.",
         variant: "destructive",
       });
       return;
@@ -241,14 +252,14 @@ export default function ExamEditor({
     try {
       const body = new FormData();
       body.append("file", file);
-      const res = await fetch("/api/exams/parse-questions-pdf", {
+      const res = await fetch("/api/exams/parse-questions-file", {
         method: "POST",
         body,
         credentials: "include",
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.message || "Failed to parse PDF");
+        throw new Error(data.message || "Failed to parse document");
       }
 
       const parsed: ParsedPdfQuestion[] = data.questions || [];
@@ -260,13 +271,13 @@ export default function ExamEditor({
       applyRandomFromPoolWith(parsed, defaultCount);
 
       toast({
-        title: "PDF parsed",
+        title: "Document parsed",
         description: `Found ${parsed.length} questions. ${defaultCount} randomly selected for this exam.`,
       });
     } catch (error: any) {
       toast({
-        title: "PDF parse failed",
-        description: error?.message || "Could not read questions from the PDF.",
+        title: "Document parse failed",
+        description: error?.message || "Could not read questions from the document.",
         variant: "destructive",
       });
     } finally {
@@ -274,16 +285,55 @@ export default function ExamEditor({
     }
   };
 
+  const handleQuestionImageUpload = async (questionId: number, file: File | null) => {
+    if (!file) return;
+    setUploadingImageQuestionId(questionId);
+    try {
+      const body = new FormData();
+      body.append("image", file);
+      const res = await fetch("/api/exams/upload-question-image", {
+        method: "POST",
+        body,
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to upload image");
+      }
+      setQuestions((prev) =>
+        prev.map((q) => (q.id === questionId ? { ...q, imageUrl: data.imageUrl } : q))
+      );
+      toast({
+        title: "Image attached",
+        description: "Question image uploaded successfully.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Upload failed",
+        description: err?.message || "Could not upload image.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImageQuestionId(null);
+    }
+  };
+
+  const removeQuestionImage = (questionId: number) => {
+    setQuestions((prev) =>
+      prev.map((q) => (q.id === questionId ? { ...q, imageUrl: null } : q))
+    );
+  };
+
   const onSubmit = async (data: ExamFormValues) => {
     if (data.questionSource === "pdf" && pdfPool.length > 0 && questions.length === 0) {
       applyRandomFromPool(data.questionCount);
     }
 
-    const emptyQuestions = questions.filter((q) => !q.text.trim());
+    const emptyQuestions = questions.filter((q) => !q.text.trim() && !q.imageUrl);
     if (emptyQuestions.length > 0) {
       toast({
         title: "Incomplete questions",
-        description: "Please fill in all question text before saving.",
+        description: "Please fill in text or attach an image for all questions before saving.",
         variant: "destructive",
       });
       return;
@@ -292,7 +342,7 @@ export default function ExamEditor({
     if (questions.length === 0) {
       toast({
         title: "No questions",
-        description: "Add questions manually or upload a PDF question bank.",
+        description: "Add questions manually or upload a PDF / Word document question bank.",
         variant: "destructive",
       });
       return;
@@ -339,6 +389,7 @@ export default function ExamEditor({
               order: index,
               examId,
               modelAnswer: question.modelAnswer || null,
+              imageUrl: question.imageUrl || null,
             });
           }
         } catch (err) {
@@ -376,6 +427,7 @@ export default function ExamEditor({
         text: "",
         order: questions.length,
         modelAnswer: null,
+        imageUrl: null,
       },
     ]);
   };
@@ -398,53 +450,51 @@ export default function ExamEditor({
     <CreateFormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? "Edit Exam" : "Create Exam"}
+      title={isEditing ? "Edit Exam" : "Create New Exam"}
       description={
         isEditing
-          ? "Update exam details, time limit, and assignment questions."
-          : "Create an exam manually or from a questions PDF with random selection."
+          ? "Update the details and questions for this exam."
+          : "Fill in the information below to create a new exam with questions."
       }
-      icon={<ClipboardList className="h-7 w-7 text-white" />}
-      maxWidth="max-w-3xl"
+      icon={<ClipboardList className="h-6 w-6 text-white" />}
       footer={
         <CreateFormFooter
           formId={EXAM_FORM_ID}
           onCancel={() => onOpenChange(false)}
           submitLabel={isEditing ? "Update Exam" : "Create Exam"}
-          pendingLabel={isEditing ? "Saving..." : "Creating..."}
-          isPending={isSaving || isParsingPdf}
+          pendingLabel="Saving..."
+          isPending={isSaving}
           submitDisabled={isLoading}
         />
       }
     >
       {isLoading ? (
-        <div className="flex items-center justify-center p-6">
-          <div className="flex flex-col items-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            <p className="mt-2 text-sm text-muted-foreground">Loading exam data...</p>
-          </div>
+        <div className="flex h-48 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       ) : (
         <Form {...form}>
           <form
             id={EXAM_FORM_ID}
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4"
+            className="space-y-6"
           >
             <FormSection
-              title="Exam details"
-              description="Title, course, batch, time limit, and publish status"
+              title="Basic details"
+              description="Name, course association, time limit, and response availability"
             >
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className={createFormLabelClass}>Exam Title</FormLabel>
+                      <FormLabel className={createFormLabelClass}>
+                        Exam Title <span className="text-red-500">*</span>
+                      </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="e.g. Data Structures Mid-Term Exam"
+                          placeholder="e.g. Midterm Exam - Physics 101"
                           className={createFormControlClass}
                           disabled={isSaving}
                           {...field}
@@ -457,112 +507,17 @@ export default function ExamEditor({
 
                 <FormField
                   control={form.control}
-                  name="courseId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={createFormLabelClass}>Associated Course</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isSaving}
-                      >
-                        <FormControl>
-                          <SelectTrigger className={createFormControlClass}>
-                            <SelectValue placeholder="Select Course" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {courses.map((course) => (
-                            <SelectItem key={course.id} value={String(course.id)}>
-                              {course.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="batchId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={createFormLabelClass}>Batch (optional)</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || "none"}
-                        disabled={isSaving || !selectedCourseId}
-                      >
-                        <FormControl>
-                          <SelectTrigger className={createFormControlClass}>
-                            <SelectValue placeholder="All course students" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">All students in course</SelectItem>
-                          {courseBatches.map((batch) => (
-                            <SelectItem key={batch.id} value={String(batch.id)}>
-                              {batch.name}
-                              {batch.batchCode ? ` (${batch.batchCode})` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription className="text-xs">
-                        Limit this exam to one batch, or leave open to the whole course.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="duration"
+                  name="description"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className={createFormLabelClass}>
-                        Time limit (minutes)
+                        Description <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            type="number"
-                            min={1}
-                            max={600}
-                            className={createFormControlClass + " pl-9"}
-                            disabled={isSaving}
-                            value={field.value ?? 60}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value === "" ? "" : Number(e.target.value)
-                              )
-                            }
-                          />
-                        </div>
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Students get a countdown timer for this duration.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
-                      <FormLabel className={createFormLabelClass}>Description</FormLabel>
-                      <FormControl>
                         <Textarea
-                          placeholder="Provide a description for the exam"
-                          rows={2}
-                          className={createFormControlClass + " h-auto min-h-[72px] py-2.5"}
+                          placeholder="Provide instructions or scope for this exam..."
+                          className={createFormControlClass + " h-auto min-h-[80px] py-2.5"}
+                          rows={3}
                           disabled={isSaving}
                           {...field}
                         />
@@ -572,31 +527,137 @@ export default function ExamEditor({
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="acceptingResponses"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between gap-3 rounded-xl border border-border bg-white p-4 sm:col-span-2">
-                      <FormLabel className={createFormLabelClass + " cursor-pointer"}>
-                        Publish exam (assigned students can take it)
-                      </FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value === true}
-                          onCheckedChange={field.onChange}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="courseId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className={createFormLabelClass}>
+                          Course <span className="text-red-500">*</span>
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
                           disabled={isSaving}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                        >
+                          <FormControl>
+                            <SelectTrigger className={createFormControlClass}>
+                              <SelectValue placeholder="Select course" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {courses.map((course) => (
+                              <SelectItem key={course.id} value={String(course.id)}>
+                                {course.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="batchId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className={createFormLabelClass}>
+                          Batch (Optional)
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value ?? "none"}
+                          disabled={isSaving || !selectedCourseId}
+                        >
+                          <FormControl>
+                            <SelectTrigger className={createFormControlClass}>
+                              <SelectValue placeholder="All batches in course" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">All batches in course</SelectItem>
+                            {courseBatches.map((batch) => (
+                              <SelectItem key={batch.id} value={String(batch.id)}>
+                                {batch.name}{" "}
+                                {batch.batchCode ? `(${batch.batchCode})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="duration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className={createFormLabelClass}>
+                          Duration (minutes) <span className="text-red-500">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              type="number"
+                              min={1}
+                              max={600}
+                              className={createFormControlClass + " pl-9"}
+                              disabled={isSaving}
+                              value={field.value ?? 60}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === ""
+                                    ? ""
+                                    : Number(e.target.value)
+                                )
+                              }
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="acceptingResponses"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border bg-white p-3.5 shadow-sm">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-sm font-semibold text-[#2D3748]">
+                            Accepting Responses
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            Students can access and submit
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isSaving}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             </FormSection>
 
             {!isEditing && (
               <FormSection
                 title="Question source"
-                description="Add questions manually or upload a PDF question bank"
+                description="Choose whether to type questions manually or upload a PDF/Word document"
               >
                 <FormField
                   control={form.control}
@@ -617,7 +678,7 @@ export default function ExamEditor({
                         >
                           <p className="text-sm font-semibold text-[#2D3748]">Manual entry</p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Type questions yourself in the form below.
+                            Type questions & attach photos manually below.
                           </p>
                         </button>
                         <button
@@ -631,9 +692,9 @@ export default function ExamEditor({
                               : "border-border bg-white hover:bg-muted/40")
                           }
                         >
-                          <p className="text-sm font-semibold text-[#2D3748]">Upload questions PDF</p>
+                          <p className="text-sm font-semibold text-[#2D3748]">Upload PDF / Word Document</p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Parse numbered questions and randomly pick a set.
+                            Parse questions and embedded images automatically.
                           </p>
                         </button>
                       </div>
@@ -652,10 +713,10 @@ export default function ExamEditor({
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-[#2D3748]">
-                              {pdfFileName || "No PDF selected"}
+                              {pdfFileName || "No file selected"}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Format tip: Q1. question text, then optional Answer: line.
+                              Supports PDF (.pdf) and Word (.docx) files with text & images.
                             </p>
                             {pdfPool.length > 0 && (
                               <Badge className="mt-2 rounded-full border border-green-200 bg-green-100 text-[10px] font-bold uppercase tracking-wide text-green-800">
@@ -667,7 +728,7 @@ export default function ExamEditor({
                         <label className="inline-flex">
                           <input
                             type="file"
-                            accept="application/pdf,.pdf"
+                            accept="application/pdf,.pdf,.docx,.doc"
                             className="hidden"
                             disabled={isSaving || isParsingPdf}
                             onChange={(e) => {
@@ -689,7 +750,7 @@ export default function ExamEditor({
                               ) : (
                                 <>
                                   <Upload className="h-4 w-4" />
-                                  {pdfPool.length ? "Replace PDF" : "Upload PDF"}
+                                  {pdfPool.length ? "Replace Document" : "Upload Document"}
                                 </>
                               )}
                             </span>
@@ -726,7 +787,7 @@ export default function ExamEditor({
                                 />
                               </FormControl>
                               <FormDescription className="text-xs">
-                                Max {pdfPool.length} from the uploaded PDF.
+                                Max {pdfPool.length} from uploaded document.
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
@@ -753,15 +814,15 @@ export default function ExamEditor({
               title="Exam questions"
               description={
                 questionSource === "pdf" && pdfPool.length > 0
-                  ? "Randomly selected from your PDF — edit before saving"
-                  : "Text-based questions for written student answers"
+                  ? "Randomly selected from document — review questions & images before saving"
+                  : "Questions with optional diagram/photo attachment"
               }
             >
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {questions.map((question, questionIndex) => (
                   <div
                     key={question.id}
-                    className="rounded-xl border border-border bg-white p-4"
+                    className="rounded-xl border border-border bg-white p-4 shadow-sm"
                   >
                     <div className="mb-3 flex items-start justify-between gap-2">
                       <h5 className="text-sm font-semibold text-[#2D3748]">
@@ -793,15 +854,102 @@ export default function ExamEditor({
                       rows={2}
                       className={createFormControlClass + " h-auto min-h-[72px] py-2.5"}
                       disabled={isSaving}
-                      placeholder="Enter the question prompt"
+                      placeholder="e.g. How many triangles are there in the diagram below?"
                     />
+
+                    {/* Question Image Attachment section */}
+                    <div className="mt-3.5 rounded-xl border border-border/80 bg-slate-50/50 p-3.5">
+                      <div className="flex items-center justify-between mb-2">
+                        <FormLabel className={createFormLabelClass + " flex items-center gap-1.5"}>
+                          <ImageIcon className="h-4 w-4 text-primary" />
+                          Question Image / Photo
+                        </FormLabel>
+                        {question.imageUrl && (
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-semibold">
+                            Image Attached
+                          </Badge>
+                        )}
+                      </div>
+
+                      {question.imageUrl ? (
+                        <div className="space-y-3">
+                          <div className="relative inline-block overflow-hidden rounded-xl border border-border bg-white p-2 shadow-sm">
+                            <img
+                              src={question.imageUrl}
+                              alt={`Question ${questionIndex + 1} diagram`}
+                              className="max-h-48 w-auto rounded-lg object-contain"
+                            />
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-border bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 shadow-sm hover:bg-slate-50 transition-colors">
+                              <Upload className="h-3.5 w-3.5 text-gray-500" />
+                              <span>{uploadingImageQuestionId === question.id ? "Uploading..." : "Change Photo"}</span>
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+                                className="hidden"
+                                disabled={isSaving || uploadingImageQuestionId === question.id}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0] || null;
+                                  if (file) {
+                                    void handleQuestionImageUpload(question.id, file);
+                                  }
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="h-8 gap-1.5 rounded-xl text-xs font-semibold"
+                              onClick={() => removeQuestionImage(question.id)}
+                              disabled={isSaving}
+                            >
+                              <Trash className="h-3.5 w-3.5" />
+                              Remove Photo
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-primary/50 bg-primary/5 px-4 py-2.5 text-xs font-bold text-primary shadow-sm hover:bg-primary/10 transition-all">
+                            <ImageIcon className="h-4 w-4" />
+                            <span>
+                              {uploadingImageQuestionId === question.id
+                                ? "Uploading image..."
+                                : "Attach Image / Picture (PNG, JPG)"}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+                              className="hidden"
+                              disabled={isSaving || uploadingImageQuestionId === question.id}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0] || null;
+                                if (file) {
+                                  void handleQuestionImageUpload(question.id, file);
+                                }
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                          <p className="mt-1.5 text-[11px] text-muted-foreground">
+                            Supports PNG, JPG, JPEG, WEBP files. Appears directly with question.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
                     {question.modelAnswer ? (
-                      <p className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                      <p className="mt-3 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
                         <span className="font-semibold text-[#2D3748]">Model answer: </span>
                         {question.modelAnswer}
                       </p>
                     ) : (
-                      <p className="mt-2 text-xs text-muted-foreground">
+                      <p className="mt-3 text-xs text-muted-foreground">
                         Students will provide written answers.
                       </p>
                     )}
