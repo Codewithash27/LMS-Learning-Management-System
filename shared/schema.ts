@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, time, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, time, index, uniqueIndex, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -431,3 +431,14 @@ export const insertThemeTemplateSchema = createInsertSchema(themeTemplates).pick
 
 export type InsertThemeTemplate = z.infer<typeof insertThemeTemplateSchema>;
 export type ThemeTemplate = typeof themeTemplates.$inferSelect;
+
+// Session table for connect-pg-simple (keeps Drizzle Kit from dropping or renaming it)
+export const session = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire", { precision: 6 }).notNull(),
+}, (table) => {
+  return {
+    expireIdx: index("idx_session_expire").on(table.expire),
+  };
+});
